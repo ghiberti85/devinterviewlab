@@ -1,67 +1,82 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef } from 'react'
-import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
-import { Flashcard } from '@/features/practice/components/Flashcard'
-import { useSessionStore } from '@/store/session.store'
-import { useT } from '@/lib/i18n/useT'
-import { CheckCircle, RotateCcw } from 'lucide-react'
-import type { SessionType } from '@/lib/supabase/types'
+import { useState, useEffect, useRef } from "react";
+import {
+  usePracticeQuestions,
+  useSubmitSession,
+} from "@/features/practice/hooks/usePractice";
+import { Flashcard } from "@/features/practice/components/Flashcard";
+import { useSessionStore } from "@/store/session.store";
+import { useT } from "@/lib/i18n/useT";
+import { CheckCircle, RotateCcw } from "lucide-react";
+import type { SessionType } from "@/lib/supabase/types";
 
-type Mode = 'random' | 'spaced'
+type Mode = "random" | "spaced";
 
 export default function PracticePage() {
-  const t = useT()
-  const [mode, setMode] = useState<Mode>('random')
-  const [started, setStarted] = useState(false)
-  const [index, setIndex] = useState(0)
-  const [done, setDone] = useState(false)
-  const [sessionResults, setSessionResults] = useState<{ conf: number }[]>([])
+  const t = useT();
+  const [mode, setMode] = useState<Mode>("random");
+  const [started, setStarted] = useState(false);
+  const [index, setIndex] = useState(0);
+  const [done, setDone] = useState(false);
+  const [sessionResults, setSessionResults] = useState<{ conf: number }[]>([]);
 
-  const { data: questions, isLoading, refetch } = usePracticeQuestions(mode)
-  const submit = useSubmitSession()
-  const { elapsedSec, startSession, tick, reset } = useSessionStore()
+  const { data: questions, isLoading, refetch } = usePracticeQuestions(mode);
+  const submit = useSubmitSession();
+  const { elapsedSec, startSession, tick, reset } = useSessionStore();
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (started && !done) {
-      timerRef.current = setInterval(tick, 1000)
+      timerRef.current = setInterval(tick, 1000);
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [started, done])
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [started, done]);
 
   async function handleRate(confidence: 1 | 2 | 3 | 4 | 5) {
-    if (!questions) return
-    const q = questions[index]
+    if (!questions) return;
+    const q = questions?.[index];
+    if (!q) return;
     await submit.mutateAsync({
       question_id: q.id,
-      session_type: 'flashcard' as SessionType,
+      session_type: "flashcard" as SessionType,
       confidence,
       duration_sec: elapsedSec,
-    })
-    setSessionResults(prev => [...prev, { conf: confidence }])
+    });
+    setSessionResults((prev) => [...prev, { conf: confidence }]);
     if (index + 1 >= questions.length) {
-      setDone(true)
-      if (timerRef.current) clearInterval(timerRef.current)
+      setDone(true);
+      if (timerRef.current) clearInterval(timerRef.current);
     } else {
-      setIndex(i => i + 1)
+      setIndex((i) => i + 1);
     }
   }
 
   function handleStart() {
-    setStarted(true); setIndex(0); setDone(false); setSessionResults([])
-    startSession('flashcard')
+    setStarted(true);
+    setIndex(0);
+    setDone(false);
+    setSessionResults([]);
+    startSession("flashcard");
   }
 
   function handleRestart() {
-    reset(); refetch()
-    setStarted(false); setIndex(0); setDone(false); setSessionResults([])
+    reset();
+    refetch();
+    setStarted(false);
+    setIndex(0);
+    setDone(false);
+    setSessionResults([]);
   }
 
-  const currentQ = questions?.[index]
+  const currentQ = questions?.[index];
   const avgConf = sessionResults.length
-    ? (sessionResults.reduce((a, b) => a + b.conf, 0) / sessionResults.length).toFixed(1)
-    : '–'
+    ? (
+        sessionResults.reduce((a, b) => a + b.conf, 0) / sessionResults.length
+      ).toFixed(1)
+    : "–";
 
   return (
     <div className="space-y-6">
@@ -69,7 +84,10 @@ export default function PracticePage() {
         <h1 className="text-xl font-semibold">{t.practice.title}</h1>
         {started && !done && (
           <div className="text-sm text-muted-foreground tabular-nums">
-            {Math.floor(elapsedSec / 60).toString().padStart(2, '0')}:{(elapsedSec % 60).toString().padStart(2, '0')}
+            {Math.floor(elapsedSec / 60)
+              .toString()
+              .padStart(2, "0")}
+            :{(elapsedSec % 60).toString().padStart(2, "0")}
           </div>
         )}
       </div>
@@ -79,24 +97,41 @@ export default function PracticePage() {
           <div className="border rounded-xl p-6 bg-card space-y-5">
             <h2 className="font-semibold">{t.practice.mode}</h2>
             <div className="space-y-2">
-              {([
-                { value: 'random', label: t.practice.random, desc: t.practice.randomDesc },
-                { value: 'spaced', label: t.practice.spaced, desc: t.practice.spacedDesc },
-              ] as const).map(opt => (
+              {(
+                [
+                  {
+                    value: "random",
+                    label: t.practice.random,
+                    desc: t.practice.randomDesc,
+                  },
+                  {
+                    value: "spaced",
+                    label: t.practice.spaced,
+                    desc: t.practice.spacedDesc,
+                  },
+                ] as const
+              ).map((opt) => (
                 <label
                   key={opt.value}
                   className={`flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                    mode === opt.value ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+                    mode === opt.value
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-accent"
                   }`}
                 >
                   <input
-                    type="radio" name="mode" value={opt.value}
-                    checked={mode === opt.value} onChange={() => setMode(opt.value)}
+                    type="radio"
+                    name="mode"
+                    value={opt.value}
+                    checked={mode === opt.value}
+                    onChange={() => setMode(opt.value)}
                     className="mt-0.5"
                   />
                   <div>
                     <div className="text-sm font-medium">{opt.label}</div>
-                    <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {opt.desc}
+                    </div>
                   </div>
                 </label>
               ))}
@@ -106,9 +141,11 @@ export default function PracticePage() {
               disabled={isLoading || !questions?.length}
               className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {isLoading ? t.practice.loading
-                : questions?.length === 0 ? t.practice.noQuestions
-                : t.practice.questionsCount(questions.length)}
+              {isLoading
+                ? t.practice.loading
+                : questions?.length === 0
+                  ? t.practice.noQuestions
+                  : t.practice.questionsCount(questions?.length ?? 0)}
             </button>
           </div>
         </div>
@@ -119,18 +156,26 @@ export default function PracticePage() {
             <h2 className="text-lg font-semibold">{t.practice.doneTitle}</h2>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <div className="text-2xl font-bold">{sessionResults.length}</div>
-                <div className="text-xs text-muted-foreground">{t.practice.cardsReviewed}</div>
+                <div className="text-2xl font-bold">
+                  {sessionResults.length}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {t.practice.cardsReviewed}
+                </div>
               </div>
               <div>
                 <div className="text-2xl font-bold">{avgConf}</div>
-                <div className="text-xs text-muted-foreground">{t.practice.avgConfidence}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t.practice.avgConfidence}
+                </div>
               </div>
               <div>
                 <div className="text-xl font-bold tabular-nums">
                   {Math.floor(elapsedSec / 60)}m {elapsedSec % 60}s
                 </div>
-                <div className="text-xs text-muted-foreground">{t.practice.timeSpent}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t.practice.timeSpent}
+                </div>
               </div>
             </div>
           </div>
@@ -159,5 +204,5 @@ export default function PracticePage() {
         </div>
       ) : null}
     </div>
-  )
+  );
 }
