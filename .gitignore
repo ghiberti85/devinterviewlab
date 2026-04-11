@@ -28,3 +28,6 @@ next-env.d.ts
 .DS_Store
 *.pem
 npm-debug.log*
+
+# Sentry Config File
+.env.sentry-build-plugin
