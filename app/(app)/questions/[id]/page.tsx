@@ -206,15 +206,15 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
       <div className="flex gap-3">
         <Link
           href={`/interview?question=${question.id}`}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-lg text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
         >
-          <Brain size={15} /> Practice with AI coach
+          <Brain size={15} /> AI coach
         </Link>
         <Link
           href="/practice"
-          className="flex items-center gap-2 border px-5 py-2.5 rounded-lg text-sm hover:bg-accent transition-colors"
+          className="flex items-center gap-2 border px-5 py-2.5 rounded-lg text-sm hover:bg-accent transition-colors whitespace-nowrap"
         >
-          <Dumbbell size={15} /> Flashcard mode
+          <Dumbbell size={15} /> Flashcard
         </Link>
       </div>
     </div>
