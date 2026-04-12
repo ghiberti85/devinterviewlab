@@ -25,47 +25,47 @@ function EvaluationRow({ ev }: { ev: AIEvaluation }) {
     <div className="border rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-accent transition-colors text-left"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           <ScoreBadge score={ev.score} />
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {new Date(ev.created_at).toLocaleDateString('pt-BR', {
-              day: '2-digit', month: 'short', year: 'numeric',
+              day: '2-digit', month: 'short',
               hour: '2-digit', minute: '2-digit'
             })}
           </span>
           {ev.feedback?.strengths?.length > 0 && (
-            <span className="text-xs text-green-600 dark:text-green-400">
+            <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
               {ev.feedback.strengths.length} strength{ev.feedback.strengths.length !== 1 ? 's' : ''}
             </span>
           )}
           {ev.feedback?.gaps?.length > 0 && (
-            <span className="text-xs text-red-600 dark:text-red-400">
+            <span className="text-xs text-red-600 dark:text-red-400 whitespace-nowrap">
               {ev.feedback.gaps.length} gap{ev.feedback.gaps.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
-        {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+        <span className="shrink-0 text-muted-foreground">
+          {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </span>
       </button>
 
       {open && (
         <div className="border-t px-4 py-3 bg-muted/20 space-y-3 text-sm">
           {/* Score breakdown */}
           {ev.feedback?.score_breakdown && (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            <div className="space-y-2">
               {Object.entries(ev.feedback.score_breakdown).map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground capitalize text-xs">{k}</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-16 h-1 rounded-full bg-border overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${v >= 75 ? 'bg-green-500' : v >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${v}%` }}
-                      />
-                    </div>
-                    <span className="text-xs tabular-nums w-5 text-right">{v}</span>
+                <div key={k} className="flex items-center gap-2">
+                  <span className="text-muted-foreground capitalize text-xs w-24 shrink-0">{k}</span>
+                  <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${v >= 75 ? 'bg-green-500' : v >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                      style={{ width: `${v}%` }}
+                    />
                   </div>
+                  <span className="text-xs tabular-nums w-7 text-right shrink-0">{v}</span>
                 </div>
               ))}
             </div>
