@@ -15,7 +15,7 @@ export default function StatsPage() {
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-semibold">{t.stats.title}</h1>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="border rounded-xl h-64 animate-pulse bg-muted" />
           ))}
@@ -44,7 +44,7 @@ export default function StatsPage() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">{t.stats.title}</h1>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: t.stats.totalQuestions, value: data?.totalQuestions ?? 0 },
           { label: t.stats.totalSessions,  value: data?.totalSessions ?? 0 },
@@ -129,26 +129,26 @@ export default function StatsPage() {
               <thead>
                 <tr className="text-left text-xs text-muted-foreground border-b">
                   <th className="pb-2 font-medium">{t.stats.question}</th>
-                  <th className="pb-2 font-medium">{t.stats.type}</th>
+                  <th className="pb-2 font-medium hidden sm:table-cell">{t.stats.type}</th>
                   <th className="pb-2 font-medium">{t.stats.confidence}</th>
-                  <th className="pb-2 font-medium">{t.stats.nextReview}</th>
+                  <th className="pb-2 font-medium hidden sm:table-cell">{t.stats.nextReview}</th>
                   <th className="pb-2 font-medium">{t.stats.date}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.recentSessions.map((s: any) => (
                   <tr key={s.id} className="border-b last:border-0 hover:bg-accent/30 transition-colors">
-                    <td className="py-2.5 pr-4 truncate max-w-xs">{s.questions?.title ?? '—'}</td>
-                    <td className="py-2.5 pr-4 capitalize text-muted-foreground">{s.session_type}</td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2.5 pr-3 text-xs truncate max-w-[120px] sm:max-w-xs">{s.questions?.title ?? '—'}</td>
+                    <td className="py-2.5 pr-3 capitalize text-muted-foreground text-xs hidden sm:table-cell">{s.session_type}</td>
+                    <td className="py-2.5 pr-3">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-16 h-1.5 rounded-full bg-border overflow-hidden">
+                        <div className="w-12 sm:w-16 h-1.5 rounded-full bg-border overflow-hidden">
                           <div className="h-full rounded-full bg-primary" style={{ width: `${(s.confidence / 5) * 100}%` }} />
                         </div>
                         <span className="text-xs tabular-nums">{s.confidence}/5</span>
                       </div>
                     </td>
-                    <td className="py-2.5 pr-4 text-muted-foreground text-xs">
+                    <td className="py-2.5 pr-3 text-muted-foreground text-xs hidden sm:table-cell">
                       {s.next_review_at ? new Date(s.next_review_at).toLocaleDateString('pt-BR') : '—'}
                     </td>
                     <td className="py-2.5 text-muted-foreground text-xs">

@@ -81,7 +81,7 @@ export default function QuestionsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-semibold">{t.questions.title}</h1>
         <div className="flex items-center gap-2">
           {!selectionMode && (
@@ -107,7 +107,7 @@ export default function QuestionsPage() {
       </div>
 
       {selectionMode && (
-        <div className="flex items-center justify-between gap-3 p-3 bg-muted/50 border rounded-lg">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-muted/50 border rounded-lg">
           <div className="flex items-center gap-3">
             <button
               onClick={toggleSelectAll}

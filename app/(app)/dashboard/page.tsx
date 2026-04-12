@@ -42,9 +42,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Link href="/practice"
             className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity">
             {t.dashboard.startPractice}
@@ -125,11 +125,11 @@ export default function DashboardPage() {
           <h2 className="font-semibold mb-4 text-sm">{t.dashboard.recentSessions}</h2>
           <div className="space-y-2">
             {data.recentSessions.map((s: any) => (
-              <div key={s.id} className="flex items-center justify-between text-sm py-1.5 border-b last:border-0">
-                <span className="truncate flex-1 text-muted-foreground">{s.questions?.title ?? '—'}</span>
-                <div className="flex items-center gap-3 shrink-0 ml-4">
-                  <span className="text-xs capitalize text-muted-foreground">{s.session_type}</span>
-                  <span className="text-xs font-medium">{t.dashboard.confidence}: {s.confidence}/5</span>
+              <div key={s.id} className="flex items-start justify-between gap-2 text-sm py-1.5 border-b last:border-0">
+                <span className="truncate flex-1 text-muted-foreground text-xs leading-5">{s.questions?.title ?? '—'}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs capitalize text-muted-foreground hidden sm:inline">{s.session_type}</span>
+                  <span className="text-xs font-medium">{s.confidence}/5</span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(s.created_at).toLocaleDateString('pt-BR')}
                   </span>
