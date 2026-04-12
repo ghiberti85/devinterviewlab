@@ -22,9 +22,11 @@ const CATEGORY_PT: Record<string, string> = {
 interface Props {
   question: Question
   onEdit?: (q: Question) => void
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function QuestionCard({ question, onEdit }: Props) {
+export function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: Props) {
   const del = useDeleteQuestion()
   const { language } = useSettingsStore()
 
@@ -36,8 +38,22 @@ export function QuestionCard({ question, onEdit }: Props) {
   }
 
   return (
-    <div className="border rounded-lg p-4 bg-card hover:shadow-sm transition-shadow">
+    <div
+      className={`border rounded-lg p-4 bg-card hover:shadow-sm transition-shadow ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
+      onClick={onToggleSelect ? () => onToggleSelect(question.id) : undefined}
+      style={onToggleSelect ? { cursor: 'pointer' } : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
+        {onToggleSelect && (
+          <div className="shrink-0 mt-0.5 mr-1" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={!!isSelected}
+              onChange={() => onToggleSelect(question.id)}
+              className="w-4 h-4 accent-primary cursor-pointer"
+            />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <DifficultyBadge difficulty={question.difficulty} />
@@ -78,27 +94,29 @@ export function QuestionCard({ question, onEdit }: Props) {
           )}
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <Link
-            href={`/interview?question=${question.id}`}
-            className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-            title={language === 'pt' ? 'Praticar com IA' : 'Practice with AI'}
-          >
-            <Brain size={15} />
-          </Link>
-          <button
-            onClick={() => onEdit?.(question)}
-            className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <Edit size={15} />
-          </button>
-          <button
-            onClick={() => del.mutate(question.id)}
-            className="p-1.5 rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
+        {!onToggleSelect && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Link
+              href={`/interview?question=${question.id}`}
+              className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              title={language === 'pt' ? 'Praticar com IA' : 'Practice with AI'}
+            >
+              <Brain size={15} />
+            </Link>
+            <button
+              onClick={() => onEdit?.(question)}
+              className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <Edit size={15} />
+            </button>
+            <button
+              onClick={() => del.mutate(question.id)}
+              className="p-1.5 rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, X } from "lucide-react";
-import { useQuestions } from "@/features/questions/hooks/useQuestions";
+import { Plus, Search, Trash2, X } from "lucide-react";
+import { useQuestions, useBulkDeleteQuestions } from "@/features/questions/hooks/useQuestions";
 import { QuestionCard } from "@/features/questions/components/QuestionCard";
 import { QuestionForm } from "@/features/questions/components/QuestionForm";
 import { useT } from "@/lib/i18n/useT";
@@ -29,6 +29,9 @@ export default function QuestionsPage() {
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const bulkDelete = useBulkDeleteQuestions();
 
   const { data, isLoading } = useQuestions({
     search: search || undefined,
@@ -52,21 +55,90 @@ export default function QuestionsPage() {
     setDifficulty("");
     setSelectedLanguage("");
   }
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll() {
+    if (selectedIds.size === questions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(questions.map((q) => q.id)));
+    }
+  }
+  function exitSelectionMode() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    await bulkDelete.mutateAsync(Array.from(selectedIds));
+    exitSelectionMode();
+  }
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{t.questions.title}</h1>
-        <button
-          onClick={() => {
-            setEditingQuestion(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
-        >
-          <Plus size={16} /> {t.questions.newQuestion}
-        </button>
+        <div className="flex items-center gap-2">
+          {!selectionMode && (
+            <button
+              onClick={() => setSelectionMode(true)}
+              className="flex items-center gap-2 border px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+            >
+              {t.questions.select}
+            </button>
+          )}
+          {!selectionMode && (
+            <button
+              onClick={() => {
+                setEditingQuestion(null);
+                setShowForm(true);
+              }}
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
+            >
+              <Plus size={16} /> {t.questions.newQuestion}
+            </button>
+          )}
+        </div>
       </div>
+
+      {selectionMode && (
+        <div className="flex items-center justify-between gap-3 p-3 bg-muted/50 border rounded-lg">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="text-sm text-primary hover:underline"
+            >
+              {selectedIds.size === questions.length ? t.questions.deselectAll : t.questions.selectAll}
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {selectedIds.size} {selectedIds.size === 1 ? t.questions.attempts : t.questions.attemptsPlural}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exitSelectionMode}
+              className="text-sm px-3 py-1.5 rounded-md border hover:bg-accent transition-colors"
+            >
+              {t.questions.cancelSelect}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0 || bulkDelete.isPending}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={14} />
+              {bulkDelete.isPending
+                ? t.questions.deleting
+                : t.questions.deleteSelected(selectedIds.size)}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -184,7 +256,13 @@ export default function QuestionsPage() {
       ) : (
         <div className="space-y-3">
           {questions.map((q) => (
-            <QuestionCard key={q.id} question={q} onEdit={handleEdit} />
+            <QuestionCard
+              key={q.id}
+              question={q}
+              onEdit={selectionMode ? undefined : handleEdit}
+              isSelected={selectedIds.has(q.id)}
+              onToggleSelect={selectionMode ? toggleSelect : undefined}
+            />
           ))}
           <p className="text-xs text-muted-foreground text-center pt-1">
             {data?.total}{" "}

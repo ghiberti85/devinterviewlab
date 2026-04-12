@@ -38,6 +38,10 @@ export const translations = {
       attempts: 'attempt', attemptsPlural: 'attempts', avgScore: 'Avg score',
       noEvaluations: 'No AI evaluations yet for this question.',
       practiceLink: 'Practice with AI coach →',
+      select: 'Select', cancelSelect: 'Cancel',
+      selectAll: 'Select all', deselectAll: 'Deselect all',
+      deleteSelected: (n: number) => `Delete ${n} question${n !== 1 ? 's' : ''}`,
+      deleting: 'Deleting…',
     },
     interview: {
       title: 'AI Interview Coach',
@@ -163,6 +167,10 @@ export const translations = {
       attempts: 'tentativa', attemptsPlural: 'tentativas', avgScore: 'Pontuação média',
       noEvaluations: 'Nenhuma avaliação de IA para esta questão ainda.',
       practiceLink: 'Praticar com coach de IA →',
+      select: 'Selecionar', cancelSelect: 'Cancelar',
+      selectAll: 'Selecionar todas', deselectAll: 'Desmarcar todas',
+      deleteSelected: (n: number) => `Excluir ${n} questão${n !== 1 ? 'ões' : ''}`,
+      deleting: 'Excluindo…',
     },
     interview: {
       title: 'Coach de Entrevista com IA',

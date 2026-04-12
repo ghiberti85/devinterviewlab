@@ -92,3 +92,13 @@ export function useDeleteQuestion() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['questions'] }),
   })
 }
+
+export function useBulkDeleteQuestions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map(id => fetch(`/api/questions/${id}`, { method: 'DELETE' })))
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['questions'] }),
+  })
+}
