@@ -87,7 +87,7 @@ export default function QuestionsPage() {
           {!selectionMode && (
             <button
               onClick={() => setSelectionMode(true)}
-              className="flex items-center gap-2 border px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+              className="flex items-center gap-2 border px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors whitespace-nowrap"
             >
               {t.questions.select}
             </button>
@@ -98,7 +98,7 @@ export default function QuestionsPage() {
                 setEditingQuestion(null);
                 setShowForm(true);
               }}
-              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
             >
               <Plus size={16} /> {t.questions.newQuestion}
             </button>

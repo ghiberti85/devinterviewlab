@@ -338,16 +338,16 @@ export default function GeneratePage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                  <Check size={12} /> {language === "pt" ? "Salvo" : "Saved"}
+                <span className="text-green-600 dark:text-green-400 flex items-center">
+                  <Check size={14} />
                 </span>
                 <button
                   onClick={() => cvInputRef.current?.click()}
                   disabled={uploadDoc.isPending}
-                  className="flex items-center gap-1.5 text-xs border px-2.5 py-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
+                  className="flex items-center justify-center border p-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
+                  title={language === "pt" ? "Substituir" : "Replace"}
                 >
-                  <RefreshCw size={12} />
-                  {language === "pt" ? "Substituir" : "Replace"}
+                  <RefreshCw size={13} />
                 </button>
                 <button
                   onClick={handleCVDelete}
@@ -412,10 +412,10 @@ export default function GeneratePage() {
           </div>
           <button
             onClick={() => extraInputRef.current?.click()}
-            className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground"
+            className="flex items-center gap-1.5 text-xs border px-2.5 py-1.5 rounded-md hover:bg-accent transition-colors text-muted-foreground whitespace-nowrap"
           >
             <Upload size={12} />
-            {language === "pt" ? "Adicionar arquivo" : "Add file"}
+            {language === "pt" ? "Adicionar" : "Add"}
           </button>
           <input
             ref={extraInputRef}
@@ -621,7 +621,7 @@ export default function GeneratePage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
               type="checkbox"
@@ -636,7 +636,7 @@ export default function GeneratePage() {
           <button
             onClick={handleGenerate}
             disabled={loading}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
           >
             <Sparkles size={15} />
             {loading
@@ -644,8 +644,8 @@ export default function GeneratePage() {
                 ? "Gerando…"
                 : "Generating…"
               : language === "pt"
-                ? "Gerar questões"
-                : "Generate questions"}
+                ? "Gerar"
+                : "Generate"}
           </button>
         </div>
       </div>

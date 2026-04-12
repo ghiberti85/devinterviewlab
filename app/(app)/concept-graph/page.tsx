@@ -124,27 +124,27 @@ export default function ConceptGraphPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold">Knowledge Graph</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             Drag nodes to reposition. Connect nodes by dragging from a handle. Color = concept score.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {selectedNode && (
             <button
               onClick={handleDeleteSelected}
-              className="flex items-center gap-2 border border-destructive text-destructive px-3 py-2 rounded-md text-sm hover:bg-destructive/10 transition-colors"
+              className="flex items-center gap-2 border border-destructive text-destructive px-3 py-2 rounded-md text-sm hover:bg-destructive/10 transition-colors whitespace-nowrap"
             >
               <Trash2 size={14} /> Delete "{(selectedNode.data as any).label}"
             </button>
           )}
           <button
             onClick={() => setShowForm(s => !s)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
           >
-            <Plus size={14} /> Add concept
+            <Plus size={14} /> Add
           </button>
         </div>
       </div>

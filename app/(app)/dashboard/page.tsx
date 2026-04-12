@@ -46,11 +46,11 @@ export default function DashboardPage() {
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <div className="flex gap-2 flex-wrap">
           <Link href="/practice"
-            className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity">
+            className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity whitespace-nowrap">
             {t.dashboard.startPractice}
           </Link>
           <Link href="/interview"
-            className="text-sm border px-4 py-2 rounded-md hover:bg-accent transition-colors">
+            className="text-sm border px-4 py-2 rounded-md hover:bg-accent transition-colors whitespace-nowrap">
             {t.dashboard.aiInterview}
           </Link>
         </div>

@@ -142,7 +142,7 @@ function InterviewSimulator() {
         </div>
         <button
           onClick={pickRandom}
-          className="flex items-center gap-2 border px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+          className="flex items-center gap-2 border px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors whitespace-nowrap"
         >
           <Shuffle size={14} /> {t.interview.randomQuestion}
         </button>
@@ -209,7 +209,7 @@ function InterviewSimulator() {
               {isEvaluated ? (
                 <button
                   onClick={resetAll}
-                  className="flex items-center gap-2 border px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+                  className="flex items-center gap-2 border px-4 py-2 rounded-md text-sm hover:bg-accent transition-colors whitespace-nowrap"
                 >
                   <RotateCcw size={13} /> {t.interview.tryAgain}
                 </button>
@@ -217,7 +217,7 @@ function InterviewSimulator() {
                 <button
                   onClick={handleEvaluate}
                   disabled={!selectedQ || !answer.trim() || submit.isPending}
-                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm hover:opacity-90 disabled:opacity-50 transition-opacity whitespace-nowrap"
                 >
                   <Send size={13} />
                   {submit.isPending ? t.interview.evaluating : t.interview.evaluate}
