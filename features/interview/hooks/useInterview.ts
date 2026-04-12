@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { AIEvaluation } from '@/lib/supabase/types'
+import { readNdjsonStream } from '@/lib/api/stream'
 
 export function useSubmitInterview() {
   const qc = useQueryClient()
@@ -18,7 +19,7 @@ export function useSubmitInterview() {
         const err = await res.json()
         throw new Error(err.error ?? 'AI evaluation failed')
       }
-      return res.json() as Promise<AIEvaluation>
+      return readNdjsonStream<AIEvaluation>(res)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['analytics'] })

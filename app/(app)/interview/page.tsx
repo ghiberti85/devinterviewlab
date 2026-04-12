@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { AIEvaluation, Question } from '@/lib/supabase/types'
 import { Shuffle, Send, RotateCcw, ChevronDown, ChevronUp, MessageSquarePlus, MessageSquare } from 'lucide-react'
+import { readNdjsonStream } from '@/lib/api/stream'
 
 type Phase = 'idle' | 'evaluated' | 'replica_loading' | 'replica_ready' | 'treplica_loading' | 'treplica_done'
 
@@ -96,7 +97,8 @@ function InterviewSimulator() {
           language,
         }),
       })
-      const data = await res.json()
+      if (!res.ok) { setPhase('evaluated'); return }
+      const data = await readNdjsonStream<{ followup_question: string; why_this_question: string }>(res)
       setFollowupQ(data.followup_question)
       setPhase('replica_ready')
     } catch {
@@ -119,7 +121,8 @@ function InterviewSimulator() {
           language,
         }),
       })
-      const data = await res.json()
+      if (!res.ok) { setPhase('replica_ready'); return }
+      const data = await readNdjsonStream<typeof followupEval>(res)
       setFollowupEval(data)
       setPhase('treplica_done')
     } catch {

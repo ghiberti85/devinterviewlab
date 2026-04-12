@@ -2,7 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, validateTextInput, sanitizeError } from '@/lib/api/rate-limit'
+import { ndjsonStream } from '@/lib/api/stream'
 import type { Difficulty } from '@/lib/supabase/types'
+
+// NOTE: Cannot use Edge Runtime here because pdf-parse requires Node.js APIs.
+// The 10 s Vercel Hobby timeout applies. For contexts without a temp file
+// (i.e. using a saved CV + text context), Groq typically responds in < 10 s.
+// Full fix: Vercel Pro (60 s limit) or splitting PDF extraction into a
+// separate Node route while keeping the AI call on Edge.
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
@@ -30,7 +37,6 @@ export async function POST(request: NextRequest) {
   const isBehavioral= formData.get('is_behavioral') === 'true'
   const language    = (formData.get('language') as string) || 'pt'
 
-  // Validate context length
   const ctxValidation = validateTextInput(rawContext, 'context')
   const context = ctxValidation.valid ? ctxValidation.value : ''
 
@@ -55,11 +61,13 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .in('id', savedDocIds)
     if (savedDocs?.length) {
-      extraSavedText = savedDocs.map(d => `=== ${d.name} ===\n${d.text_content}`).join('\n\n')
+      extraSavedText = savedDocs
+        .map(d => `=== ${d.name} ===\n${d.text_content}`)
+        .join('\n\n')
     }
   }
 
-  // Extract temp file
+  // Extract temp file text (requires Node.js — blocks Edge migration)
   let tempFileText = ''
   const tempFile = formData.get('temp_file') as File | null
   if (tempFile && tempFile.size > 0 && tempFile.size <= 10 * 1024 * 1024) {
@@ -77,15 +85,20 @@ export async function POST(request: NextRequest) {
   }
 
   const start = Date.now()
-  try {
-    const result = await aiService.generateFromContext({
-      context: combinedContext, cvText, difficulty, count,
-      categoryName, isBehavioral, language,
-    })
-    await logUsage({ userId: rl.userId, endpoint: 'generate', durationMs: Date.now() - start })
-    return NextResponse.json(result)
-  } catch (err) {
-    await logUsage({ userId: rl.userId, endpoint: 'generate', status: 'error', durationMs: Date.now() - start })
-    return NextResponse.json({ error: sanitizeError(err) }, { status: 500 })
-  }
+
+  return ndjsonStream(async (emit) => {
+    emit({ status: 'thinking' })
+
+    try {
+      const result = await aiService.generateFromContext({
+        context: combinedContext, cvText, difficulty, count,
+        categoryName, isBehavioral, language,
+      })
+      await logUsage({ userId: rl.userId, endpoint: 'generate', durationMs: Date.now() - start })
+      emit({ status: 'complete', data: result })
+    } catch (err) {
+      await logUsage({ userId: rl.userId, endpoint: 'generate', status: 'error', durationMs: Date.now() - start })
+      emit({ status: 'error', error: sanitizeError(err) })
+    }
+  })
 }

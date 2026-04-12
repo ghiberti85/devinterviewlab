@@ -31,6 +31,7 @@ import {
   ToggleRight,
 } from "lucide-react";
 import type { Difficulty } from "@/lib/supabase/types";
+import { readNdjsonStream } from "@/lib/api/stream";
 
 const CATEGORIES = [
   { value: "", label: "Auto" },
@@ -206,8 +207,11 @@ export default function GeneratePage() {
       }
 
       const res = await fetch("/api/ai/generate", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Generation failed");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Generation failed");
+      }
+      const data = await readNdjsonStream<GenerateResult>(res);
 
       setResult(data);
       setSelected(new Set(data.questions.map((_: any, i: number) => i)));
