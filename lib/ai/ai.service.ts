@@ -15,7 +15,8 @@ import {
 } from './prompts/code-evaluate.prompt'
 import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
 import { getScoreCardSystemPrompt, scoreCardPrompt } from './prompts/score-card.prompt'
-import type { Question, EvaluationFeedback, Difficulty } from '@/lib/supabase/types'
+import { getRoadmapSystemPrompt, roadmapAnalysisPrompt } from './prompts/roadmap.prompt'
+import type { Question, EvaluationFeedback, Difficulty, GapAnalysis, RoadmapPhase } from '@/lib/supabase/types'
 
 function getModel(): string {
   if (process.env.OPENAI_MODEL) return process.env.OPENAI_MODEL
@@ -327,6 +328,57 @@ export const aiService = {
       top_strengths: raw.top_strengths ?? [],
       top_gaps: raw.top_gaps ?? [],
       missing_concepts: raw.missing_concepts ?? [],
+    }
+  },
+
+  async analyzeAndGenerateRoadmap(opts: {
+    cvText?: string
+    jobDescription: string
+    language?: string
+  }): Promise<{
+    job_title: string
+    gap_analysis: GapAnalysis
+    roadmap: { phases: RoadmapPhase[] }
+  }> {
+    const { language = 'en' } = opts
+    if (!hasApiKey()) {
+      return {
+        job_title: 'Software Engineer',
+        gap_analysis: {
+          match_score: 0,
+          matched_skills: [],
+          missing_skills: ['AI not configured. Add a Groq or Gemini API key to enable this feature.'],
+          summary: 'AI evaluation is not configured.',
+        },
+        roadmap: { phases: [] },
+      }
+    }
+    const openai = getClient()
+    const systemPrompt = cachedSystemPrompt(
+      `roadmap:${language}`,
+      () => getRoadmapSystemPrompt(language)
+    )
+    const prompt = roadmapAnalysisPrompt(opts)
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+
+    const raw = safeParseJSON<{
+      job_title: string
+      gap_analysis: GapAnalysis
+      roadmap: { phases: RoadmapPhase[] }
+    }>(res.choices[0].message.content ?? '{}')
+
+    return {
+      job_title: raw.job_title ?? '',
+      gap_analysis: raw.gap_analysis ?? { match_score: 0, matched_skills: [], missing_skills: [], summary: '' },
+      roadmap: raw.roadmap ?? { phases: [] },
     }
   },
 }

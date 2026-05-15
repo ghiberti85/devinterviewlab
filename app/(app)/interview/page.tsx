@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuestions } from '@/features/questions/hooks/useQuestions'
 import { useSubmitInterview } from '@/features/interview/hooks/useInterview'
+import { useCreateScoreCard } from '@/features/score-cards/hooks/useScoreCards'
 import { AIFeedbackPanel } from '@/features/interview/components/AIFeedbackPanel'
 import { VoiceInput } from '@/features/interview/components/VoiceInput'
 import { DifficultyBadge } from '@/components/DifficultyBadge'
 import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { AIEvaluation, Question } from '@/lib/supabase/types'
-import { Shuffle, Send, RotateCcw, ChevronDown, ChevronUp, MessageSquarePlus, MessageSquare } from 'lucide-react'
+import { Shuffle, Send, RotateCcw, ChevronDown, ChevronUp, MessageSquarePlus, MessageSquare, BarChart2 } from 'lucide-react'
 import { readNdjsonStream } from '@/lib/api/stream'
 
 type Phase = 'idle' | 'evaluated' | 'replica_loading' | 'replica_ready' | 'treplica_loading' | 'treplica_done'
@@ -37,6 +38,10 @@ function InterviewSimulator() {
   const [followupEval, setFollowupEval] = useState<any>(null)
 
   const submit = useSubmitInterview()
+  const createScoreCard = useCreateScoreCard()
+  const [showScoreCardDialog, setShowScoreCardDialog] = useState(false)
+  const [scoreCardLabel, setScoreCardLabel] = useState('')
+  const [scoreCardSuccess, setScoreCardSuccess] = useState(false)
 
   useEffect(() => {
     if (preselectedId && questions.length > 0) {
@@ -61,6 +66,21 @@ function InterviewSimulator() {
     setFollowupQ('')
     setFollowupAnswer('')
     setFollowupEval(null)
+    setShowScoreCardDialog(false)
+    setScoreCardLabel('')
+    setScoreCardSuccess(false)
+  }
+
+  async function handleGenerateScoreCard() {
+    if (!evaluation) return
+    await createScoreCard.mutateAsync({
+      evaluation_ids: [evaluation.id],
+      session_label: scoreCardLabel.trim() || undefined,
+      language,
+    })
+    setShowScoreCardDialog(false)
+    setScoreCardLabel('')
+    setScoreCardSuccess(true)
   }
 
   function selectQuestion(id: string) {
@@ -375,6 +395,58 @@ function InterviewSimulator() {
               </div>
             )}
           </div>
+
+          {/* Score Card generation */}
+          {phase === 'evaluated' && evaluation && evaluation.model_used !== 'none' && (
+            <div className="border rounded-xl bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <BarChart2 size={16} className="text-primary" />
+                {t.scoreCard.generate}
+              </div>
+
+              {scoreCardSuccess ? (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  {language === 'pt' ? 'Score Card gerado com sucesso!' : 'Score Card generated successfully!'}
+                </p>
+              ) : !showScoreCardDialog ? (
+                <button
+                  onClick={() => setShowScoreCardDialog(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/20 transition-colors"
+                >
+                  <BarChart2 size={14} />
+                  {t.scoreCard.generate}
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">{t.scoreCard.label}</label>
+                    <input
+                      type="text"
+                      value={scoreCardLabel}
+                      onChange={e => setScoreCardLabel(e.target.value)}
+                      placeholder={t.scoreCard.labelPlaceholder}
+                      className="w-full border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowScoreCardDialog(false)}
+                      className="flex-1 border px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+                    >
+                      {t.common.cancel}
+                    </button>
+                    <button
+                      onClick={handleGenerateScoreCard}
+                      disabled={createScoreCard.isPending}
+                      className="flex-1 bg-primary text-primary-foreground px-3 py-2 rounded-md text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    >
+                      {createScoreCard.isPending ? t.scoreCard.generating : t.scoreCard.generate}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Ideal answer — show after evaluation */}
           {isEvaluated && selectedQ?.ideal_answer && (
