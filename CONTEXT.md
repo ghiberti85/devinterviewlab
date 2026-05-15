@@ -345,11 +345,13 @@ e2e/                            # Playwright E2E
 | `file-validation.test.ts` | 10 | ~96% statements |
 | `spaced-repetition.test.ts` | 25 | 100% (SM-2 EF, histórico, reset) |
 | `prompts.test.ts` | 63 | 100% (code-evaluate, evaluate, behavioral, followup) |
+| `generate-prompts.test.ts` | 29 | 100% (generate, generate-from-context, cn()) |
+| `stream.test.ts` | 8 | 100% (readNdjsonStream — parsing NDJSON, erros, stream vazio) |
 | `interview-payload.test.ts` | 5 | 100% (serialização do body com transcript) |
 
-**Total: 127 testes** — `npm test` · com coverage: `npm run test:coverage`
+**Total: 164 testes** — todos os módulos puros cobertos. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
-> Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query.
+> Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query — cobertos pelo E2E.
 
 ### E2E (Playwright) — `e2e/`
 - `auth.spec.ts` — redirect, login, persistência de sessão
