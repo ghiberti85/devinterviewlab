@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { question_id, user_answer, language = 'en' } = await request.json()
+  const { question_id, user_answer, transcript, language = 'en' } = await request.json()
   if (!question_id || !user_answer?.trim()) {
     return NextResponse.json(
       { error: 'question_id and user_answer are required' },
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
       const { data, error } = await supabase
         .from('ai_evaluations')
-        .insert({ ...evaluation, user_id: user.id })
+        .insert({ ...evaluation, user_id: user.id, transcript: transcript ?? null })
         .select()
         .single()
 

@@ -93,6 +93,7 @@ export interface AIEvaluation {
   user_id: string
   question_id: string | null
   user_answer: string
+  transcript: string | null
   score: number
   feedback: EvaluationFeedback
   missing_concepts: string[]
