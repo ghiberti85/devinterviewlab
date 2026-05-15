@@ -1,12 +1,12 @@
 import sharp from 'sharp'
 
-// SVG source — indigo background, white "DIL" monogram with code bracket accent
+// SVG source — dark mode background (#060d1f), indigo accent
 const svg = (size) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4c1d95"/>
-      <stop offset="100%" style="stop-color:#3b0764"/>
+      <stop offset="0%" style="stop-color:#0d1526"/>
+      <stop offset="100%" style="stop-color:#060d1f"/>
     </linearGradient>
   </defs>
 
