@@ -45,11 +45,23 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 2. Rode `npx tsc --noEmit` para confirmar estado inicial limpo
 3. Entenda o impacto em outros arquivos
 
+### A cada alteração de código (obrigatório antes do commit)
+```bash
+npm test              # todos os 164 testes devem passar — zero falhas toleradas
+npx tsc --noEmit      # zero erros de tipo
+```
+
+> **Regra:** se o seu código quebra um teste existente, corrija o teste **ou** o código antes de continuar.
+> Se criou um módulo novo com lógica pura (sem Supabase/IA), adicione testes unitários em `__tests__/unit/`.
+
 ### A cada entrega
-1. `npx tsc --noEmit` — zero erros
-2. `npm run build` — build limpo
-3. Commit seguindo Conventional Commits em português
-4. Push para o branch correto
+1. `npm test` — zero falhas
+2. `npx tsc --noEmit` — zero erros
+3. `npm run build` — build limpo
+4. Commit seguindo Conventional Commits em português
+5. Push para o branch correto
+
+> Atalho: use `/check` para rodar tsc + lint + tests de uma vez.
 
 ### Padrão de commit
 ```
