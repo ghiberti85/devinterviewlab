@@ -13,6 +13,7 @@ import {
   getCodeEvaluateSystemPrompt,
   codeEvaluatePrompt,
 } from './prompts/code-evaluate.prompt'
+import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
 import type { Question, EvaluationFeedback, Difficulty } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -189,12 +190,15 @@ export const aiService = {
     code: string
     codingLanguage: string
     language?: string
+    hintsRequested?: number
+    hintsShown?: number
+    idlePauses?: number
   }) {
     if (!hasApiKey()) return {
       score: 0,
       feedback: {
         time_complexity: 'N/A', space_complexity: 'N/A',
-        issues: ['AI not configured.'], suggestions: [], verdict: '',
+        issues: ['AI not configured.'], suggestions: [], verdict: '', process_feedback: null,
       },
     }
     const openai = getClient()
@@ -217,6 +221,7 @@ export const aiService = {
       issues: string[]
       suggestions: string[]
       verdict: string
+      process_feedback?: string | null
     }>(res.choices[0].message.content ?? '{}')
 
     return {
@@ -227,6 +232,7 @@ export const aiService = {
         issues: raw.issues ?? [],
         suggestions: raw.suggestions ?? [],
         verdict: raw.verdict ?? '',
+        process_feedback: raw.process_feedback ?? null,
       },
     }
   },
@@ -252,5 +258,35 @@ export const aiService = {
       skills_detected: string[]
       summary: string
     }>(res.choices[0].message.content ?? '{}')
+  },
+
+  async generateCodingHint(opts: {
+    problemTitle: string
+    problemDescription: string
+    code: string
+    codingLanguage: string
+    language?: string
+  }): Promise<{ hint: string }> {
+    if (!hasApiKey()) return { hint: 'AI not configured.' }
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const systemPrompt = cachedSystemPrompt(
+      `coding-hint:${language}`,
+      () => getCodingHintSystemPrompt(language)
+    )
+    const prompt = codingHintPrompt(opts)
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      max_tokens: 200,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+
+    const raw = safeParseJSON<{ hint: string }>(res.choices[0].message.content ?? '{}')
+    return { hint: raw.hint ?? '' }
   },
 }

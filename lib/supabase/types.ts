@@ -109,6 +109,7 @@ export interface CodeEvaluationFeedback {
   issues: string[]
   suggestions: string[]
   verdict: string
+  process_feedback?: string
 }
 
 export interface CodingSession {
@@ -122,6 +123,9 @@ export interface CodingSession {
   feedback: CodeEvaluationFeedback | null
   time_spent_sec: number | null
   timer_duration_sec: number | null
+  hints_requested: number
+  hints_shown: number
+  idle_pauses: number
   created_at: string
 }
 

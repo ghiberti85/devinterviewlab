@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CodingSession, CodeEvaluationFeedback } from '@/lib/supabase/types'
+export type { CodingSession, CodeEvaluationFeedback }
 
 export function useCodingSessions() {
   return useQuery<CodingSession[]>({
@@ -9,6 +10,29 @@ export function useCodingSessions() {
     queryFn: async () => {
       const res = await fetch('/api/coding')
       if (!res.ok) throw new Error('Failed to fetch sessions')
+      return res.json()
+    },
+  })
+}
+
+export function useRequestHint() {
+  return useMutation({
+    mutationFn: async (body: {
+      problem_title: string
+      problem_description?: string
+      code: string
+      language: string
+      ui_language?: string
+    }): Promise<{ hint: string }> => {
+      const res = await fetch('/api/coding/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Hint request failed')
+      }
       return res.json()
     },
   })
@@ -24,6 +48,9 @@ export function useSubmitCode() {
       code: string
       time_spent_sec: number
       timer_duration_sec: number
+      hints_requested: number
+      hints_shown: number
+      idle_pauses: number
       ui_language?: string
     }) => {
       const res = await fetch('/api/coding', {

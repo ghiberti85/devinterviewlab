@@ -133,6 +133,68 @@ describe('generateFromContextPrompt', () => {
   })
 })
 
+// ─── coding-hint.prompt ──────────────────────────────────────────────────────
+
+import { getCodingHintSystemPrompt, codingHintPrompt } from '@/lib/ai/prompts/coding-hint.prompt'
+
+describe('getCodingHintSystemPrompt', () => {
+  it('defaults to English', () => {
+    expect(getCodingHintSystemPrompt()).toContain('English')
+  })
+
+  it('uses Portuguese for language="pt"', () => {
+    expect(getCodingHintSystemPrompt('pt')).toContain('Brazilian Portuguese')
+  })
+
+  it('instructs the model NOT to reveal the solution', () => {
+    const prompt = getCodingHintSystemPrompt()
+    expect(prompt).toContain('NEVER reveal the solution')
+  })
+
+  it('includes the required JSON schema key', () => {
+    expect(getCodingHintSystemPrompt()).toContain('"hint"')
+  })
+})
+
+describe('codingHintPrompt', () => {
+  const base = {
+    problemTitle: 'Two Sum',
+    problemDescription: 'Return indices of two numbers that add to target.',
+    code: 'function twoSum(nums, target) {}',
+    codingLanguage: 'javascript',
+  }
+
+  it('returns system and user fields', () => {
+    expect(codingHintPrompt(base)).toHaveProperty('system')
+    expect(codingHintPrompt(base)).toHaveProperty('user')
+  })
+
+  it('includes the problem title in the user message', () => {
+    expect(codingHintPrompt(base).user).toContain('Two Sum')
+  })
+
+  it('includes the current code in a fenced block', () => {
+    expect(codingHintPrompt(base).user).toContain('```javascript')
+    expect(codingHintPrompt(base).user).toContain(base.code)
+  })
+
+  it('uses empty code placeholder when code is empty', () => {
+    const result = codingHintPrompt({ ...base, code: '' })
+    expect(result.user).toContain('(empty')
+  })
+
+  it('truncates description to 500 chars', () => {
+    const longDesc = 'x'.repeat(600)
+    const result = codingHintPrompt({ ...base, problemDescription: longDesc })
+    expect(result.user).toContain('x'.repeat(500))
+    expect(result.user).not.toContain('x'.repeat(501))
+  })
+
+  it('generates Portuguese system prompt when language="pt"', () => {
+    expect(codingHintPrompt({ ...base, language: 'pt' }).system).toContain('Brazilian Portuguese')
+  })
+})
+
 // ─── utils.cn ────────────────────────────────────────────────────────────────
 
 import { cn } from '@/lib/utils'
