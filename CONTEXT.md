@@ -42,7 +42,7 @@ NEXT_PUBLIC_SENTRY_DSN=<mesmo dsn>
 
 ## Arquitetura do Banco de Dados (Supabase)
 
-Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **16 tabelas**.
+Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
 
 ### Tabelas
 
@@ -148,6 +148,17 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **16 tabelas**.
 - extracted_text (text, nullable) — texto extraído do PDF para uso no roadmap sem re-processar
 - Migration: `supabase/migrations/20260515000005_user_documents_extracted_text.sql`
 
+**topics** — Flash Topics gerados por IA *(adicionada em 2026-05-15)*
+- id, user_id (FK profiles), category_id (FK categories, nullable)
+- title (text, max 200), difficulty (check: easy|medium|hard, default medium)
+- summary (text, max 2000), when_to_use (text, max 1000, nullable)
+- code_snippet (text, max 3000, nullable), quick_qa (jsonb, array de {q, a})
+- tags (text[]), language (text, check: en|pt, default en)
+- translated_from (uuid, FK topics self-referencing, nullable) — liga traduções ao original
+- created_at
+- Políticas: SELECT/INSERT/DELETE por user_id
+- Migrations: `20260515000006_topics.sql`, `20260515000007_topics_language.sql`
+
 ### Funções PostgreSQL
 - `get_user_daily_usage(user_id, endpoint?)` — retorna contagem de chamadas hoje
 
@@ -192,6 +203,9 @@ app/
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
     roadmaps/[id]/progress/  # PATCH incrementar progresso de tópico
+    topics/           # GET ?language=en|pt (com has_translation) + POST gerar
+    topics/[id]/      # GET + DELETE
+    topics/[id]/translate/  # POST traduzir e persistir (Edge, 50/dia, idempotente)
     dashboard/
       daily-loop/     # GET streak + conceito fraco + flashcards pendentes
     profile/
@@ -223,6 +237,9 @@ features/
   roadmaps/
     components/                 # RoadmapSetup, GapAnalysisCard, RoadmapTimeline
     hooks/                      # useRoadmaps, useRoadmap, useCreateRoadmap, useUpdateTopicProgress
+  topics/
+    components/                 # TopicCard (tradução persistida), TopicGenerator
+    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic
   concepts/hooks/
   analytics/
     hooks/                      # useAnalytics, useDailyLoop
@@ -243,6 +260,7 @@ lib/
       coding-hint.prompt.ts     # Pair Programmer socrático — nunca revela solução
       score-card.prompt.ts      # síntese de múltiplas avaliações em top 3 forças/gaps
       roadmap.prompt.ts         # roadmap 30/60/90 dias com análise de gap vs vaga
+      topic.prompt.ts           # getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt
   i18n/
     translations.ts             # EN/PT — inclui liveCoding e dashboard.dailyLoop
     useT.ts
@@ -270,6 +288,8 @@ supabase/
     20260515000003_score_cards.sql
     20260515000004_study_roadmaps.sql
     20260515000005_user_documents_extracted_text.sql
+    20260515000006_topics.sql
+    20260515000007_topics_language.sql
 
 e2e/                            # Playwright E2E
   fixtures.ts
@@ -346,6 +366,24 @@ e2e/                            # Playwright E2E
 - Timeline visual com barras de progresso por fase
 - Rate limit: 5 roadmaps/dia
 
+### Flash Topics *(novo)*
+- `/topics` — biblioteca de referências técnicas rápidas geradas por IA
+- Cada tópico: resumo 150-250 palavras + "quando usar/evitar" + snippet de código + 4 Q&A de entrevista
+- **Tradução persistida**: botão "Traduzir → EN/PT" no card gera versão no outro idioma via IA e salva no banco
+  — ao trocar idioma no app a lista filtra automaticamente pela versão já traduzida, sem nova chamada à IA
+- `translated_from` (uuid) liga a tradução ao original; idempotente (409 se tradução já existe)
+- Rate limit: 30 tópicos/dia, 50 traduções/dia
+- Prompts: `topic.prompt.ts` (geração) + `topicTranslatePrompt` (tradução — preserva termos técnicos, mantém code_snippet intacto)
+
+### Experiência Mobile / PWA *(novo)*
+- Bottom tab bar fixo no mobile: Dashboard, Prática, Entrevista, Tópicos + botão "Mais"
+- Bottom sheet com grade 4 colunas para as 8 seções restantes + ThemeToggle + LanguageSelector + Sign out
+- Top bar mobile simplificada (logo + backdrop blur), desktop sidebar inalterado
+- PWA: `app/manifest.ts` (display standalone, tema índigo escuro)
+- Meta tags iOS: apple-mobile-web-app-capable, apple-touch-icon (180px)
+- `env(safe-area-inset-bottom)` para iPhone com notch/Dynamic Island
+- Ícones gerados via sharp: `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`
+
 ### Daily Learning Loop *(novo)*
 - Widget no Dashboard com 4 cards: streak de dias, conceito mais fraco, flashcards pendentes, atalho Live Coding
 - Streak calculado a partir de `practice_history` sem nova coluna no banco
@@ -373,7 +411,7 @@ e2e/                            # Playwright E2E
 | RLS | Todas as 12 tabelas com USING + WITH CHECK explícito |
 | Constraints DB | Tamanho de texto, domínios de enum, score 0-100 |
 | Security Headers | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
-| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 15 coding/dia, 20 coding-hint/dia, 15 score-card/dia, 5 roadmap/dia |
+| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 15 coding/dia, 20 coding-hint/dia, 15 score-card/dia, 5 roadmap/dia, 30 topic/dia, 50 topic-translate/dia |
 | Brute Force | 10 tentativas / 15min por IP, bloqueio de 15min |
 | Anti-enumeração | Mesma mensagem para email existente/inexistente |
 | Magic bytes | Valida conteúdo real do arquivo, não só MIME type |
@@ -438,8 +476,9 @@ e2e/                            # Playwright E2E
 | `score-card-utils.test.ts` | 6 | 100% (aggregateRadar, averageScore) |
 | `roadmap-prompt.test.ts` | 6 | 100% (idioma, truncagem CV/JD, schema JSON) |
 | `generate-prompts.test.ts` (coding-hint) | +10 incluídos acima | 100% (socrático, idioma, schema) |
+| `topic-prompt.test.ts` | 23 | 100% (getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt) |
 
-**Total: 193 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 220 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 > Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query — cobertos pelo E2E.
 
@@ -461,6 +500,8 @@ Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx
 - **F8 — Pair Programmer IA no Live Coding** — dicas socráticas on-demand + idle detection 60s, métricas de processo, HintPanel colapsável
 - **F2 — Score Card Visual** (`/score-cards`) — radar chart, top forças/lacunas, histórico, export PDF
 - **F3 — Análise CV + Roadmap** (`/roadmap`) — gap analysis, roadmap 30/60/90 dias via streaming, progresso manual por tópico
+- **Flash Topics** (`/topics`) — referências rápidas com Q&A integrado, tradução persistida EN↔PT
+- **PWA + Mobile App** — bottom tab bar, bottom sheet, manifest, ícones, safe-area iOS
 
 ### Features Planejadas
 1. **Migrar `/api/ai/generate` para Edge Runtime** — extração já isolada em `/api/documents/extract-text`; passar texto pré-extraído resolve timeout 10s Vercel Hobby

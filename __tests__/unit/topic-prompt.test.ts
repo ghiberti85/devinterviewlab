@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getTopicSystemPrompt, topicAnalysisPrompt } from '@/lib/ai/prompts/topic.prompt'
+import { getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt } from '@/lib/ai/prompts/topic.prompt'
 
 describe('getTopicSystemPrompt', () => {
   it('defaults to English', () => {
@@ -69,5 +69,65 @@ describe('topicAnalysisPrompt', () => {
   it('uses English system prompt when language is en', () => {
     const { system } = topicAnalysisPrompt({ topicName: 'Event Loop', language: 'en' })
     expect(system).toContain('English')
+  })
+})
+
+const SAMPLE_TOPIC = {
+  title: 'Event Loop',
+  summary: 'The Event Loop is the mechanism that allows Node.js to perform non-blocking I/O.',
+  when_to_use: 'Use when building async-heavy applications.',
+  quick_qa: [
+    { q: 'What is the call stack?', a: 'A LIFO structure that tracks function execution.' },
+  ],
+  tags: ['javascript', 'async', 'node'],
+}
+
+describe('topicTranslatePrompt', () => {
+  it('returns system and user fields', () => {
+    const result = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(result).toHaveProperty('system')
+    expect(result).toHaveProperty('user')
+  })
+
+  it('includes target language in the system prompt', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(system).toContain('Brazilian Portuguese')
+  })
+
+  it('includes target language English in the system prompt', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'en' })
+    expect(system).toContain('English')
+  })
+
+  it('includes the topic title in the user message', () => {
+    const { user } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(user).toContain('Event Loop')
+  })
+
+  it('includes the summary in the user message', () => {
+    const { user } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(user).toContain('non-blocking I/O')
+  })
+
+  it('instructs model to preserve technical terms', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(system).toContain('technical terms')
+  })
+
+  it('instructs model to not translate code snippets', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(system).toContain('Code snippets')
+  })
+
+  it('instructs model to return only valid JSON', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(system).toContain('ONLY valid JSON')
+  })
+
+  it('includes required JSON schema keys in system prompt', () => {
+    const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    for (const key of ['title', 'summary', 'when_to_use', 'quick_qa', 'tags']) {
+      expect(system).toContain(`"${key}"`)
+    }
   })
 })
