@@ -75,9 +75,11 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **12 tabelas**.
 **ai_evaluations** — avaliações de respostas pela IA
 - id, user_id, question_id (nullable)
 - user_answer (text, max 50k)
+- transcript (text, max 50k, nullable) — texto bruto da transcrição de voz *(adicionado em 2026-05-15)*
 - score (numeric), feedback (jsonb)
 - missing_concepts (text[]), model_used, prompt_version
 - created_at
+- Migration: `supabase/migrations/20260515000001_ai_evaluations_transcript.sql`
 
 **concepts** — grafo de conhecimento
 - id, user_id, name (max 200), description (max 5k)
@@ -207,6 +209,7 @@ store/
 supabase/
   migrations/
     20260515000000_coding_sessions.sql
+    20260515000001_ai_evaluations_transcript.sql
 
 e2e/                            # Playwright E2E
   fixtures.ts
@@ -335,14 +338,18 @@ e2e/                            # Playwright E2E
 ## Testes
 
 ### Unitários (Vitest) — `__tests__/unit/`
-| Arquivo | Cobertura |
-|---|---|
-| `brute-force.test.ts` | ~84% statements |
-| `rate-limit.test.ts` | ~37% statements (checkRateLimit requer Supabase) |
-| `file-validation.test.ts` | ~96% statements |
-| `spaced-repetition.test.ts` | 100% (25 casos, inclui EF e histórico) |
+| Arquivo | Testes | Cobertura |
+|---|---|---|
+| `brute-force.test.ts` | 11 | ~84% statements |
+| `rate-limit.test.ts` | 13 | ~37% statements (checkRateLimit requer Supabase) |
+| `file-validation.test.ts` | 10 | ~96% statements |
+| `spaced-repetition.test.ts` | 25 | 100% (SM-2 EF, histórico, reset) |
+| `prompts.test.ts` | 63 | 100% (code-evaluate, evaluate, behavioral, followup) |
+| `interview-payload.test.ts` | 5 | 100% (serialização do body com transcript) |
 
-Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 127 testes** — `npm test` · com coverage: `npm run test:coverage`
+
+> Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query.
 
 ### E2E (Playwright) — `e2e/`
 - `auth.spec.ts` — redirect, login, persistência de sessão
