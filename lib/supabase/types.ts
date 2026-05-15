@@ -136,6 +136,59 @@ export interface DailyLoopData {
   dueFlashcardsCount: number
 }
 
+export interface ScoreCard {
+  id: string
+  user_id: string
+  session_label: string | null
+  evaluation_ids: string[]
+  overall_score: number
+  radar: { correctness: number; completeness: number; clarity: number; depth: number }
+  strengths: string[]
+  gaps: string[]
+  missing_concepts: string[]
+  recommendation: string | null
+  created_at: string
+}
+
+export interface RoadmapTopic {
+  name: string
+  priority: 1 | 2 | 3
+  question_count: number
+}
+export interface RoadmapPhase {
+  label: string
+  topics: RoadmapTopic[]
+}
+export interface GapAnalysis {
+  match_score: number
+  matched_skills: string[]
+  missing_skills: string[]
+  summary: string
+}
+export interface StudyRoadmap {
+  id: string
+  user_id: string
+  job_title: string | null
+  job_description: string | null
+  cv_text_snapshot: string | null
+  gap_analysis: GapAnalysis
+  roadmap: { phases: RoadmapPhase[] }
+  status: 'active' | 'completed' | 'archived'
+  created_at: string
+  updated_at: string
+  progress?: RoadmapTopicProgress[]
+}
+export interface RoadmapTopicProgress {
+  id: string
+  roadmap_id: string
+  user_id: string
+  topic_name: string
+  questions_done: number
+  questions_goal: number
+  last_practiced_at: string | null
+  created_at: string
+}
+
 export interface AnalyticsData {
   totalQuestions: number
   totalSessions: number
