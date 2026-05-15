@@ -16,7 +16,7 @@ import {
 import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
 import { getScoreCardSystemPrompt, scoreCardPrompt } from './prompts/score-card.prompt'
 import { getRoadmapSystemPrompt, roadmapAnalysisPrompt } from './prompts/roadmap.prompt'
-import { topicAnalysisPrompt, getTopicSystemPrompt } from './prompts/topic.prompt'
+import { topicAnalysisPrompt, topicTranslatePrompt, getTopicSystemPrompt } from './prompts/topic.prompt'
 import type { Question, EvaluationFeedback, Difficulty, GapAnalysis, RoadmapPhase } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -335,6 +335,48 @@ export const aiService = {
       summary: string
       when_to_use: string | null
       code_snippet: string | null
+      quick_qa: Array<{ q: string; a: string }>
+      tags: string[]
+    }>(res.choices[0].message.content ?? '{}')
+  },
+
+  async translateTopic(opts: {
+    topic: {
+      title: string
+      summary: string
+      when_to_use: string | null
+      quick_qa: Array<{ q: string; a: string }>
+      tags: string[]
+    }
+    targetLanguage: string
+  }): Promise<{
+    title: string
+    summary: string
+    when_to_use: string | null
+    quick_qa: Array<{ q: string; a: string }>
+    tags: string[]
+  }> {
+    if (!hasApiKey()) return {
+      title: opts.topic.title,
+      summary: opts.topic.summary,
+      when_to_use: opts.topic.when_to_use,
+      quick_qa: opts.topic.quick_qa,
+      tags: opts.topic.tags,
+    }
+    const openai = getClient()
+    const { system, user } = topicTranslatePrompt(opts)
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    })
+    return safeParseJSON<{
+      title: string
+      summary: string
+      when_to_use: string | null
       quick_qa: Array<{ q: string; a: string }>
       tags: string[]
     }>(res.choices[0].message.content ?? '{}')

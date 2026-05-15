@@ -6,19 +6,42 @@ import { logger } from '@/lib/logger'
 
 export const runtime = 'edge'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data, error } = await supabase
+  const lang = req.nextUrl.searchParams.get('language') ?? 'en'
+
+  // Fetch topics in the requested language
+  const { data: topics, error } = await supabase
     .from('topics')
     .select('*')
     .eq('user_id', user.id)
+    .eq('language', lang)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
-  return NextResponse.json(data)
+  if (!topics || topics.length === 0) return NextResponse.json([])
+
+  // Find which of these topics already have a translation saved
+  // A translation exists as a separate row with translated_from = topic.id
+  const ids = topics.map(t => t.id)
+  const { data: translations } = await supabase
+    .from('topics')
+    .select('translated_from')
+    .eq('user_id', user.id)
+    .neq('language', lang)
+    .in('translated_from', ids)
+
+  const translatedSet = new Set((translations ?? []).map(t => t.translated_from))
+
+  const enriched = topics.map(t => ({
+    ...t,
+    has_translation: translatedSet.has(t.id),
+  }))
+
+  return NextResponse.json(enriched)
 }
 
 export async function POST(req: NextRequest) {
@@ -56,6 +79,8 @@ export async function POST(req: NextRequest) {
         code_snippet: generated.code_snippet,
         quick_qa: generated.quick_qa,
         tags: generated.tags,
+        language,
+        translated_from: null,
       })
       .select()
       .single()

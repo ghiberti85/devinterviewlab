@@ -3,11 +3,13 @@ import { useTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 import { useT } from '@/lib/i18n/useT'
+import { useSettingsStore } from '@/store/settings.store'
 import { Loader2, BookMarked } from 'lucide-react'
 
 export default function TopicsPage() {
   const t = useT()
-  const { data: topics, isLoading } = useTopics()
+  const { language } = useSettingsStore()
+  const { data: topics, isLoading } = useTopics(language as string)
 
   return (
     <div className="space-y-6">

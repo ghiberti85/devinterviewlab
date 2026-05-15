@@ -1,22 +1,40 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, Trash2, Code2, Zap } from 'lucide-react'
+import { ChevronDown, Trash2, Code2, Zap, Languages, Loader2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Topic } from '@/lib/supabase/types'
-import { useDeleteTopic } from '../hooks/useTopics'
+import { useDeleteTopic, useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
+import { useSettingsStore } from '@/store/settings.store'
 
 export function TopicCard({ topic }: { topic: Topic }) {
   const t = useT()
+  const { language } = useSettingsStore()
   const [openQA, setOpenQA] = useState<number | null>(null)
   const [showCode, setShowCode] = useState(false)
+  const [justTranslated, setJustTranslated] = useState(false)
   const deleteTopic = useDeleteTopic()
+  const translateTopic = useTranslateTopic()
 
   const difficultyColor = {
-    easy: 'text-green-600 bg-green-50',
-    medium: 'text-yellow-700 bg-yellow-50',
-    hard: 'text-red-600 bg-red-50',
+    easy: 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400',
+    medium: 'text-yellow-700 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400',
+    hard: 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400',
   }[topic.difficulty] ?? 'text-muted-foreground bg-muted'
+
+  const targetLangLabel = language === 'en' ? 'PT' : 'EN'
+
+  function handleTranslate() {
+    translateTopic.mutate(
+      { id: topic.id, currentLanguage: language as string },
+      {
+        onSuccess: () => {
+          setJustTranslated(true)
+          setTimeout(() => setJustTranslated(false), 3000)
+        },
+      }
+    )
+  }
 
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card">
@@ -35,13 +53,40 @@ export function TopicCard({ topic }: { topic: Topic }) {
           </div>
           <h3 className="font-semibold mt-1 text-sm">{topic.title}</h3>
         </div>
-        <button
-          onClick={() => deleteTopic.mutate(topic.id)}
-          className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
-          title={t.topics.delete}
-        >
-          <Trash2 size={14} />
-        </button>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Translate button — shown only when no translation exists yet */}
+          {!topic.has_translation && !justTranslated && (
+            <button
+              onClick={handleTranslate}
+              disabled={translateTopic.isPending}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-50"
+              title={t.topics.translateTo(targetLangLabel)}
+            >
+              {translateTopic.isPending
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Languages size={13} />
+              }
+              <span>{targetLangLabel}</span>
+            </button>
+          )}
+
+          {/* Confirmation after translation */}
+          {justTranslated && (
+            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 px-1.5">
+              <Check size={13} />
+              {t.topics.translated}
+            </span>
+          )}
+
+          <button
+            onClick={() => deleteTopic.mutate({ id: topic.id, language: topic.language })}
+            className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
+            title={t.topics.delete}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Summary */}

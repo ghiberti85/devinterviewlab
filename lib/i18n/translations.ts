@@ -225,6 +225,8 @@ export const translations = {
       quickQA: 'Quick Q&A',
       delete: 'Delete topic',
       empty: 'No topics yet. Generate your first Flash Topic above.',
+      translateTo: (lang: string) => `Translate to ${lang}`,
+      translated: 'Translated!',
     },
     evaluationHistory: {
       title: 'Evaluation History',
@@ -492,6 +494,8 @@ export const translations = {
       quickQA: 'Q&A Rápido',
       delete: 'Excluir tópico',
       empty: 'Nenhum tópico ainda. Gere seu primeiro Flash Topic acima.',
+      translateTo: (lang: string) => `Traduzir para ${lang}`,
+      translated: 'Traduzido!',
     },
   },
 } as const

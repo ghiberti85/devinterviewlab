@@ -205,7 +205,11 @@ export interface Topic {
   code_snippet: string | null
   quick_qa: TopicQuickQA[]
   tags: string[]
+  language: 'en' | 'pt'
+  translated_from: string | null
   created_at: string
+  // computed by API — true when a translation already exists in the DB
+  has_translation?: boolean
 }
 
 export interface AnalyticsData {

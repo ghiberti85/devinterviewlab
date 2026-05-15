@@ -2,11 +2,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Topic } from '@/lib/supabase/types'
 
-export function useTopics() {
+export function useTopics(language: string) {
   return useQuery<Topic[]>({
-    queryKey: ['topics'],
+    queryKey: ['topics', language],
     queryFn: async () => {
-      const res = await fetch('/api/topics')
+      const res = await fetch(`/api/topics?language=${language}`)
       if (!res.ok) throw new Error('Failed to fetch topics')
       return res.json()
     },
@@ -28,17 +28,38 @@ export function useGenerateTopic() {
       }
       return res.json()
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+    onSuccess: (data) => qc.invalidateQueries({ queryKey: ['topics', data.language] }),
+  })
+}
+
+export function useTranslateTopic() {
+  const qc = useQueryClient()
+  return useMutation<Topic, Error, { id: string; currentLanguage: string }>({
+    mutationFn: async ({ id }) => {
+      const res = await fetch(`/api/topics/${id}/translate`, { method: 'POST' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error ?? 'Failed to translate topic')
+      }
+      return res.json()
+    },
+    onSuccess: (data, { currentLanguage }) => {
+      const targetLang = currentLanguage === 'en' ? 'pt' : 'en'
+      // Refresh target language list so the translation appears there
+      qc.invalidateQueries({ queryKey: ['topics', targetLang] })
+      // Refresh current list to update has_translation flag
+      qc.invalidateQueries({ queryKey: ['topics', currentLanguage] })
+    },
   })
 }
 
 export function useDeleteTopic() {
   const qc = useQueryClient()
-  return useMutation<void, Error, string>({
-    mutationFn: async (id) => {
+  return useMutation<void, Error, { id: string; language: string }>({
+    mutationFn: async ({ id }) => {
       const res = await fetch(`/api/topics/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete topic')
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+    onSuccess: (_, { language }) => qc.invalidateQueries({ queryKey: ['topics', language] }),
   })
 }
