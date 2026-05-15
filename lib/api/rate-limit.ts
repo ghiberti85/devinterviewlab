@@ -3,10 +3,12 @@ import { NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 
 export const DAILY_LIMITS: Record<string, number> = {
-  evaluate:   50,
-  generate:   20,
-  transcribe: 30,
-  followup:   40,
+  evaluate:      50,
+  generate:      20,
+  transcribe:    30,
+  followup:      40,
+  coding:        15,
+  'coding-hint': 20,
 }
 
 export async function checkRateLimit(endpoint: string): Promise<

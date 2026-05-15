@@ -29,7 +29,12 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { problem_title, problem_description, language: codingLanguage, code, time_spent_sec, timer_duration_sec, ui_language = 'pt' } = body
+  const {
+    problem_title, problem_description,
+    language: codingLanguage, code,
+    time_spent_sec, timer_duration_sec, ui_language = 'pt',
+    hints_requested = 0, hints_shown = 0, idle_pauses = 0,
+  } = body
 
   if (!code?.trim()) return NextResponse.json({ error: 'Code is required' }, { status: 400 })
   if (!problem_title?.trim()) return NextResponse.json({ error: 'Problem title is required' }, { status: 400 })
@@ -43,6 +48,9 @@ export async function POST(request: Request) {
       code,
       codingLanguage: codingLanguage ?? 'javascript',
       language: ui_language,
+      hintsRequested: hints_requested,
+      hintsShown: hints_shown,
+      idlePauses: idle_pauses,
     })
 
     const { data, error } = await supabase
@@ -57,6 +65,9 @@ export async function POST(request: Request) {
         feedback: evaluation.feedback,
         time_spent_sec,
         timer_duration_sec,
+        hints_requested,
+        hints_shown,
+        idle_pauses,
       })
       .select()
       .single()

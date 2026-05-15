@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useSubmitCode, useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
+import { useSubmitCode, useCodingSessions, useRequestHint } from '@/features/live-coding/hooks/useLiveCoding'
 import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { CodeEvaluationFeedback } from '@/lib/supabase/types'
-import { Timer, Play, Square, Send, RotateCcw, CheckCircle2, XCircle, AlertCircle, Clock } from 'lucide-react'
+import {
+  Timer, Play, Square, Send, RotateCcw, CheckCircle2, XCircle,
+  AlertCircle, Clock, Lightbulb, X,
+} from 'lucide-react'
 
-// Monaco Editor loads only on client (no SSR)
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
 const TIMER_OPTIONS = [15, 30, 45] as const
@@ -48,11 +50,34 @@ function ScoreCircle({ score }: { score: number }) {
   )
 }
 
+interface HintPanelProps {
+  hint: string
+  title: string
+  onDismiss: () => void
+  isAuto?: boolean
+}
+
+function HintPanel({ hint, title, onDismiss, isAuto }: HintPanelProps) {
+  return (
+    <div className={`border rounded-xl p-4 flex gap-3 ${isAuto ? 'border-yellow-400/50 bg-yellow-50/50 dark:bg-yellow-900/10' : 'border-blue-400/50 bg-blue-50/50 dark:bg-blue-900/10'}`}>
+      <Lightbulb size={16} className={`shrink-0 mt-0.5 ${isAuto ? 'text-yellow-500' : 'text-blue-500'}`} />
+      <div className="flex-1 space-y-1">
+        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <p className="text-sm leading-relaxed">{hint}</p>
+      </div>
+      <button onClick={onDismiss} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+        <X size={14} />
+      </button>
+    </div>
+  )
+}
+
 export default function LiveCodingPage() {
   const t = useT()
   const lc = t.liveCoding
   const { language: uiLanguage } = useSettingsStore()
   const submit = useSubmitCode()
+  const requestHint = useRequestHint()
   const { data: sessions } = useCodingSessions()
 
   // Problem state
@@ -72,10 +97,56 @@ export default function LiveCodingPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeSpentRef = useRef(0)
 
+  // Hint state
+  const [hint, setHint] = useState<string | null>(null)
+  const [hintIsAuto, setHintIsAuto] = useState(false)
+  const hintsRequestedRef = useRef(0)
+  const hintsShownRef = useRef(0)
+  const idlePausesRef = useRef(0)
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Result state
   const [evaluation, setEvaluation] = useState<{ score: number; feedback: CodeEvaluationFeedback } | null>(null)
 
-  // Timer logic
+  // ── Idle detection: triggers auto hint after 60s without typing ──────────
+  const fetchHint = useCallback(async (isAuto: boolean) => {
+    if (!problemTitle || requestHint.isPending) return
+    if (isAuto) {
+      idlePausesRef.current++
+      setHintIsAuto(true)
+    } else {
+      hintsRequestedRef.current++
+      setHintIsAuto(false)
+    }
+    try {
+      const result = await requestHint.mutateAsync({
+        problem_title: problemTitle,
+        problem_description: problemDesc,
+        code,
+        language: codingLang,
+        ui_language: uiLanguage,
+      })
+      hintsShownRef.current++
+      setHint(result.hint)
+    } catch { /* non-blocking */ }
+  }, [problemTitle, problemDesc, code, codingLang, uiLanguage, requestHint])
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    if (timerRunning && !evaluation) {
+      idleTimerRef.current = setTimeout(() => fetchHint(true), 60_000)
+    }
+  }, [timerRunning, evaluation, fetchHint])
+
+  // Reset idle timer on each keystroke
+  useEffect(() => { resetIdleTimer() }, [code, resetIdleTimer])
+
+  // Clear idle timer when session ends
+  useEffect(() => {
+    if (!timerRunning && idleTimerRef.current) clearTimeout(idleTimerRef.current)
+  }, [timerRunning])
+
+  // ── Countdown ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (timerRunning) {
       intervalRef.current = setInterval(() => {
@@ -98,14 +169,16 @@ export default function LiveCodingPage() {
   function startTimer() {
     setTimeLeft(timerDuration * 60)
     timeSpentRef.current = 0
+    hintsRequestedRef.current = 0
+    hintsShownRef.current = 0
+    idlePausesRef.current = 0
     setTimerRunning(true)
     setTimerStarted(true)
     setEvaluation(null)
+    setHint(null)
   }
 
-  function stopTimer() {
-    setTimerRunning(false)
-  }
+  function stopTimer() { setTimerRunning(false) }
 
   function selectProblem(idx: number) {
     setProblemTitle(SAMPLE_PROBLEMS[idx].title)
@@ -113,6 +186,7 @@ export default function LiveCodingPage() {
     setCustomProblem(false)
     setCode('')
     setEvaluation(null)
+    setHint(null)
     setTimerRunning(false)
     setTimerStarted(false)
     setTimeLeft(timerDuration * 60)
@@ -121,15 +195,20 @@ export default function LiveCodingPage() {
   function resetAll() {
     setCode('')
     setEvaluation(null)
+    setHint(null)
     setTimerRunning(false)
     setTimerStarted(false)
     setTimeLeft(timerDuration * 60)
     timeSpentRef.current = 0
+    hintsRequestedRef.current = 0
+    hintsShownRef.current = 0
+    idlePausesRef.current = 0
   }
 
   const handleSubmit = useCallback(async () => {
     if (!code.trim()) return
     stopTimer()
+    setHint(null)
     try {
       const result = await submit.mutateAsync({
         problem_title: problemTitle,
@@ -138,6 +217,9 @@ export default function LiveCodingPage() {
         code,
         time_spent_sec: timeSpentRef.current,
         timer_duration_sec: timerDuration * 60,
+        hints_requested: hintsRequestedRef.current,
+        hints_shown: hintsShownRef.current,
+        idle_pauses: idlePausesRef.current,
         ui_language: uiLanguage,
       })
       setEvaluation(result.evaluation)
@@ -163,7 +245,6 @@ export default function LiveCodingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left column — problem + settings */}
         <div className="space-y-4">
-          {/* Problem selector */}
           <div className="border rounded-xl p-4 bg-card space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-medium text-sm">{lc.problem}</h2>
@@ -208,14 +289,12 @@ export default function LiveCodingPage() {
             )}
           </div>
 
-          {/* Problem description (when using preset) */}
           {!customProblem && problemDesc && (
             <div className="border rounded-xl p-4 bg-card">
               <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{problemDesc}</p>
             </div>
           )}
 
-          {/* Timer + language settings */}
           <div className="border rounded-xl p-4 bg-card space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -251,7 +330,6 @@ export default function LiveCodingPage() {
               </div>
             </div>
 
-            {/* Timer display */}
             <div className="flex items-center justify-between">
               <div className={`text-3xl font-mono font-bold tabular-nums ${timerColor}`}>
                 {timeLeft === 0 ? (
@@ -288,17 +366,43 @@ export default function LiveCodingPage() {
         <div className="lg:col-span-2 space-y-4">
           {/* Code editor */}
           <div className="border rounded-xl overflow-hidden bg-card">
-            <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30">
+            <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 gap-2">
               <span className="text-sm font-medium">{lc.yourCode}</span>
-              <button
-                onClick={handleSubmit}
-                disabled={submit.isPending || !code.trim() || !timerStarted}
-                className="flex items-center gap-2 text-sm bg-primary text-primary-foreground px-4 py-1.5 rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                <Send size={14} />
-                {submit.isPending ? lc.submitting : lc.submit}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Manual hint button */}
+                {timerStarted && !evaluation && (
+                  <button
+                    onClick={() => fetchHint(false)}
+                    disabled={requestHint.isPending}
+                    className="flex items-center gap-1.5 text-xs border px-2.5 py-1.5 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
+                  >
+                    <Lightbulb size={12} className="text-yellow-500" />
+                    {requestHint.isPending ? lc.hintLoading : lc.hintBtn}
+                  </button>
+                )}
+                <button
+                  onClick={handleSubmit}
+                  disabled={submit.isPending || !code.trim() || !timerStarted}
+                  className="flex items-center gap-2 text-sm bg-primary text-primary-foreground px-4 py-1.5 rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  <Send size={14} />
+                  {submit.isPending ? lc.submitting : lc.submit}
+                </button>
+              </div>
             </div>
+
+            {/* Hint panel */}
+            {hint && (
+              <div className="px-4 pt-3">
+                <HintPanel
+                  hint={hint}
+                  title={hintIsAuto ? lc.hintAutoTitle : lc.hintTitle}
+                  onDismiss={() => setHint(null)}
+                  isAuto={hintIsAuto}
+                />
+              </div>
+            )}
+
             <MonacoEditor
               height="400px"
               language={codingLang}
@@ -375,6 +479,15 @@ export default function LiveCodingPage() {
                 </h3>
                 <p className="text-sm">{evaluation.feedback.verdict}</p>
               </div>
+
+              {evaluation.feedback.process_feedback && (
+                <div className="border rounded-lg p-3 border-yellow-400/40 bg-yellow-50/30 dark:bg-yellow-900/10">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
+                    <Lightbulb size={12} className="text-yellow-500" /> {lc.processFeedback}
+                  </h3>
+                  <p className="text-sm">{evaluation.feedback.process_feedback}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -384,7 +497,6 @@ export default function LiveCodingPage() {
             </div>
           )}
 
-          {/* Session history */}
           {sessions && sessions.length > 0 && !evaluation && (
             <div className="border rounded-xl p-5 bg-card">
               <h2 className="font-medium text-sm mb-3">{lc.history}</h2>
