@@ -26,6 +26,7 @@ function InterviewSimulator() {
 
   const [selectedQ, setSelectedQ] = useState<Question | null>(null)
   const [answer, setAnswer] = useState('')
+  const [voiceTranscript, setVoiceTranscript] = useState<string | undefined>(undefined)
   const [evaluation, setEvaluation] = useState<AIEvaluation | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
   const [showIdeal, setShowIdeal] = useState(false)
@@ -53,6 +54,7 @@ function InterviewSimulator() {
 
   function resetAll() {
     setAnswer('')
+    setVoiceTranscript(undefined)
     setEvaluation(null)
     setPhase('idle')
     setShowIdeal(false)
@@ -69,6 +71,7 @@ function InterviewSimulator() {
 
   const handleVoiceTranscript = useCallback((text: string) => {
     setAnswer(text)
+    setVoiceTranscript(text)
   }, [])
 
   async function handleEvaluate() {
@@ -76,6 +79,7 @@ function InterviewSimulator() {
     const result = await submit.mutateAsync({
       question_id: selectedQ.id,
       user_answer: answer,
+      transcript: voiceTranscript,
       language,
     })
     setEvaluation(result)

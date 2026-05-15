@@ -8,6 +8,7 @@ export function useSubmitInterview() {
     mutationFn: async (body: {
       question_id: string
       user_answer: string
+      transcript?: string
       language?: string
     }) => {
       const res = await fetch('/api/interview', {
