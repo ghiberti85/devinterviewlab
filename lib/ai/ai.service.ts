@@ -16,6 +16,7 @@ import {
 import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
 import { getScoreCardSystemPrompt, scoreCardPrompt } from './prompts/score-card.prompt'
 import { getRoadmapSystemPrompt, roadmapAnalysisPrompt } from './prompts/roadmap.prompt'
+import { topicAnalysisPrompt, getTopicSystemPrompt } from './prompts/topic.prompt'
 import type { Question, EvaluationFeedback, Difficulty, GapAnalysis, RoadmapPhase } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -290,6 +291,53 @@ export const aiService = {
 
     const raw = safeParseJSON<{ hint: string }>(res.choices[0].message.content ?? '{}')
     return { hint: raw.hint ?? '' }
+  },
+
+  async generateTopic(opts: {
+    topicName: string
+    difficulty?: 'easy' | 'medium' | 'hard'
+    language?: string
+  }): Promise<{
+    title: string
+    summary: string
+    when_to_use: string | null
+    code_snippet: string | null
+    quick_qa: Array<{ q: string; a: string }>
+    tags: string[]
+  }> {
+    if (!hasApiKey()) return {
+      title: opts.topicName,
+      summary: 'AI not configured.',
+      when_to_use: null,
+      code_snippet: null,
+      quick_qa: [],
+      tags: [],
+    }
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const prompt = topicAnalysisPrompt(opts)
+    const systemPrompt = cachedSystemPrompt(
+      `topic:${language}`,
+      () => getTopicSystemPrompt(language)
+    )
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+
+    return safeParseJSON<{
+      title: string
+      summary: string
+      when_to_use: string | null
+      code_snippet: string | null
+      quick_qa: Array<{ q: string; a: string }>
+      tags: string[]
+    }>(res.choices[0].message.content ?? '{}')
   },
 
   async generateScoreCard(

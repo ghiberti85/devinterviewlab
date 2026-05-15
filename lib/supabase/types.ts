@@ -189,6 +189,25 @@ export interface RoadmapTopicProgress {
   created_at: string
 }
 
+export interface TopicQuickQA {
+  q: string
+  a: string
+}
+
+export interface Topic {
+  id: string
+  user_id: string
+  category_id: string | null
+  title: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  summary: string
+  when_to_use: string | null
+  code_snippet: string | null
+  quick_qa: TopicQuickQA[]
+  tags: string[]
+  created_at: string
+}
+
 export interface AnalyticsData {
   totalQuestions: number
   totalSessions: number

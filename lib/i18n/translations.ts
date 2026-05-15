@@ -2,6 +2,7 @@ export const translations = {
   en: {
     nav: {
       dashboard: 'Dashboard', questions: 'Questions', generate: 'Generate',
+      topics: 'Topics',
       practice: 'Practice', interview: 'Interview', concepts: 'Concepts',
       stats: 'Stats', liveCoding: 'Live Coding', signOut: 'Sign out',
       history: 'History', scoreCards: 'Score Cards', roadmap: 'Roadmap',
@@ -211,6 +212,19 @@ export const translations = {
       completed: 'Completed',
       noRoadmap: 'No active roadmap.',
     },
+    topics: {
+      title: 'Flash Topics',
+      subtitle: 'Quick-read technical references with embedded Q&A for interview prep.',
+      generate: 'Generate',
+      generating: 'Generating…',
+      placeholder: 'Topic name (e.g. "Event Loop", "Redis Pub/Sub", "SOLID")',
+      easy: 'Easy', medium: 'Medium', hard: 'Hard',
+      whenToUse: 'When to use',
+      showCode: 'Show example', hideCode: 'Hide example',
+      quickQA: 'Quick Q&A',
+      delete: 'Delete topic',
+      empty: 'No topics yet. Generate your first Flash Topic above.',
+    },
     evaluationHistory: {
       title: 'Evaluation History',
       subtitle: 'Review your past interview answers and AI feedback',
@@ -235,6 +249,7 @@ export const translations = {
   pt: {
     nav: {
       dashboard: 'Painel', questions: 'Questões', generate: 'Gerar',
+      topics: 'Tópicos',
       practice: 'Praticar', interview: 'Entrevista', concepts: 'Conceitos',
       stats: 'Estatísticas', liveCoding: 'Código ao Vivo', signOut: 'Sair',
       history: 'Histórico', scoreCards: 'Score Cards', roadmap: 'Roadmap',
@@ -462,6 +477,19 @@ export const translations = {
       progress: 'Progresso',
       completed: 'Concluído',
       noRoadmap: 'Nenhum roadmap ativo.',
+    },
+    topics: {
+      title: 'Flash Topics',
+      subtitle: 'Referências técnicas de leitura rápida com Q&A integrado para preparação para entrevistas.',
+      generate: 'Gerar',
+      generating: 'Gerando…',
+      placeholder: 'Nome do tópico (ex: "Event Loop", "Redis Pub/Sub", "SOLID")',
+      easy: 'Fácil', medium: 'Médio', hard: 'Difícil',
+      whenToUse: 'Quando usar',
+      showCode: 'Ver exemplo', hideCode: 'Ocultar exemplo',
+      quickQA: 'Q&A Rápido',
+      delete: 'Excluir tópico',
+      empty: 'Nenhum tópico ainda. Gere seu primeiro Flash Topic acima.',
     },
   },
 } as const
