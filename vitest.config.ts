@@ -15,15 +15,18 @@ export default defineConfig({
       // and are excluded from thresholds — covered by integration tests.
       include: [
         'lib/api/brute-force.ts',
-        'lib/api/rate-limit.ts',
+        'lib/api/stream.ts',
         'lib/file-validation.ts',
         'lib/services/spaced-repetition.service.ts',
+        'lib/utils.ts',
+        'lib/ai/prompts/*.ts',
       ],
+      // lib/api/rate-limit.ts excluded: checkRateLimit/logUsage require Supabase
       thresholds: {
-        lines: 65,
-        functions: 60,
-        branches: 65,
-        statements: 65,
+        lines: 90,
+        functions: 90,
+        branches: 85,
+        statements: 90,
       },
     },
   },

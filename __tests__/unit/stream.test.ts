@@ -1,5 +1,70 @@
 import { describe, it, expect } from 'vitest'
-import { readNdjsonStream } from '@/lib/api/stream'
+import { ndjsonStream, readNdjsonStream } from '@/lib/api/stream'
+
+// ─── ndjsonStream ─────────────────────────────────────────────────────────────
+
+async function collectLines(response: Response): Promise<unknown[]> {
+  const text = await response.text()
+  return text
+    .split('\n')
+    .filter(Boolean)
+    .map(l => JSON.parse(l))
+}
+
+describe('ndjsonStream', () => {
+  it('returns a Response with NDJSON content type', async () => {
+    const res = ndjsonStream(async (emit) => { emit({ status: 'thinking' }) })
+    expect(res.headers.get('Content-Type')).toContain('application/x-ndjson')
+  })
+
+  it('emits a thinking event', async () => {
+    const res = ndjsonStream(async (emit) => { emit({ status: 'thinking' }) })
+    const lines = await collectLines(res)
+    expect(lines[0]).toEqual({ status: 'thinking' })
+  })
+
+  it('emits a complete event with data', async () => {
+    const res = ndjsonStream(async (emit) => {
+      emit({ status: 'complete', data: { score: 90 } })
+    })
+    const lines = await collectLines(res)
+    expect(lines[0]).toEqual({ status: 'complete', data: { score: 90 } })
+  })
+
+  it('emits multiple events in order', async () => {
+    const res = ndjsonStream(async (emit) => {
+      emit({ status: 'thinking' })
+      emit({ status: 'complete', data: 'done' })
+    })
+    const lines = await collectLines(res)
+    expect(lines).toHaveLength(2)
+    expect(lines[0]).toEqual({ status: 'thinking' })
+    expect(lines[1]).toEqual({ status: 'complete', data: 'done' })
+  })
+
+  it('emits an error event', async () => {
+    const res = ndjsonStream(async (emit) => {
+      emit({ status: 'error', error: 'something went wrong' })
+    })
+    const lines = await collectLines(res)
+    expect(lines[0]).toEqual({ status: 'error', error: 'something went wrong' })
+  })
+
+  it('closes the stream even when the handler throws', async () => {
+    const res = ndjsonStream(async () => { throw new Error('boom') })
+    // Should resolve (stream closed in finally) without hanging
+    const text = await res.text()
+    expect(text).toBe('')
+  })
+
+  it('includes Cache-Control and X-Accel-Buffering headers', () => {
+    const res = ndjsonStream(async () => {})
+    expect(res.headers.get('Cache-Control')).toBe('no-cache')
+    expect(res.headers.get('X-Accel-Buffering')).toBe('no')
+  })
+})
+
+// ─── readNdjsonStream ─────────────────────────────────────────────────────────
 
 // Builds a mock Response whose body emits the given NDJSON lines.
 function makeResponse(lines: string[]): Response {
