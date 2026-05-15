@@ -3,17 +3,9 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Brazilian Portuguese (Português do Brasil)',
 }
 
-export const followupPrompt = (opts: {
-  originalQuestion: string
-  userAnswer: string
-  gaps: string[]
-  language?: string
-}) => {
-  const { originalQuestion, userAnswer, gaps, language = 'en' } = opts
+export const getFollowupSystemPrompt = (language = 'en'): string => {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
-
-  return {
-    system: `You are a SENIOR STAFF ENGINEER conducting a technical interview.
+  return `You are a SENIOR STAFF ENGINEER conducting a technical interview.
 The candidate just answered a question. Generate a CHALLENGING follow-up question (réplica).
 
 The follow-up must:
@@ -31,27 +23,12 @@ JSON schema:
   "why_this_question": string
 }
 
-"why_this_question" is a brief internal note (1 sentence) explaining what gap this probes.`,
-
-    user: `Original question: ${originalQuestion}
-
-Candidate's answer: ${userAnswer}
-
-Identified gaps: ${gaps.length > 0 ? gaps.join(', ') : 'Answer was incomplete — probe deeper'}`,
-  }
+"why_this_question" is a brief internal note (1 sentence) explaining what gap this probes.`
 }
 
-export const treplicaEvaluatePrompt = (opts: {
-  originalQuestion: string
-  followupQuestion: string
-  followupAnswer: string
-  language?: string
-}) => {
-  const { originalQuestion, followupQuestion, followupAnswer, language = 'en' } = opts
+export const getTreplicaSystemPrompt = (language = 'en'): string => {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
-
-  return {
-    system: `You are a SENIOR STAFF ENGINEER evaluating a candidate's follow-up answer (tréplica) in a technical interview.
+  return `You are a SENIOR STAFF ENGINEER evaluating a candidate's follow-up answer (tréplica) in a technical interview.
 This is the candidate's chance to redeem and deepen their previous answer.
 
 Respond ENTIRELY in ${langName}. Return ONLY valid JSON — no markdown, no preamble.
@@ -67,8 +44,35 @@ JSON schema:
 }
 
 "improvement": 1 sentence on how much they improved from the original answer
-"verdict": 1-2 sentences final assessment — would you advance them to the next round?`,
+"verdict": 1-2 sentences final assessment — would you advance them to the next round?`
+}
 
+export const followupPrompt = (opts: {
+  originalQuestion: string
+  userAnswer: string
+  gaps: string[]
+  language?: string
+}) => {
+  const { originalQuestion, userAnswer, gaps, language = 'en' } = opts
+  return {
+    system: getFollowupSystemPrompt(language),
+    user: `Original question: ${originalQuestion}
+
+Candidate's answer: ${userAnswer}
+
+Identified gaps: ${gaps.length > 0 ? gaps.join(', ') : 'Answer was incomplete — probe deeper'}`,
+  }
+}
+
+export const treplicaEvaluatePrompt = (opts: {
+  originalQuestion: string
+  followupQuestion: string
+  followupAnswer: string
+  language?: string
+}) => {
+  const { originalQuestion, followupQuestion, followupAnswer, language = 'en' } = opts
+  return {
+    system: getTreplicaSystemPrompt(language),
     user: `Context question: ${originalQuestion}
 Follow-up question: ${followupQuestion}
 Candidate's follow-up answer: ${followupAnswer}`,
