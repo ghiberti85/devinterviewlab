@@ -9,6 +9,10 @@ import {
   followupPrompt,
   treplicaEvaluatePrompt,
 } from './prompts/followup.prompt'
+import {
+  getCodeEvaluateSystemPrompt,
+  codeEvaluatePrompt,
+} from './prompts/code-evaluate.prompt'
 import type { Question, EvaluationFeedback, Difficulty } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -177,6 +181,54 @@ export const aiService = {
       res.choices[0].message.content ?? '{}'
     )
     return questions
+  },
+
+  async evaluateCode(opts: {
+    problemTitle: string
+    problemDescription: string
+    code: string
+    codingLanguage: string
+    language?: string
+  }) {
+    if (!hasApiKey()) return {
+      score: 0,
+      feedback: {
+        time_complexity: 'N/A', space_complexity: 'N/A',
+        issues: ['AI not configured.'], suggestions: [], verdict: '',
+      },
+    }
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const systemPrompt = cachedSystemPrompt(`code-evaluate:${language}`, () => getCodeEvaluateSystemPrompt(language))
+    const prompt = codeEvaluatePrompt(opts)
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+    const raw = safeParseJSON<{
+      score: number
+      time_complexity: string
+      space_complexity: string
+      issues: string[]
+      suggestions: string[]
+      verdict: string
+    }>(res.choices[0].message.content ?? '{}')
+
+    return {
+      score: raw.score ?? 0,
+      feedback: {
+        time_complexity: raw.time_complexity ?? '',
+        space_complexity: raw.space_complexity ?? '',
+        issues: raw.issues ?? [],
+        suggestions: raw.suggestions ?? [],
+        verdict: raw.verdict ?? '',
+      },
+    }
   },
 
   async generateFromContext(opts: {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
+import { DailyLoopWidget } from '@/features/analytics/components/DailyLoopWidget'
 import { useT } from '@/lib/i18n/useT'
 import { BookOpen, Dumbbell, Star, AlertTriangle, TrendingUp, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -62,6 +63,8 @@ export default function DashboardPage() {
         <StatCard icon={Star}        label={t.dashboard.avgConfidence} value={`${confidence.toFixed(1)}/5`}        color="bg-yellow-500" />
         <StatCard icon={TrendingUp}  label={t.dashboard.topicsCovered} value={data?.topicScores.length ?? 0}      color="bg-green-500" />
       </div>
+
+      <DailyLoopWidget />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Heatmap */}

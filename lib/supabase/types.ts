@@ -102,6 +102,35 @@ export interface AIEvaluation {
   questions?: Pick<Question, 'title' | 'difficulty'>
 }
 
+export interface CodeEvaluationFeedback {
+  time_complexity: string
+  space_complexity: string
+  issues: string[]
+  suggestions: string[]
+  verdict: string
+}
+
+export interface CodingSession {
+  id: string
+  user_id: string
+  problem_title: string
+  problem_description: string | null
+  language: string
+  code: string
+  score: number | null
+  feedback: CodeEvaluationFeedback | null
+  time_spent_sec: number | null
+  timer_duration_sec: number | null
+  created_at: string
+}
+
+export interface DailyLoopData {
+  streak: number
+  todayActive: boolean
+  weakestConcept: { id: string; name: string; score: number } | null
+  dueFlashcardsCount: number
+}
+
 export interface AnalyticsData {
   totalQuestions: number
   totalSessions: number
