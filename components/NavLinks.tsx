@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, BookOpen, Dumbbell, MessageSquare, Network, BarChart2, Sparkles, Code2 } from 'lucide-react'
+import { LayoutDashboard, BookOpen, Dumbbell, MessageSquare, Network, BarChart2, Sparkles, Code2, ClipboardList } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,7 @@ export function NavLinks() {
     { href: '/generate',      icon: Sparkles,         label: t.nav.generate },
     { href: '/practice',      icon: Dumbbell,         label: t.nav.practice },
     { href: '/interview',     icon: MessageSquare,    label: t.nav.interview },
+    { href: '/history',       icon: ClipboardList,    label: t.nav.history },
     { href: '/live-coding',   icon: Code2,            label: t.nav.liveCoding },
     { href: '/concept-graph', icon: Network,          label: t.nav.concepts },
     { href: '/stats',         icon: BarChart2,         label: t.nav.stats },
