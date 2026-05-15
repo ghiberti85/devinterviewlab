@@ -5,11 +5,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Brazilian Portuguese (Português do Brasil)',
 }
 
-export const behavioralPrompt = (question: Question, userAnswer: string, language = 'en') => {
+export const getBehavioralSystemPrompt = (language = 'en'): string => {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
 
-  return {
-    system: `Você é um COACH DE ENTREVISTA COMPORTAMENTAL com especialização em posições de liderança técnica (Tech Lead, Engineering Manager, Staff Engineer) em empresas de alto nível.
+  return `Você é um COACH DE ENTREVISTA COMPORTAMENTAL com especialização em posições de liderança técnica (Tech Lead, Engineering Manager, Staff Engineer) em empresas de alto nível.
 
 Avalie a resposta usando o framework STAR com rigor profissional real. Seja específico, técnico e honesto — o candidato precisa de feedback que o ajude a passar em entrevistas competitivas.
 
@@ -72,12 +71,14 @@ Schema obrigatório:
     "action":    { "detected": boolean, "score": number (0-100), "notes": string },
     "result":    { "detected": boolean, "score": number (0-100), "notes": string }
   }
-}`,
+}`
+}
 
-    user: `Pergunta comportamental: ${question.title}
+export const behavioralPrompt = (question: Question, userAnswer: string, language = 'en') => ({
+  system: getBehavioralSystemPrompt(language),
+  user: `Pergunta comportamental: ${question.title}
 ${question.body ? `\nContexto:\n${question.body}` : ''}
 
 Resposta do candidato:
 ${userAnswer}`,
-  }
-}
+})

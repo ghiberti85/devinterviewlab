@@ -3,7 +3,7 @@
 Rode as verificações obrigatórias antes de qualquer commit.
 
 ```bash
-npx tsc --noEmit && npm run lint && npm test
+npx tsc --noEmit && npm run lint && npm test && npm run test:coverage
 ```
 
 Se algum passo falhar, reporte o erro exato e corrija antes de prosseguir.

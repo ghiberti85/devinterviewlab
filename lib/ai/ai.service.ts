@@ -1,9 +1,14 @@
 import OpenAI from 'openai'
-import { evaluatePrompt } from './prompts/evaluate.prompt'
-import { behavioralPrompt } from './prompts/behavioral.prompt'
+import { getEvaluateSystemPrompt, evaluatePrompt } from './prompts/evaluate.prompt'
+import { getBehavioralSystemPrompt, behavioralPrompt } from './prompts/behavioral.prompt'
 import { generatePrompt } from './prompts/generate.prompt'
 import { generateFromContextPrompt } from './prompts/generate-from-context.prompt'
-import { followupPrompt, treplicaEvaluatePrompt } from './prompts/followup.prompt'
+import {
+  getFollowupSystemPrompt,
+  getTreplicaSystemPrompt,
+  followupPrompt,
+  treplicaEvaluatePrompt,
+} from './prompts/followup.prompt'
 import type { Question, EvaluationFeedback, Difficulty } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -18,11 +23,24 @@ function hasApiKey(): boolean {
   return !!process.env.OPENAI_API_KEY
 }
 
-function createClient() {
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY ?? 'no-key',
-    baseURL: process.env.OPENAI_BASE_URL,
-  })
+// Singleton client — created once per process, reused across all requests
+let _client: OpenAI | null = null
+function getClient(): OpenAI {
+  if (!_client) {
+    _client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY ?? 'no-key',
+      baseURL: process.env.OPENAI_BASE_URL,
+    })
+  }
+  return _client
+}
+
+// Memoize static system prompts that only vary by language.
+// Each unique (promptType + language) key is computed once and cached for the process lifetime.
+const _systemPromptCache = new Map<string, string>()
+function cachedSystemPrompt(key: string, factory: () => string): string {
+  if (!_systemPromptCache.has(key)) _systemPromptCache.set(key, factory())
+  return _systemPromptCache.get(key)!
 }
 
 const PROMPT_VERSION = 'v2.0'
@@ -51,8 +69,11 @@ const noKeyEvaluation = (question: Question, userAnswer: string) => ({
 export const aiService = {
   async evaluateAnswer(question: Question, userAnswer: string, language = 'en') {
     if (!hasApiKey()) return noKeyEvaluation(question, userAnswer)
-    const openai = createClient()
+    const openai = getClient()
     const MODEL = getModel()
+    const systemPrompt = question.is_behavioral
+      ? cachedSystemPrompt(`behavioral:${language}`, () => getBehavioralSystemPrompt(language))
+      : cachedSystemPrompt(`evaluate:${language}`, () => getEvaluateSystemPrompt(language))
     const prompt = question.is_behavioral
       ? behavioralPrompt(question, userAnswer, language)
       : evaluatePrompt(question, userAnswer, language)
@@ -61,7 +82,7 @@ export const aiService = {
       model: MODEL,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: prompt.system },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt.user },
       ],
     })
@@ -95,13 +116,16 @@ export const aiService = {
     language?: string
   }) {
     if (!hasApiKey()) return { followup_question: 'AI not configured.', why_this_question: '' }
-    const openai = createClient()
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const systemPrompt = cachedSystemPrompt(`followup:${language}`, () => getFollowupSystemPrompt(language))
     const prompt = followupPrompt(opts)
+
     const res = await openai.chat.completions.create({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: prompt.system },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt.user },
       ],
     })
@@ -117,13 +141,16 @@ export const aiService = {
     language?: string
   }) {
     if (!hasApiKey()) return { score: 0, improvement: 'AI not configured.', strengths: [], gaps: [], suggestions: [], verdict: '' }
-    const openai = createClient()
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const systemPrompt = cachedSystemPrompt(`treplica:${language}`, () => getTreplicaSystemPrompt(language))
     const prompt = treplicaEvaluatePrompt(opts)
+
     const res = await openai.chat.completions.create({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: prompt.system },
+        { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt.user },
       ],
     })
@@ -135,7 +162,7 @@ export const aiService = {
 
   async generateQuestions(topic: string, difficulty: Difficulty, count = 5) {
     if (!hasApiKey()) return []
-    const openai = createClient()
+    const openai = getClient()
     const MODEL = getModel()
     const prompt = generatePrompt(topic, difficulty, count)
     const res = await openai.chat.completions.create({
@@ -157,7 +184,8 @@ export const aiService = {
     count: number; categoryName?: string; isBehavioral?: boolean; language?: string
   }) {
     if (!hasApiKey()) return { questions: [], skills_detected: [], summary: 'AI not configured.' }
-    const openai = createClient()
+    const openai = getClient()
+    // generateFromContext system prompt varies by many params — not memoized
     const prompt = generateFromContextPrompt(opts)
     const res = await openai.chat.completions.create({
       model: getModel(),

@@ -5,11 +5,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Brazilian Portuguese (Português do Brasil)',
 }
 
-export const evaluatePrompt = (question: Question, userAnswer: string, language = 'en') => {
+export const getEvaluateSystemPrompt = (language = 'en'): string => {
   const langName = LANGUAGE_NAMES[language] ?? 'English'
 
-  return {
-    system: `Você é um STAFF ENGINEER / DIRETOR DE ENGENHARIA conduzindo uma entrevista técnica para uma posição de Engenheiro Sênior ou Tech Lead.
+  return `Você é um STAFF ENGINEER / DIRETOR DE ENGENHARIA conduzindo uma entrevista técnica para uma posição de Engenheiro Sênior ou Tech Lead.
 
 Avalie a resposta do candidato com rigor, honestidade e profundidade técnica real. Esta avaliação deve ser útil para o candidato melhorar de verdade — não seja vago ou condescendente.
 
@@ -73,9 +72,12 @@ Schema obrigatório:
     "clarity": number (0-100),
     "depth": number (0-100)
   }
-}`,
+}`
+}
 
-    user: `Pergunta da entrevista: ${question.title}
+export const evaluatePrompt = (question: Question, userAnswer: string, language = 'en') => ({
+  system: getEvaluateSystemPrompt(language),
+  user: `Pergunta da entrevista: ${question.title}
 ${question.body ? `\nContexto da pergunta:\n${question.body}` : ''}
 
 Resposta de referência (ideal):
@@ -83,5 +85,4 @@ ${question.ideal_answer ?? 'Não fornecida — avalie com base no seu conhecimen
 
 Resposta do candidato:
 ${userAnswer}`,
-  }
-}
+})
