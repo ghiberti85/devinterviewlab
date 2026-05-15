@@ -365,6 +365,12 @@ Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx
 
 ## O Que Está Pendente
 
+### Features Implementadas Recentemente
+- **Histórico de Avaliações** (`/history`) — lista paginada de todas as avaliações com score, questão e data
+- **Replay de Entrevista** (`/history/[id]`) — resposta digitada + transcrição de voz lado a lado + feedback completo da IA
+- APIs: `GET /api/evaluations` (paginada) · `GET /api/evaluations/[id]` (detalhe)
+- Hook: `useEvaluations(page)` em `features/evaluations/hooks/useEvaluations.ts`
+
 ### Features Planejadas
 1. **Migrar `/api/ai/generate` para Edge Runtime** — remover extração de PDF inline (já isolada em `/api/documents/extract-text`) e passar texto pré-extraído; resolve timeout de 10s do Vercel Hobby
 2. **OAuth Google/GitHub** — reduzir atrito no cadastro
