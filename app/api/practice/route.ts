@@ -60,7 +60,20 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
   const { question_id, session_type, confidence, duration_sec } = body
 
-  const next_review_at = computeNextReview(confidence).toISOString()
+  // Fetch previous confidence values for this question to feed the SM-2 EF calculation
+  let history: number[] = []
+  if (question_id) {
+    const { data: prevSessions } = await supabase
+      .from('practice_history')
+      .select('confidence')
+      .eq('user_id', user.id)
+      .eq('question_id', question_id)
+      .order('created_at', { ascending: true })
+
+    history = prevSessions?.map(s => s.confidence) ?? []
+  }
+
+  const next_review_at = computeNextReview(confidence, history).toISOString()
 
   const { data, error } = await supabase
     .from('practice_history')
