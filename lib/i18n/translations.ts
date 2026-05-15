@@ -6,6 +6,7 @@ export const translations = {
       practice: 'Practice', interview: 'Interview', concepts: 'Concepts',
       stats: 'Stats', liveCoding: 'Live Coding', signOut: 'Sign out',
       history: 'History', scoreCards: 'Score Cards', roadmap: 'Roadmap',
+      more: 'More', allSections: 'All sections',
       theme: { light: 'Light', dark: 'Dark', system: 'System' },
     },
     common: {
@@ -253,6 +254,7 @@ export const translations = {
       practice: 'Praticar', interview: 'Entrevista', concepts: 'Conceitos',
       stats: 'Estatísticas', liveCoding: 'Código ao Vivo', signOut: 'Sair',
       history: 'Histórico', scoreCards: 'Score Cards', roadmap: 'Roadmap',
+      more: 'Mais', allSections: 'Todas as seções',
       theme: { light: 'Claro', dark: 'Escuro', system: 'Sistema' },
     },
     common: {
