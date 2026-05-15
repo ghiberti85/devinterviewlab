@@ -15,14 +15,14 @@ Atualmente uso pessoal, com planos de abrir para outros usuários no futuro.
 | Camada | Tecnologia |
 |---|---|
 | Frontend | Next.js 15 (App Router), React, TypeScript, Tailwind CSS |
-| UI | Shadcn/ui, Lucide React, Recharts, React Flow |
+| UI | Radix UI, Lucide React, Recharts, React Flow, Monaco Editor |
 | Estado | Zustand + React Query (@tanstack/react-query) |
 | Auth + DB | Supabase (PostgreSQL + Auth + Storage + RLS) |
 | IA | Groq (llama-3.3-70b-versatile) via OpenAI-compatible API |
 | Transcrição de voz | Groq Whisper (whisper-large-v3-turbo) |
 | Deploy | Vercel (Hobby plan) |
 | Monitoramento | Sentry (tunnel via /monitoring) |
-| Testes | Nenhum ainda — próximo passo |
+| Testes | Vitest (unit) + Playwright (E2E) |
 
 ---
 
@@ -42,14 +42,14 @@ NEXT_PUBLIC_SENTRY_DSN=<mesmo dsn>
 
 ## Arquitetura do Banco de Dados (Supabase)
 
-Todas as tabelas têm RLS habilitado. Schema: `public`.
+Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **12 tabelas**.
 
 ### Tabelas
 
 **profiles** — estende auth.users
 - id (uuid, FK auth.users)
 - username (text, unique, max 50)
-- preferred_language (text, default 'en', check: 'en'|'pt')
+- preferred_language (text, default 'en', check: 'en'|'pt') — sincronizado via PATCH /api/profile/language
 - created_at
 
 **categories** — categorias de questões (seeded)
@@ -69,7 +69,7 @@ Todas as tabelas têm RLS habilitado. Schema: `public`.
 - id, user_id, question_id (nullable)
 - session_type (check: flashcard|random|simulation)
 - confidence (int, check: 1-5)
-- duration_sec, next_review_at (SM-2 spaced repetition)
+- duration_sec, next_review_at (SM-2 com Easiness Factor)
 - created_at
 
 **ai_evaluations** — avaliações de respostas pela IA
@@ -100,6 +100,17 @@ Todas as tabelas têm RLS habilitado. Schema: `public`.
 - id, user_id, endpoint, tokens_est, duration_ms
 - status (ok|error|rate_limited), created_at
 
+**coding_sessions** — sessões do Live Coding Simulator *(adicionada em 2026-05-15)*
+- id, user_id (FK profiles)
+- problem_title (text, max 300), problem_description (text, max 5k, nullable)
+- language (varchar 50, default 'javascript')
+- code (text, max 100k)
+- score (numeric 0-100, nullable), feedback (jsonb, nullable)
+- time_spent_sec, timer_duration_sec
+- created_at
+- Políticas: SELECT/INSERT/DELETE por user_id
+- Migration: `supabase/migrations/20260515000000_coding_sessions.sql`
+
 ### Funções PostgreSQL
 - `get_user_daily_usage(user_id, endpoint?)` — retorna contagem de chamadas hoje
 
@@ -114,11 +125,12 @@ Todas as tabelas têm RLS habilitado. Schema: `public`.
 app/
   (app)/              # Rotas protegidas (requer auth)
     layout.tsx        # Sidebar com NavLinks, ThemeToggle, LanguageSelector
-    dashboard/
+    dashboard/        # DailyLoopWidget + stats cards + heatmap
     questions/[id]/
     practice/
     interview/
     generate/
+    live-coding/      # Live Coding Simulator (Monaco Editor)
     concept-graph/
     stats/
     voice-test/       # Página de diagnóstico (redireciona em produção)
@@ -128,70 +140,80 @@ app/
   api/
     auth/[action]/    # signin, signup, signout, callback
     questions/        # CRUD + [id]/evaluations
-    practice/
+    practice/         # SM-2 com EF — busca histórico antes de calcular intervalo
     interview/        # avaliação de resposta
     interview/followup/ # réplica e tréplica
     concepts/[id]/
     analytics/
+    coding/           # GET histórico + POST avaliar código (Live Coding)
+    dashboard/
+      daily-loop/     # GET streak + conceito fraco + flashcards pendentes
+    profile/
+      language/       # PATCH preferred_language em profiles
     ai/
-      evaluate/       # avalia resposta do candidato
-      generate/       # gera questões do CV + contexto
+      evaluate/       # avalia resposta do candidato (Edge Runtime)
+      generate/       # gera questões do CV + contexto (Node Runtime)
       transcribe/     # Groq Whisper para voz
     documents/[id]/   # CV e documentos adicionais
-    sentry-example-api/ # gerado pelo wizard Sentry
-  monitoring/         # tunnel do Sentry (sempre retorna 200)
-  sentry-example-page/ # gerado pelo wizard Sentry
-  global-error.tsx    # gerado pelo wizard Sentry
-  icon.tsx            # favicon gerado dinamicamente
-  layout.tsx          # root layout com Providers
-  providers.tsx       # QueryClient + ThemeProvider
+    documents/
+      extract-text/   # POST extração de texto de PDF (Node Runtime, isolado)
+    monitoring/       # tunnel do Sentry (sempre retorna 200)
 
 components/
-  DifficultyBadge.tsx # Fácil/Médio/Difícil por idioma
-  NavLinks.tsx        # navegação com active state
-  ThemeToggle.tsx     # dark/light/system
-  LanguageSelector.tsx # EN/PT
+  DifficultyBadge.tsx
+  NavLinks.tsx        # inclui Live Coding na navegação
+  ThemeToggle.tsx
+  LanguageSelector.tsx # sincroniza idioma com profiles.preferred_language
 
 features/
-  questions/{components,hooks}  # QuestionForm, QuestionCard, useQuestions
-  practice/{components,hooks}   # Flashcard (SM-2), usePractice
-  interview/{components,hooks}  # AIFeedbackPanel, VoiceInput, useInterview
-  concepts/hooks/               # useConcepts
-  analytics/hooks/              # useAnalytics
-  documents/hooks/              # useDocuments
+  questions/{components,hooks}
+  practice/{components,hooks}   # Flashcard com SM-2 + EF
+  interview/{components,hooks}
+  live-coding/hooks/            # useCodingSessions, useSubmitCode
+  concepts/hooks/
+  analytics/
+    hooks/                      # useAnalytics, useDailyLoop
+    components/                 # DailyLoopWidget
+  documents/hooks/
 
 lib/
-  supabase/{client,server,types}.ts
+  supabase/{client,server,types}.ts  # inclui CodingSession, DailyLoopData
   ai/
-    ai.service.ts               # evaluateAnswer, generateFromContext, generateFollowup, evaluateFollowup
+    ai.service.ts               # singleton client + cache de system prompts
     prompts/
-      evaluate.prompt.ts        # avaliação técnica (Staff Engineer level)
-      behavioral.prompt.ts      # avaliação STAR
-      generate-from-context.prompt.ts  # geração personalizada do CV
-      followup.prompt.ts        # réplica e tréplica
+      evaluate.prompt.ts        # avaliação técnica — getEvaluateSystemPrompt()
+      behavioral.prompt.ts      # avaliação STAR — getBehavioralSystemPrompt()
+      generate-from-context.prompt.ts
+      followup.prompt.ts        # getFollowupSystemPrompt(), getTreplicaSystemPrompt()
       generate.prompt.ts
+      code-evaluate.prompt.ts   # avaliação de código — getCodeEvaluateSystemPrompt()
   i18n/
-    translations.ts             # strings EN/PT completas
-    useT.ts                     # hook que retorna typeof translations['en']
+    translations.ts             # EN/PT — inclui liveCoding e dashboard.dailyLoop
+    useT.ts
   api/
-    rate-limit.ts               # rate limiting por usuário
-    brute-force.ts              # proteção por IP no login
+    rate-limit.ts
+    brute-force.ts
+    stream.ts                   # ndjsonStream + readNdjsonStream
   services/
-    spaced-repetition.service.ts # algoritmo SM-2
-  file-validation.ts            # magic bytes + MIME type
-  logger.ts                     # logger estruturado JSON + Sentry
-  utils.ts                      # cn() helper
+    spaced-repetition.service.ts # SM-2 com Easiness Factor (history: number[])
+  file-validation.ts
+  logger.ts
+  utils.ts
 
 store/
-  session.store.ts              # timer de sessão de prática
-  settings.store.ts             # language: 'en'|'pt' (default 'pt', persistido)
+  session.store.ts
+  settings.store.ts
 
-middleware.ts                   # CSRF, proteção de rotas, refresh de sessão
-instrumentation.ts              # inicialização Sentry no servidor
-instrumentation-client.ts       # inicialização Sentry no cliente (tunnel: '/monitoring')
-sentry.client.config.ts         # config Sentry cliente
-sentry.server.config.ts         # config Sentry servidor
-sentry.edge.config.ts           # config Sentry edge
+supabase/
+  migrations/
+    20260515000000_coding_sessions.sql
+
+e2e/                            # Playwright E2E
+  fixtures.ts
+  auth.spec.ts
+  questions.spec.ts
+  interview.spec.ts
+  practice.spec.ts
 ```
 
 ---
@@ -210,7 +232,7 @@ sentry.edge.config.ts           # config Sentry edge
 - Arquivos adicionais (descrição da vaga) temporários ou salvos
 - Geração personalizada baseada em CV + contexto da vaga
 - Distribuição mista de dificuldades
-- Prompts com regras explícitas: perguntas reais (não títulos de tópicos), respostas de 300-600 palavras
+- Endpoint separado para extração de PDF (`/api/documents/extract-text`)
 
 ### Coach de Entrevista com IA
 - Score breakdown: Correção, Completude, Clareza, Profundidade (0-100 cada)
@@ -222,9 +244,22 @@ sentry.edge.config.ts           # config Sentry edge
 - Histórico de avaliações por questão
 
 ### Prática com Flashcards
-- Modo aleatório e repetição espaçada (SM-2)
-- Mostra título completo + enunciado + contexto
+- Modo aleatório e repetição espaçada (SM-2 com Easiness Factor)
+- Intervalo adaptativo: rep=1→1d, rep=2→6d, rep≥3→round(prev×EF)
+- EF inicia em 2.5, ajusta por qualidade, mínimo 1.3; reset de intervalo em falha preserva EF
 - Confiança de 1-5, resumo da sessão
+
+### Live Coding Simulator *(novo)*
+- Monaco Editor com 7 linguagens (JS, TS, Python, Java, C++, Go, Rust)
+- 3 problemas pré-definidos + modo de problema personalizado
+- Timer configurável 15/30/45 min com pause/resume
+- Avaliação de IA: score, complexidade O(n), issues, sugestões, veredicto
+- Histórico de sessões persistido em `coding_sessions`
+
+### Daily Learning Loop *(novo)*
+- Widget no Dashboard com 4 cards: streak de dias, conceito mais fraco, flashcards pendentes, atalho Live Coding
+- Streak calculado a partir de `practice_history` sem nova coluna no banco
+- API com 3 queries paralelas (Promise.all)
 
 ### Grafo de Conceitos
 - React Flow com drag & connect
@@ -237,7 +272,7 @@ sentry.edge.config.ts           # config Sentry edge
 
 ### Internacionalização
 - PT-BR e EN completos — toda a UI traduzida
-- Padrão PT-BR, persistido no localStorage
+- Troca de idioma sincroniza `profiles.preferred_language` no banco (fire-and-forget)
 
 ---
 
@@ -245,10 +280,10 @@ sentry.edge.config.ts           # config Sentry edge
 
 | Item | Detalhes |
 |---|---|
-| RLS | Todas as 11 tabelas com USING + WITH CHECK explícito |
+| RLS | Todas as 12 tabelas com USING + WITH CHECK explícito |
 | Constraints DB | Tamanho de texto, domínios de enum, score 0-100 |
 | Security Headers | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
-| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia |
+| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 20 coding/dia |
 | Brute Force | 10 tentativas / 15min por IP, bloqueio de 15min |
 | Anti-enumeração | Mesma mensagem para email existente/inexistente |
 | Magic bytes | Valida conteúdo real do arquivo, não só MIME type |
@@ -256,7 +291,6 @@ sentry.edge.config.ts           # config Sentry edge
 | Sentry | Tunnel via /monitoring, captura erros em produção |
 | Logger | JSON estruturado com userId, endpoint, duração |
 | Zero TS errors | ignoreBuildErrors removido, build 100% type-safe |
-| Zero vulnerabilidades | npm audit limpo |
 | Supabase Auth | Email verification, secure email/password change, min 8 chars |
 | usage_logs | Rastreia todas as chamadas de IA por usuário |
 
@@ -266,53 +300,73 @@ sentry.edge.config.ts           # config Sentry edge
 
 ### IA
 - Provider: Groq (gratuito, llama-3.3-70b-versatile)
-- Fallback: Gemini, OpenAI (via OPENAI_BASE_URL)
+- Cliente OpenAI: singleton por processo (`_client`) — evita instanciar a cada chamada
+- System prompts: memoizados por chave `tipo:idioma` (`_systemPromptCache`) — computados uma vez por processo
 - Todos os prompts retornam JSON — `response_format: { type: 'json_object' }`
-- Prompts em PT-BR por padrão
+- generateFromContext não é memoizado — varia por count/difficulty/category/language
+
+### SM-2 (Espaçamento)
+- `computeNextReview(confidence, history)` — history é array de confidences anteriores da questão
+- EF inicial 2.5, mínimo 1.3; atualizado por: `EF + 0.1 - (5-q)(0.08 + (5-q)×0.02)`
+- rep=1→1 dia, rep=2→6 dias, rep≥3→round(prev_interval × EF)
+- Falha (quality < 3): reseta repetições e intervalo, preserva EF
+
+### Streaming
+- `ndjsonStream()` em `lib/api/stream.ts` — ReadableStream com eventos `thinking|complete|error`
+- Edge Runtime nas rotas de avaliação e followup (30s timeout)
+- Node Runtime em `/api/ai/generate` (pdf-parse requer Node); `/api/documents/extract-text` isola essa dependência
 
 ### Auth
 - `@supabase/ssr` com cookies em Server Components
 - Middleware faz refresh automático da sessão
-- Cookies setados na resposta de redirect (não no request)
 
 ### Sentry
-- Wizard instalado: gera `instrumentation-client.ts`, `instrumentation.ts`, `global-error.tsx`
 - Tunnel via `app/monitoring/route.ts` (sempre retorna 200, fire-and-forget)
 - `instrumentation-client.ts` tem `tunnel: '/monitoring'` — NÃO remover
-- `sentry.client.config.ts` existe mas é redundante — wizard usa `instrumentation-client.ts`
 - NUNCA adicionar `enableLogs: true` ao Sentry init — tipo não existe
 
 ### Idioma
-- `useSettingsStore()` retorna `language: 'en' | 'pt'`
-- `useT()` retorna `typeof translations['en']` (cast explícito para compatibilidade)
-- Para comparações de idioma na UI: usar `const { language } = useSettingsStore()`, nunca `t.common.language`
+- `useSettingsStore()` retorna `language: 'en' | 'pt'` (localStorage, source of truth da UI)
+- Troca de idioma dispara `PATCH /api/profile/language` (sync assíncrono com banco)
+- `useT()` retorna `typeof translations['en']`
 
-### Tipos
-- `Language = 'en' | 'pt'` definido em `lib/supabase/types.ts`
-- Quando precisar passar language como string e depois usar como Language: cast com `as 'en' | 'pt'`
+---
+
+## Testes
+
+### Unitários (Vitest) — `__tests__/unit/`
+| Arquivo | Cobertura |
+|---|---|
+| `brute-force.test.ts` | ~84% statements |
+| `rate-limit.test.ts` | ~37% statements (checkRateLimit requer Supabase) |
+| `file-validation.test.ts` | ~96% statements |
+| `spaced-repetition.test.ts` | 100% (25 casos, inclui EF e histórico) |
+
+Rodar: `npm test` · com coverage: `npm run test:coverage`
+
+### E2E (Playwright) — `e2e/`
+- `auth.spec.ts` — redirect, login, persistência de sessão
+- `questions.spec.ts` — navegação, criar questão
+- `interview.spec.ts` — fluxo completo avaliar resposta
+- `practice.spec.ts` — modos de prática
+
+Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx playwright install` → `npm run test:e2e`
 
 ---
 
 ## O Que Está Pendente
 
-### Testes (próximo passo)
-- **Vitest** — testes unitários para: `brute-force.ts`, `rate-limit.ts`, `file-validation.ts`, `spaced-repetition.service.ts`
-- **Playwright** — E2E para: cadastro → login → gerar questão → avaliar resposta
-- Testes de contrato dos prompts de IA (validar schema JSON retornado)
-
-### Features Planejadas (por prioridade)
-1. **Live Coding Simulator** — Monaco Editor, desafios cronometrados, avaliação de IA
-2. **Daily Learning Loop** — rotina diária automática, streak de dias
+### Features Planejadas
+1. **Migrar `/api/ai/generate` para Edge Runtime** — remover extração de PDF inline (já isolada em `/api/documents/extract-text`) e passar texto pré-extraído; resolve timeout de 10s do Vercel Hobby
+2. **OAuth Google/GitHub** — reduzir atrito no cadastro
 3. **Study Tracker** — trilhas de estudo com subtópicos e progresso
 4. **AI Summarizer** — resumo de artigos/docs + card de flashcard automático
 5. **Quiz Mode** — múltipla escolha, completar código, encontrar bug
-6. **Notebook com IA inline** — markdown com IA contextual
-7. **OAuth Google/GitHub** — reduzir atrito no cadastro
+6. **Testes E2E completos** — executar com usuário de teste real no Supabase
 
 ### Antes de Abrir para Outros Usuários
 - Supabase Pro ($25/mês) — remove pausa automática após 7 dias sem acesso
 - Vercel Pro ($20/mês) — timeout de 60s nas functions (atual: 10s)
-- Streaming nas respostas de IA — resolve timeout do Vercel no plano atual
 - Sistema de quotas por plano (gratuito vs pago)
 - Página de landing pública
 
@@ -320,16 +374,20 @@ sentry.edge.config.ts           # config Sentry edge
 
 ## Armadilhas Conhecidas
 
-1. **Sentry tunnel** — `app/monitoring/route.ts` deve sempre retornar 200. Nunca propagar status da resposta do Sentry de volta ao SDK.
+1. **Sentry tunnel** — `app/monitoring/route.ts` deve sempre retornar 200. Nunca propagar status da resposta do Sentry.
 
-2. **instrumentation-client.ts** — gerado pelo wizard, tem `tunnel: '/monitoring'`. Se o wizard for rodado novamente, verificar se o tunnel ainda está lá.
+2. **instrumentation-client.ts** — tem `tunnel: '/monitoring'`. Se o wizard Sentry for rodado novamente, verificar se ainda está lá.
 
-3. **next.config.js** — o wizard do Sentry tende a duplicar `withSentryConfig`. Se aparecer `SyntaxError: Identifier already declared`, é duplicata.
+3. **next.config.js** — wizard do Sentry tende a duplicar `withSentryConfig`. Se aparecer `SyntaxError: Identifier already declared`, é duplicata.
 
-4. **Supabase upsert com índice parcial** — `onConflict` não funciona com índices parciais via PostgREST. Usar check-then-update/insert manual (veja `app/api/documents/route.ts`).
+4. **Supabase upsert com índice parcial** — `onConflict` não funciona com índices parciais via PostgREST. Usar check-then-update/insert manual.
 
-5. **Web Speech API** — bloqueada por firewall em algumas redes (onerror: network). Solução: MediaRecorder + Groq Whisper via `/api/ai/transcribe`.
+5. **Web Speech API** — bloqueada por firewall em algumas redes. Solução: MediaRecorder + Groq Whisper via `/api/ai/transcribe`.
 
-6. **Vercel timeout 10s** — chamadas de IA longas podem exceder no plano Hobby. Solução futura: streaming.
+6. **Vercel timeout 10s** — `/api/ai/generate` usa Node Runtime por causa do pdf-parse. Rotas de avaliação usam Edge Runtime (30s). Solução completa: Vercel Pro ou migrar generate para Edge (extração já isolada).
 
 7. **Supabase pausa automática** — projetos gratuitos pausam após 7 dias sem acesso. Upgrade para Pro antes de abrir para usuários.
+
+8. **Monaco Editor SSR** — carregado com `dynamic(() => import('@monaco-editor/react'), { ssr: false })`. Nunca importar diretamente em Server Components.
+
+9. **SM-2 com histórico** — `computeNextReview(confidence, history)` requer busca prévia no banco. A rota `POST /api/practice` faz essa query antes de salvar — não chamar o serviço sem passar o histórico.
