@@ -14,6 +14,7 @@ import {
   codeEvaluatePrompt,
 } from './prompts/code-evaluate.prompt'
 import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
+import { getScoreCardSystemPrompt, scoreCardPrompt } from './prompts/score-card.prompt'
 import type { Question, EvaluationFeedback, Difficulty } from '@/lib/supabase/types'
 
 function getModel(): string {
@@ -288,5 +289,44 @@ export const aiService = {
 
     const raw = safeParseJSON<{ hint: string }>(res.choices[0].message.content ?? '{}')
     return { hint: raw.hint ?? '' }
+  },
+
+  async generateScoreCard(
+    evaluations: Array<{ score: number; strengths: string[]; gaps: string[]; missing_concepts: string[] }>,
+    language = 'en'
+  ): Promise<{ recommendation: string; top_strengths: string[]; top_gaps: string[]; missing_concepts: string[] }> {
+    if (!hasApiKey()) {
+      return { recommendation: '', top_strengths: [], top_gaps: [], missing_concepts: [] }
+    }
+    const openai = getClient()
+    const systemPrompt = cachedSystemPrompt(
+      `score-card:${language}`,
+      () => getScoreCardSystemPrompt(language)
+    )
+    const prompt = scoreCardPrompt(evaluations, language)
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      max_tokens: 300,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+
+    const raw = safeParseJSON<{
+      recommendation: string
+      top_strengths: string[]
+      top_gaps: string[]
+      missing_concepts: string[]
+    }>(res.choices[0].message.content ?? '{}')
+
+    return {
+      recommendation: raw.recommendation ?? '',
+      top_strengths: raw.top_strengths ?? [],
+      top_gaps: raw.top_gaps ?? [],
+      missing_concepts: raw.missing_concepts ?? [],
+    }
   },
 }
