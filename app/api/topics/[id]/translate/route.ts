@@ -4,7 +4,7 @@ import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
 
-export const runtime = 'edge'
+// Node runtime — avoids Edge restrictions with the OpenAI singleton client
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

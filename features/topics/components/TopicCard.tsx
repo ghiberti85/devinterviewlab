@@ -7,9 +7,10 @@ import { useDeleteTopic, useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 
+
 export function TopicCard({ topic }: { topic: Topic }) {
   const t = useT()
-  const { language } = useSettingsStore()
+  const { language, setLanguage } = useSettingsStore()
   const [openQA, setOpenQA] = useState<number | null>(null)
   const [showCode, setShowCode] = useState(false)
   const [justTranslated, setJustTranslated] = useState(false)
@@ -22,6 +23,7 @@ export function TopicCard({ topic }: { topic: Topic }) {
     hard: 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400',
   }[topic.difficulty] ?? 'text-muted-foreground bg-muted'
 
+  const targetLang = (language === 'en' ? 'pt' : 'en') as 'en' | 'pt'
   const targetLangLabel = language === 'en' ? 'PT' : 'EN'
 
   function handleTranslate() {
@@ -30,7 +32,12 @@ export function TopicCard({ topic }: { topic: Topic }) {
       {
         onSuccess: () => {
           setJustTranslated(true)
-          setTimeout(() => setJustTranslated(false), 3000)
+          // Automatically switch to the target language so the user
+          // immediately sees the translated topic in the list
+          setTimeout(() => {
+            setLanguage(targetLang)
+            setJustTranslated(false)
+          }, 800)
         },
       }
     )
