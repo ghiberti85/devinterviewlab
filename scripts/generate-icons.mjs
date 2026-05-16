@@ -1,6 +1,6 @@
 import sharp from 'sharp'
 
-// SVG source — dark mode background (#060d1f), indigo accent
+// SVG source — dark mode background, centered <D/> monogram
 const svg = (size) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
@@ -10,48 +10,22 @@ const svg = (size) => `
     </linearGradient>
   </defs>
 
-  <!-- Background with rounded corners -->
+  <!-- Background -->
   <rect width="${size}" height="${size}" rx="${size * 0.22}" fill="url(#bg)"/>
 
-  <!-- Subtle inner glow -->
-  <rect width="${size}" height="${size}" rx="${size * 0.22}" fill="white" opacity="0.04"/>
-
-  <!-- Code bracket left -->
-  <text
-    x="${size * 0.13}"
-    y="${size * 0.68}"
-    font-family="'SF Mono', 'Fira Code', monospace"
-    font-size="${size * 0.38}"
-    font-weight="300"
-    fill="white"
-    opacity="0.35"
-  >&lt;</text>
-
-  <!-- Code bracket right -->
-  <text
-    x="${size * 0.62}"
-    y="${size * 0.68}"
-    font-family="'SF Mono', 'Fira Code', monospace"
-    font-size="${size * 0.38}"
-    font-weight="300"
-    fill="white"
-    opacity="0.35"
-  >/&gt;</text>
-
-  <!-- Main monogram "D" -->
+  <!-- Centered <D/> as a single unit -->
   <text
     x="${size * 0.5}"
     y="${size * 0.63}"
-    font-family="'Inter', 'Helvetica Neue', Arial, sans-serif"
-    font-size="${size * 0.44}"
-    font-weight="800"
+    font-family="'SF Mono', 'Fira Code', 'Consolas', monospace"
+    font-size="${size * 0.3}"
+    font-weight="500"
     fill="white"
     text-anchor="middle"
-    letter-spacing="-1"
-  >D</text>
+  >&lt;D/&gt;</text>
 
-  <!-- Accent dot -->
-  <circle cx="${size * 0.72}" cy="${size * 0.31}" r="${size * 0.055}" fill="#a5b4fc" opacity="0.9"/>
+  <!-- Accent dot above the slash -->
+  <circle cx="${size * 0.575}" cy="${size * 0.32}" r="${size * 0.042}" fill="#818cf8" opacity="0.95"/>
 </svg>
 `
 
