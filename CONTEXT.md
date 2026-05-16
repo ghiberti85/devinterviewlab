@@ -470,23 +470,36 @@ e2e/                            # Playwright E2E
 ## Testes
 
 ### Unitários (Vitest) — `__tests__/unit/`
-| Arquivo | Testes | Cobertura |
+| Arquivo | Testes | O que cobre |
 |---|---|---|
-| `brute-force.test.ts` | 11 | ~84% statements |
-| `rate-limit.test.ts` | 13 | ~37% statements (checkRateLimit requer Supabase) |
-| `file-validation.test.ts` | 10 | ~96% statements |
-| `spaced-repetition.test.ts` | 25 | 100% (SM-2 EF, histórico, reset) |
-| `prompts.test.ts` | 63 | 100% (code-evaluate, evaluate, behavioral, followup) |
-| `generate-prompts.test.ts` | 29 | 100% (generate, generate-from-context, cn()) |
-| `stream.test.ts` | 8 | 100% (ndjsonStream server + readNdjsonStream client) |
-| `interview-payload.test.ts` | 5 | 100% (serialização do body com transcript) |
-| `score-card-utils.test.ts` | 6 | 100% (aggregateRadar, averageScore) |
-| `roadmap-prompt.test.ts` | 6 | 100% (idioma, truncagem CV/JD, schema JSON) |
-| `generate-prompts.test.ts` (coding-hint) | +10 incluídos acima | 100% (socrático, idioma, schema) |
-| `topic-prompt.test.ts` | 23 | 100% (getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt) |
-| `topic-pairs.test.ts` | 10 | 100% (groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão) |
+| `brute-force.test.ts` | 14 | checkBruteForce (bloqueio, janela deslizante, reset), getClientIP (x-forwarded-for, x-real-ip, fallback) |
+| `rate-limit.test.ts` | 13 | checkRateLimit (requer Supabase — cobertura parcial ~37%) |
+| `file-validation.test.ts` | 10 | validateFileBuffer — magic bytes, MIME, tamanho |
+| `spaced-repetition.test.ts` | 25 | SM-2 EF completo: histórico, reset, intervalos |
+| `prompts.test.ts` | 63 | code-evaluate, evaluate, behavioral, followup — EN/PT, schema JSON |
+| `generate-prompts.test.ts` | 32 | generate, generate-from-context, coding-hint (incluindo fallback idioma desconhecido e description vazia), cn() |
+| `stream.test.ts` | 9 | ndjsonStream (server) + readNdjsonStream (client), incluindo flush de buffer residual |
+| `interview-payload.test.ts` | 5 | serialização do body com transcript |
+| `score-card-utils.test.ts` | 6 | aggregateRadar(), averageScore() |
+| `roadmap-prompt.test.ts` | 6 | idioma, truncagem CV/JD, schema JSON |
+| `topic-prompt.test.ts` | 23 | getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt |
+| `topic-pairs.test.ts` | 10 | groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão |
+| `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 
-**Total: 230 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 247 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+
+### Cobertura global (v8)
+| Métrica | % | Threshold |
+|---|---|---|
+| Statements | 97% | — |
+| Branches | 90% | 85% ✅ |
+| Functions | 100% | 90% ✅ |
+| Lines | 98% | — |
+
+Branches remanescentes não cobertas são dead code ou dependem de infra externa:
+- `generate.prompt.ts` — branch PT inexistente (prompt sempre em inglês)
+- `followup.prompt.ts` — branch de idioma alternativo raramente acionado
+- `stream.ts` — linha interna do reader V8 não exercitável via unit test
 
 > Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query — cobertos pelo E2E.
 
