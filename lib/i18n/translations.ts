@@ -227,6 +227,7 @@ export const translations = {
       empty: 'No topics yet. Generate your first Flash Topic above.',
       translateTo: (lang: string) => `Translate to ${lang}`,
       translated: 'Translated!',
+      notTranslatedYet: 'Not yet translated — showing original language.',
     },
     evaluationHistory: {
       title: 'Evaluation History',
@@ -496,6 +497,7 @@ export const translations = {
       empty: 'Nenhum tópico ainda. Gere seu primeiro Flash Topic acima.',
       translateTo: (lang: string) => `Traduzir para ${lang}`,
       translated: 'Traduzido!',
+      notTranslatedYet: 'Ainda não traduzido — exibindo no idioma original.',
     },
   },
 } as const

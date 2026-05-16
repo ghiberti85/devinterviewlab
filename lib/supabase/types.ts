@@ -208,8 +208,13 @@ export interface Topic {
   language: 'en' | 'pt'
   translated_from: string | null
   created_at: string
-  // computed by API — true when a translation already exists in the DB
-  has_translation?: boolean
+}
+
+export interface TopicPair {
+  rootId: string
+  rootCreatedAt: string
+  current: Topic | null   // version in the active UI language
+  other: Topic | null     // version in the other language
 }
 
 export interface AnalyticsData {

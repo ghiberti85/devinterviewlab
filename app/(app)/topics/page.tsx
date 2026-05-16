@@ -9,7 +9,7 @@ import { Loader2, BookMarked } from 'lucide-react'
 export default function TopicsPage() {
   const t = useT()
   const { language } = useSettingsStore()
-  const { data: topics, isLoading } = useTopics(language as string)
+  const { data: pairs, isLoading } = useTopics(language as string)
 
   return (
     <div className="space-y-6">
@@ -26,17 +26,17 @@ export default function TopicsPage() {
         </div>
       )}
 
-      {!isLoading && topics?.length === 0 && (
+      {!isLoading && (!pairs || pairs.length === 0) && (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
           <BookMarked size={40} className="opacity-30" />
           <p className="text-sm">{t.topics.empty}</p>
         </div>
       )}
 
-      {!isLoading && topics && topics.length > 0 && (
+      {!isLoading && pairs && pairs.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {topics.map(topic => (
-            <TopicCard key={topic.id} topic={topic} />
+          {pairs.map(pair => (
+            <TopicCard key={pair.rootId} pair={pair} />
           ))}
         </div>
       )}

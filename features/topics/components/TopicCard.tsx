@@ -1,21 +1,27 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, Trash2, Code2, Zap, Languages, Loader2, Check } from 'lucide-react'
+import { ChevronDown, Trash2, Code2, Zap, Languages, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Topic } from '@/lib/supabase/types'
+import type { TopicPair } from '@/lib/supabase/types'
 import { useDeleteTopic, useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 
-
-export function TopicCard({ topic }: { topic: Topic }) {
+export function TopicCard({ pair }: { pair: TopicPair }) {
   const t = useT()
-  const { language, setLanguage } = useSettingsStore()
+  const { language } = useSettingsStore()
   const [openQA, setOpenQA] = useState<number | null>(null)
   const [showCode, setShowCode] = useState(false)
-  const [justTranslated, setJustTranslated] = useState(false)
   const deleteTopic = useDeleteTopic()
   const translateTopic = useTranslateTopic()
+
+  // Show the current-language version; fall back to the other language
+  const topic = pair.current ?? pair.other
+  if (!topic) return null
+
+  const isFallback = !pair.current && !!pair.other
+  const targetLangLabel = language === 'en' ? 'PT' : 'EN'
+  const sourceToTranslate = isFallback ? pair.other! : pair.current!
 
   const difficultyColor = {
     easy: 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400',
@@ -23,28 +29,18 @@ export function TopicCard({ topic }: { topic: Topic }) {
     hard: 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400',
   }[topic.difficulty] ?? 'text-muted-foreground bg-muted'
 
-  const targetLang = (language === 'en' ? 'pt' : 'en') as 'en' | 'pt'
-  const targetLangLabel = language === 'en' ? 'PT' : 'EN'
-
   function handleTranslate() {
-    translateTopic.mutate(
-      { id: topic.id, currentLanguage: language as string },
-      {
-        onSuccess: () => {
-          setJustTranslated(true)
-          // Automatically switch to the target language so the user
-          // immediately sees the translated topic in the list
-          setTimeout(() => {
-            setLanguage(targetLang)
-            setJustTranslated(false)
-          }, 800)
-        },
-      }
-    )
+    translateTopic.mutate({ id: sourceToTranslate.id, currentLanguage: language as string })
+  }
+
+  function handleDelete() {
+    // Delete only the current-language version; keep the other language
+    const toDelete = pair.current ?? pair.other
+    if (toDelete) deleteTopic.mutate({ id: toDelete.id })
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-card">
+    <div className={cn('border rounded-lg p-4 space-y-3 bg-card', isFallback && 'opacity-70')}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -57,37 +53,35 @@ export function TopicCard({ topic }: { topic: Topic }) {
                 {tag}
               </span>
             ))}
+            {/* Badge showing this is shown in the other language as fallback */}
+            {isFallback && (
+              <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
+                {topic.language.toUpperCase()}
+              </span>
+            )}
           </div>
           <h3 className="font-semibold mt-1 text-sm">{topic.title}</h3>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Translate button — shown only when no translation exists yet */}
-          {!topic.has_translation && !justTranslated && (
+          {/* Translate button: shown when pair is missing one language */}
+          {(!pair.current || !pair.other) && (
             <button
               onClick={handleTranslate}
               disabled={translateTopic.isPending}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-50"
-              title={t.topics.translateTo(targetLangLabel)}
+              title={t.topics.translateTo(isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel)}
             >
               {translateTopic.isPending
                 ? <Loader2 size={13} className="animate-spin" />
                 : <Languages size={13} />
               }
-              <span>{targetLangLabel}</span>
+              <span>{isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel}</span>
             </button>
           )}
 
-          {/* Confirmation after translation */}
-          {justTranslated && (
-            <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 px-1.5">
-              <Check size={13} />
-              {t.topics.translated}
-            </span>
-          )}
-
           <button
-            onClick={() => deleteTopic.mutate({ id: topic.id, language: topic.language })}
+            onClick={handleDelete}
             className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
             title={t.topics.delete}
           >
@@ -95,6 +89,13 @@ export function TopicCard({ topic }: { topic: Topic }) {
           </button>
         </div>
       </div>
+
+      {/* Fallback notice */}
+      {isFallback && (
+        <p className="text-xs text-yellow-700 dark:text-yellow-400 italic">
+          {t.topics.notTranslatedYet}
+        </p>
+      )}
 
       {/* Summary */}
       <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>

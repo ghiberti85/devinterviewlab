@@ -1,14 +1,53 @@
 'use client'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { Topic } from '@/lib/supabase/types'
+import type { Topic, TopicPair } from '@/lib/supabase/types'
+
+// Groups a flat list of topics (both languages) into ordered pairs.
+// Each pair has the version in `language` (current) and the other language (other).
+// Order is determined by the root topic's created_at so both language views
+// always show the same sequence.
+function groupIntoPairs(topics: Topic[], language: string): TopicPair[] {
+  const map = new Map<string, TopicPair>()
+
+  for (const topic of topics) {
+    const rootId = topic.translated_from ?? topic.id
+
+    if (!map.has(rootId)) {
+      map.set(rootId, {
+        rootId,
+        rootCreatedAt: topic.created_at,
+        current: null,
+        other: null,
+      })
+    }
+
+    const pair = map.get(rootId)!
+
+    // Track the earliest created_at for stable ordering
+    if (topic.created_at < pair.rootCreatedAt) {
+      pair.rootCreatedAt = topic.created_at
+    }
+
+    if (topic.language === language) {
+      pair.current = topic
+    } else {
+      pair.other = topic
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => a.rootCreatedAt.localeCompare(b.rootCreatedAt)
+  )
+}
 
 export function useTopics(language: string) {
-  return useQuery<Topic[]>({
+  return useQuery<TopicPair[]>({
     queryKey: ['topics', language],
     queryFn: async () => {
-      const res = await fetch(`/api/topics?language=${language}`)
+      const res = await fetch('/api/topics')
       if (!res.ok) throw new Error('Failed to fetch topics')
-      return res.json()
+      const all: Topic[] = await res.json()
+      return groupIntoPairs(all, language)
     },
   })
 }
@@ -28,7 +67,10 @@ export function useGenerateTopic() {
       }
       return res.json()
     },
-    onSuccess: (data) => qc.invalidateQueries({ queryKey: ['topics', data.language] }),
+    // Invalidate both language views — the new topic must appear in both lists
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['topics'] })
+    },
   })
 }
 
@@ -43,23 +85,20 @@ export function useTranslateTopic() {
       }
       return res.json()
     },
-    onSuccess: (data, { currentLanguage }) => {
-      const targetLang = currentLanguage === 'en' ? 'pt' : 'en'
-      // Refresh target language list so the translation appears there
-      qc.invalidateQueries({ queryKey: ['topics', targetLang] })
-      // Refresh current list to update has_translation flag
-      qc.invalidateQueries({ queryKey: ['topics', currentLanguage] })
+    // Refresh both views so the pair updates immediately
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['topics'] })
     },
   })
 }
 
 export function useDeleteTopic() {
   const qc = useQueryClient()
-  return useMutation<void, Error, { id: string; language: string }>({
+  return useMutation<void, Error, { id: string }>({
     mutationFn: async ({ id }) => {
       const res = await fetch(`/api/topics/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete topic')
     },
-    onSuccess: (_, { language }) => qc.invalidateQueries({ queryKey: ['topics', language] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
   })
 }
