@@ -203,9 +203,9 @@ app/
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
     roadmaps/[id]/progress/  # PATCH incrementar progresso de tópico
-    topics/           # GET ?language=en|pt (com has_translation) + POST gerar
+    topics/           # GET todos os tópicos do usuário (ambos idiomas) + POST gerar
     topics/[id]/      # GET + DELETE
-    topics/[id]/translate/  # POST traduzir e persistir (Edge, 50/dia, idempotente)
+    topics/[id]/translate/  # POST traduzir e persistir (Node Runtime, 50/dia, idempotente)
     dashboard/
       daily-loop/     # GET streak + conceito fraco + flashcards pendentes
     profile/
@@ -275,6 +275,7 @@ lib/
   utils.ts
   utils/
     score-card.utils.ts         # aggregateRadar(), averageScore() — funções puras
+    topic-pairs.ts              # groupIntoPairs(topics, language) → TopicPair[] — função pura testável
 
 store/
   session.store.ts
@@ -370,8 +371,14 @@ e2e/                            # Playwright E2E
 - `/topics` — biblioteca de referências técnicas rápidas geradas por IA
 - Cada tópico: resumo 150-250 palavras + "quando usar/evitar" + snippet de código + 4 Q&A de entrevista
 - **Tradução persistida**: botão "Traduzir → EN/PT" no card gera versão no outro idioma via IA e salva no banco
-  — ao trocar idioma no app a lista filtra automaticamente pela versão já traduzida, sem nova chamada à IA
-- `translated_from` (uuid) liga a tradução ao original; idempotente (409 se tradução já existe)
+  — ao trocar idioma no app a lista mostra automaticamente a versão já traduzida, sem nova chamada à IA
+- **Modelo de pares**: API retorna todos os tópicos (ambos idiomas); `groupIntoPairs()` agrupa por `rootId = translated_from ?? id`
+  — garante mesma quantidade e ordem de tópicos em PT e EN, mesmo que criados em momentos diferentes
+  — `TopicPair { rootId, rootCreatedAt, current: Topic|null, other: Topic|null }` — `current` é o idioma ativo, `other` é o outro
+  — se `current` for null (sem tradução), o card exibe `other` como fallback com badge amarelo + botão de tradução
+  — `rootCreatedAt` = menor `created_at` do par → ordenação estável independente do idioma
+- `translated_from` (uuid, self-ref FK) liga a tradução ao original; idempotente (409 se tradução já existe)
+- Translate route usa Node Runtime (não Edge) — singleton OpenAI incompatível com isolates do Edge Runtime
 - Rate limit: 30 tópicos/dia, 50 traduções/dia
 - Prompts: `topic.prompt.ts` (geração) + `topicTranslatePrompt` (tradução — preserva termos técnicos, mantém code_snippet intacto)
 
@@ -477,8 +484,9 @@ e2e/                            # Playwright E2E
 | `roadmap-prompt.test.ts` | 6 | 100% (idioma, truncagem CV/JD, schema JSON) |
 | `generate-prompts.test.ts` (coding-hint) | +10 incluídos acima | 100% (socrático, idioma, schema) |
 | `topic-prompt.test.ts` | 23 | 100% (getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt) |
+| `topic-pairs.test.ts` | 10 | 100% (groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão) |
 
-**Total: 220 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 230 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 > Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query — cobertos pelo E2E.
 
