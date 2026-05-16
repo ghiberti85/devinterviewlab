@@ -123,6 +123,12 @@ describe('readNdjsonStream', () => {
     expect(await readNdjsonStream(res)).toEqual(data)
   })
 
+  it('resolves when the last chunk has no trailing newline (residual buffer flush)', async () => {
+    const body = JSON.stringify({ status: 'complete', data: 'flush' }) // no trailing \n
+    const res = new Response(body, { headers: { 'Content-Type': 'application/x-ndjson' } })
+    expect(await readNdjsonStream<string>(res)).toBe('flush')
+  })
+
   it('handles empty lines between events gracefully', async () => {
     const body = [
       JSON.stringify({ status: 'thinking' }),

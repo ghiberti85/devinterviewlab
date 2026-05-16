@@ -211,6 +211,17 @@ describe('codingHintPrompt', () => {
   it('generates Portuguese system prompt when language="pt"', () => {
     expect(codingHintPrompt({ ...base, language: 'pt' }).system).toContain('Brazilian Portuguese')
   })
+
+  it('omits description line when problemDescription is empty', () => {
+    const result = codingHintPrompt({ ...base, problemDescription: '' })
+    expect(result.user).not.toContain('Description:')
+  })
+})
+
+describe('getCodingHintSystemPrompt — unknown language fallback', () => {
+  it('falls back to English for an unknown language code', () => {
+    expect(getCodingHintSystemPrompt('fr')).toContain('English')
+  })
 })
 
 // ─── utils.cn ────────────────────────────────────────────────────────────────
