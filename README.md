@@ -1,83 +1,83 @@
 # DevInterviewLab
 
-Plataforma pessoal de prática para entrevistas técnicas com IA, repetição espaçada e referências técnicas rápidas.
+A personal platform for technical interview practice powered by AI, spaced repetition, and quick-reference topic cards.
 
 **Live:** https://devinterviewlab.vercel.app
 
 ## Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Frontend/Backend | Next.js 15 (App Router) |
 | Database + Auth | Supabase (PostgreSQL + RLS) |
 | Hosting | Vercel |
 | AI | Groq `llama-3.3-70b-versatile` (OpenAI-compatible) |
-| Estado | React Query + Zustand |
+| State | React Query + Zustand |
 | UI | Tailwind CSS + Radix UI |
 | Charts | Recharts |
 | Graph | React Flow |
 | Editor | Monaco Editor |
-| Testes | Vitest (unit) + Playwright (E2E) |
-| Monitoramento | Sentry |
+| Testing | Vitest (unit) + Playwright (E2E) |
+| Monitoring | Sentry |
 
 ## Features
 
-- ✅ **Coach de Entrevista com IA** — avalia respostas, score por dimensão, réplica e tréplica
-- ✅ **Prática com Flashcards** — repetição espaçada SM-2 com Easiness Factor adaptativo
-- ✅ **Live Coding Simulator** — Monaco Editor, 7 linguagens, timer, Pair Programmer socrático
-- ✅ **Flash Topics** — referências técnicas rápidas com Q&A, tradução EN↔PT persistida
-- ✅ **Score Card Visual** — radar chart de múltiplas avaliações + export PDF
-- ✅ **Análise de CV + Roadmap** — gap analysis vs vaga + roadmap 30/60/90 dias via streaming
-- ✅ **Histórico de Avaliações** — replay completo com transcrição de voz lado a lado
-- ✅ **Grafo de Conceitos** — React Flow com scoring por conceito
-- ✅ **Analytics** — heatmap de atividade, radar por tópico, conceitos fracos
-- ✅ **PWA** — bottom tab bar no mobile, install nativo, safe-area iOS
-- ✅ **Internacionalização** — PT-BR e EN completos, troca de idioma sincronizada
+- ✅ **AI Interview Coach** — evaluates answers with dimension scores (correctness, completeness, clarity, depth), follow-up and rebuttal rounds
+- ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm and adaptive Easiness Factor
+- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI
+- ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation
+- ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
+- ✅ **CV Analysis + Study Roadmap** — gap analysis against a job description + 30/60/90-day roadmap via streaming
+- ✅ **Evaluation History** — full replay with typed answer and voice transcript side by side
+- ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping
+- ✅ **Analytics** — activity heatmap, topic radar, weakest concepts
+- ✅ **PWA** — mobile bottom tab bar, native install, iOS safe-area support
+- ✅ **Internationalization** — full EN and PT-BR support, language switch synced to DB
 
-## Rodando localmente
+## Getting started
 
 ```bash
 npm install
 cp .env.example .env.local
-# preencher as variáveis abaixo
+# fill in the variables below
 npm run dev
 ```
 
-## Variáveis de ambiente
+## Environment variables
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://idgpscsnbgszhwvhtedy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase dashboard>
 
-# Groq (gratuito, recomendado) — https://console.groq.com
+# Groq (free tier, recommended) — https://console.groq.com
 OPENAI_API_KEY=gsk_...
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_MODEL=llama-3.3-70b-versatile
 
-SENTRY_DSN=<opcional>
-NEXT_PUBLIC_SENTRY_DSN=<opcional>
+SENTRY_DSN=<optional>
+NEXT_PUBLIC_SENTRY_DSN=<optional>
 ```
 
 ## Supabase
 
-- **Project ID**: `idgpscsnbgszhwvhtedy` · **Região**: `sa-east-1`
-- Migrations em `supabase/migrations/` — aplicar em ordem crescente
+- **Project ID**: `idgpscsnbgszhwvhtedy` · **Region**: `sa-east-1`
+- Migrations live in `supabase/migrations/` — apply in ascending order
 
-## Testes
+## Tests
 
 ```bash
-npm test                # 247 testes unitários (Vitest)
-npm run test:coverage   # com relatório de cobertura
-npx playwright test     # E2E (requer .env.test configurado)
+npm test                # 247 unit tests (Vitest)
+npm run test:coverage   # with coverage report
+npx playwright test     # E2E (requires .env.test configured)
 ```
 
-Cobertura atual: **Statements 97% · Branches 90% · Functions 100% · Lines 98%**
+Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%**
 
-## Comandos úteis
+## Commands
 
 ```bash
-npm run dev        # servidor de desenvolvimento
-npm run build      # build de produção
+npm run dev        # development server
+npm run build      # production build
 npm run lint       # ESLint
-npx tsc --noEmit   # verificação TypeScript
+npx tsc --noEmit   # TypeScript check
 ```
