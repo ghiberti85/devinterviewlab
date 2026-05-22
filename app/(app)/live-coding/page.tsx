@@ -11,7 +11,10 @@ import {
   AlertCircle, Clock, Lightbulb, X,
 } from 'lucide-react'
 
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => null,
+})
 
 const TIMER_OPTIONS = [15, 30, 45] as const
 type TimerOption = typeof TIMER_OPTIONS[number]
@@ -72,6 +75,14 @@ function HintPanel({ hint, title, onDismiss, isAuto }: HintPanelProps) {
   )
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches)
+  }, [])
+  return isMobile
+}
+
 export default function LiveCodingPage() {
   const t = useT()
   const lc = t.liveCoding
@@ -79,6 +90,7 @@ export default function LiveCodingPage() {
   const submit = useSubmitCode()
   const requestHint = useRequestHint()
   const { data: sessions } = useCodingSessions()
+  const isMobile = useIsMobile()
 
   // Problem state
   const [problemTitle, setProblemTitle] = useState(SAMPLE_PROBLEMS[0].title)
@@ -403,21 +415,33 @@ export default function LiveCodingPage() {
               </div>
             )}
 
-            <MonacoEditor
-              height="400px"
-              language={codingLang}
-              value={code}
-              onChange={v => setCode(v ?? '')}
-              theme="vs-dark"
-              options={{
-                fontSize: 14,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                padding: { top: 12 },
-                lineNumbers: 'on',
-                tabSize: 2,
-              }}
-            />
+            {isMobile ? (
+              <textarea
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                placeholder={lc.codePlaceholder}
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="w-full h-[400px] bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm p-3 resize-none focus:outline-none"
+              />
+            ) : (
+              <MonacoEditor
+                height="400px"
+                language={codingLang}
+                value={code}
+                onChange={v => setCode(v ?? '')}
+                theme="vs-dark"
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  padding: { top: 12 },
+                  lineNumbers: 'on',
+                  tabSize: 2,
+                }}
+              />
+            )}
           </div>
 
           {/* Evaluation results */}
