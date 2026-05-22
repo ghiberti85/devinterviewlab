@@ -46,11 +46,11 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/practice"
+          <Link href="/revisar"
             className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity whitespace-nowrap">
             {t.dashboard.startPractice}
           </Link>
-          <Link href="/interview"
+          <Link href="/simular"
             className="text-sm border px-4 py-2 rounded-md hover:bg-accent transition-colors whitespace-nowrap">
             {t.dashboard.aiInterview}
           </Link>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           ) : (
             <p className="text-sm text-muted-foreground">
               {t.dashboard.noWeakConcepts}{' '}
-              <Link href="/concept-graph" className="text-primary hover:underline">{t.dashboard.addConcepts}</Link>
+              <Link href="/plano" className="text-primary hover:underline">{t.dashboard.addConcepts}</Link>
             </p>
           )}
         </div>
