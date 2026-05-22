@@ -348,14 +348,14 @@ export default function LiveCodingPage() {
                   onClick={stopTimer}
                   className="flex items-center gap-2 text-sm border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
                 >
-                  <Square size={14} /> Pause
+                  <Square size={14} /> {lc.pause}
                 </button>
               ) : (
                 <button
                   onClick={() => setTimerRunning(true)}
                   className="flex items-center gap-2 text-sm border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
                 >
-                  <Play size={14} /> Resume
+                  <Play size={14} /> {lc.resume}
                 </button>
               )}
             </div>
