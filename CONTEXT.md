@@ -172,17 +172,20 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
 ```
 app/
   (app)/              # Rotas protegidas (requer auth)
-    layout.tsx        # Sidebar com NavLinks, ThemeToggle, LanguageSelector
-    dashboard/        # DailyLoopWidget + stats cards + heatmap
+    layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs)
+    dashboard/        # "Hoje" — DailyLoopWidget + stats cards + heatmap + atalhos
+    simular/          # Hub: cards Entrevista + Live Coding + sessões recentes
+    revisar/          # Tabs integradas: Flashcards (SM-2) | Flash Topics
+    plano/            # Tabs: Roadmap | Progresso (heatmap+radar+score cards) | Conceitos
     questions/[id]/
-    practice/
-    interview/
+    practice/         # mantida (acessível via URL direta)
+    interview/        # mantida (acessível via URL direta)
     generate/
-    live-coding/      # Live Coding Simulator (Monaco Editor + Pair Programmer IA)
+    live-coding/      # Live Coding Simulator — Monaco desktop, textarea mobile
     history/          # Histórico paginado de avaliações
     history/[id]/     # Replay: resposta + transcrição + feedback IA
-    score-cards/      # Score Cards visuais com radar chart + PDF export
-    roadmap/          # Análise de CV vs vaga + roadmap 30/60/90 dias
+    score-cards/      # mantida (acessível via URL direta)
+    roadmap/          # mantida (acessível via URL direta)
     concept-graph/
     stats/
     voice-test/       # Página de diagnóstico (redireciona em produção)
@@ -198,7 +201,7 @@ app/
     concepts/[id]/
     analytics/
     coding/           # GET histórico + POST avaliar código (Live Coding)
-    coding/hint/      # POST dica socrática (Edge Runtime, 20/dia)
+    coding/hint/      # POST dica socrática (Node Runtime, 20/dia)
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
@@ -221,7 +224,8 @@ app/
 
 components/
   DifficultyBadge.tsx
-  NavLinks.tsx        # inclui Live Coding na navegação
+  NavLinks.tsx        # 4 itens: Hoje / Simular / Revisar / Meu Plano (desktop)
+  BottomNav.tsx       # 4 tabs fixas no mobile (sem sheet "Mais")
   ThemeToggle.tsx
   LanguageSelector.tsx # sincroniza idioma com profiles.preferred_language
 
@@ -367,6 +371,13 @@ e2e/                            # Playwright E2E
 - Timeline visual com barras de progresso por fase
 - Rate limit: 5 roadmaps/dia
 
+### Nova Navegação por Hubs *(refatoração)*
+- Navegação reduzida de 12 itens para 4 — agrupamento por **intenção do usuário**, não por feature
+- **`/simular`** — hub com cards: Entrevista com IA + Live Coding + sessões/entrevistas recentes
+- **`/revisar`** — tabs integradas na mesma página: Flashcards (SM-2 completo) | Flash Topics (gerador + lista)
+- **`/plano`** — tabs: Roadmap (gap analysis + 30/60/90 dias) | Progresso (heatmap + radar + Score Cards) | Conceitos (link para grafo)
+- Páginas antigas (`/practice`, `/interview`, `/roadmap`, `/stats`, `/score-cards`) mantidas e acessíveis via URL direta
+
 ### Flash Topics *(novo)*
 - `/topics` — biblioteca de referências técnicas rápidas geradas por IA
 - Cada tópico: resumo 150-250 palavras + "quando usar/evitar" + snippet de código + 4 Q&A de entrevista
@@ -383,18 +394,19 @@ e2e/                            # Playwright E2E
 - Prompts: `topic.prompt.ts` (geração) + `topicTranslatePrompt` (tradução — preserva termos técnicos, mantém code_snippet intacto)
 
 ### Experiência Mobile / PWA *(novo)*
-- Bottom tab bar fixo no mobile: Dashboard, Prática, Entrevista, Tópicos + botão "Mais"
-- Bottom sheet com grade 4 colunas para as 8 seções restantes + ThemeToggle + LanguageSelector + Sign out
-- Top bar mobile simplificada (logo + backdrop blur), desktop sidebar inalterado
+- **Bottom tab bar** com 4 abas fixas: Hoje · Simular · Revisar · Meu Plano (sem sheet "Mais")
+- Top bar mobile simplificada (logo + backdrop blur), desktop sidebar inalterado com os mesmos 4 itens
 - PWA: `app/manifest.ts` (display standalone, tema índigo escuro)
 - Meta tags iOS: apple-mobile-web-app-capable, apple-touch-icon (180px)
 - `env(safe-area-inset-bottom)` para iPhone com notch/Dynamic Island
 - Ícones gerados via sharp: `public/icon-192.png`, `public/icon-512.png`, `public/apple-touch-icon.png`
+- **Live Coding mobile**: Monaco Editor substituído por `<textarea>` em ≤768px (Monaco não carrega em PWA/WebView)
 
 ### Daily Learning Loop *(novo)*
-- Widget no Dashboard com 4 cards: streak de dias, conceito mais fraco, flashcards pendentes, atalho Live Coding
+- Widget no Dashboard com 4 cards: streak de dias, conceito mais fraco, flashcards pendentes, atalho de simulação
 - Streak calculado a partir de `practice_history` sem nova coluna no banco
 - API com 3 queries paralelas (Promise.all)
+- Links apontam para os novos hubs: /revisar, /simular, /plano
 
 ### Grafo de Conceitos
 - React Flow com drag & connect

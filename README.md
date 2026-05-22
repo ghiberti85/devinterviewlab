@@ -16,22 +16,33 @@ A personal platform for technical interview practice powered by AI, spaced repet
 | UI | Tailwind CSS + Radix UI |
 | Charts | Recharts |
 | Graph | React Flow |
-| Editor | Monaco Editor |
+| Editor | Monaco Editor (desktop) / textarea fallback (mobile) |
 | Testing | Vitest (unit) + Playwright (E2E) |
 | Monitoring | Sentry |
 
+## Navigation
+
+The app is organized into 4 hubs — grouped by user intent, not by feature:
+
+| Hub | What's inside |
+|---|---|
+| **Today** (`/dashboard`) | Daily streak, pending flashcards, weak concept, quick actions |
+| **Simulate** (`/simular`) | AI Interview Coach + Live Coding Simulator |
+| **Review** (`/revisar`) | Flashcards (SM-2) and Flash Topics — toggled in the same screen |
+| **My Plan** (`/plano`) | Study Roadmap · Progress (stats + score cards) · Concept Graph |
+
 ## Features
 
-- ✅ **AI Interview Coach** — evaluates answers with dimension scores (correctness, completeness, clarity, depth), follow-up and rebuttal rounds
+- ✅ **AI Interview Coach** — answer questions and get dimension-scored feedback (correctness, completeness, clarity, depth) with follow-up and rebuttal rounds
+- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; textarea fallback on mobile
 - ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm and adaptive Easiness Factor
-- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI
 - ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation
-- ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
 - ✅ **CV Analysis + Study Roadmap** — gap analysis against a job description + 30/60/90-day roadmap via streaming
+- ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
 - ✅ **Evaluation History** — full replay with typed answer and voice transcript side by side
 - ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping
 - ✅ **Analytics** — activity heatmap, topic radar, weakest concepts
-- ✅ **PWA** — mobile bottom tab bar, native install, iOS safe-area support
+- ✅ **PWA** — 4-tab mobile bottom bar, native install, iOS safe-area support
 - ✅ **Internationalization** — full EN and PT-BR support, language switch synced to DB
 
 ## Getting started
