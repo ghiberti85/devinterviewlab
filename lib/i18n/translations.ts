@@ -100,6 +100,7 @@ export const translations = {
       confidenceLabels: { 1: 'Blank', 2: 'Hard', 3: 'Okay', 4: 'Good', 5: 'Easy' },
       idealAnswer: 'Ideal answer', clickToReveal: 'Click to reveal answer',
       clickToHide: 'Click to hide answer', question: 'Question', context: 'Context',
+      skip: 'Skip',
     },
     generate: {
       title: 'Generate questions from CV or job description',
@@ -178,6 +179,9 @@ export const translations = {
       savedProblems: 'Saved problems',
       noSavedProblems: 'No saved problems yet. Generate or solve a problem to save it.',
       loadProblem: 'Use this problem',
+      saveProblem: 'Save for later',
+      problemSaved: 'Saved ✓',
+      saving: 'Saving…',
     },
     scoreCard: {
       title: 'Score Cards',
@@ -210,6 +214,8 @@ export const translations = {
       generate: 'Generate roadmap',
       generating: 'Analyzing and generating your roadmap…',
       newRoadmap: 'New roadmap',
+      cvOnly: 'CV-based roadmap',
+      cvOrJdRequired: 'Provide a CV or job description to generate a roadmap.',
       matchScore: 'Profile match',
       matchedSkills: 'Matched skills',
       missingSkills: 'Skills to develop',
@@ -409,6 +415,7 @@ export const translations = {
       confidenceLabels: { 1: 'Em branco', 2: 'Difícil', 3: 'Ok', 4: 'Bom', 5: 'Fácil' },
       idealAnswer: 'Resposta ideal', clickToReveal: 'Clique para revelar', clickToHide: 'Clique para ocultar',
       question: 'Questão', context: 'Contexto',
+      skip: 'Pular',
     },
     generate: {
       title: 'Gerar questões do CV ou descrição de vaga',
@@ -487,6 +494,9 @@ export const translations = {
       savedProblems: 'Problemas salvos',
       noSavedProblems: 'Nenhum problema salvo ainda. Gere ou resolva um problema para salvá-lo.',
       loadProblem: 'Usar este problema',
+      saveProblem: 'Salvar para depois',
+      problemSaved: 'Salvo ✓',
+      saving: 'Salvando…',
     },
     scoreCard: {
       title: 'Score Cards',
@@ -562,6 +572,8 @@ export const translations = {
       generate: 'Gerar roadmap',
       generating: 'Analisando e gerando seu roadmap…',
       newRoadmap: 'Novo roadmap',
+      cvOnly: 'Roadmap baseado no CV',
+      cvOrJdRequired: 'Envie um CV ou descrição de vaga para gerar o roadmap.',
       matchScore: 'Compatibilidade do perfil',
       matchedSkills: 'Habilidades compatíveis',
       missingSkills: 'Habilidades a desenvolver',

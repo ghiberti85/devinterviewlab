@@ -54,9 +54,13 @@ export function RoadmapSetup({ onCreated }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!jobDescription.trim() && !cvText.trim()) {
+      setError(t.roadmap.cvOrJdRequired)
+      return
+    }
     try {
       const roadmap = await createRoadmap.mutateAsync({
-        job_description: jobDescription,
+        job_description: jobDescription.trim() || undefined,
         cv_text: cvText.trim() || undefined,
         language: language as 'en' | 'pt',
       })
@@ -74,14 +78,13 @@ export function RoadmapSetup({ onCreated }: Props) {
         <div>
           <label className="block text-sm font-medium mb-1">
             {t.roadmap.jobDescription}
-            <span className="text-destructive ml-1">*</span>
+            <span className="text-xs text-muted-foreground ml-1">({language === 'pt' ? 'opcional' : 'optional'})</span>
           </label>
           <textarea
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             placeholder={t.roadmap.jobDescPlaceholder}
-            required
-            rows={8}
+            rows={6}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -140,7 +143,7 @@ export function RoadmapSetup({ onCreated }: Props) {
 
         <button
           type="submit"
-          disabled={createRoadmap.isPending || !jobDescription.trim()}
+          disabled={createRoadmap.isPending || (!jobDescription.trim() && !cvText.trim())}
           className="w-full rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {createRoadmap.isPending ? (

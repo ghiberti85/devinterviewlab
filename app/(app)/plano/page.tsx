@@ -33,12 +33,15 @@ function RoadmapTab() {
   const queryClient = useQueryClient()
   const { data: roadmaps, isLoading } = useRoadmaps()
   const [showSetup, setShowSetup] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const activeRoadmap = roadmaps?.find(r => r.status === 'active') ?? null
-  const updateProgress = useUpdateTopicProgress(activeRoadmap?.id ?? '')
+  const allRoadmaps = roadmaps ?? []
+  const selected = allRoadmaps.find(r => r.id === selectedId) ?? allRoadmaps[0] ?? null
+  const updateProgress = useUpdateTopicProgress(selected?.id ?? '')
 
   function handleCreated(roadmap: StudyRoadmap) {
     queryClient.setQueryData<StudyRoadmap[]>(['roadmaps'], old => [roadmap, ...(old ?? [])])
+    setSelectedId(roadmap.id)
     setShowSetup(false)
   }
 
@@ -46,10 +49,10 @@ function RoadmapTab() {
     return <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="border rounded-xl h-24 animate-pulse bg-muted" />)}</div>
   }
 
-  if (showSetup || !activeRoadmap) {
+  if (showSetup || !selected) {
     return (
       <div className="space-y-4">
-        {activeRoadmap && (
+        {selected && (
           <button onClick={() => setShowSetup(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← {t.roadmap.backToRoadmap ?? 'Back'}
           </button>
@@ -61,18 +64,36 @@ function RoadmapTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
-        <button onClick={() => setShowSetup(true)} className="text-xs text-primary hover:underline">
+      <div className="flex items-center justify-between gap-3">
+        {/* Roadmap selector — shown only when there's more than one */}
+        {allRoadmaps.length > 1 ? (
+          <select
+            value={selected.id}
+            onChange={e => setSelectedId(e.target.value)}
+            className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs truncate"
+          >
+            {allRoadmaps.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.job_title ?? t.roadmap.cvOnly} — {new Date(r.created_at).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-xs text-muted-foreground truncate">
+            {selected.job_title ?? t.roadmap.cvOnly}
+          </span>
+        )}
+        <button onClick={() => setShowSetup(true)} className="text-xs text-primary hover:underline shrink-0">
           {t.roadmap.newRoadmap}
         </button>
       </div>
       <GapAnalysisCard
-        gap_analysis={activeRoadmap.gap_analysis}
-        job_title={activeRoadmap.job_title}
+        gap_analysis={selected.gap_analysis}
+        job_title={selected.job_title}
       />
       <RoadmapTimeline
-        phases={activeRoadmap.roadmap.phases ?? []}
-        progress={(activeRoadmap as any).progress ?? []}
+        phases={selected.roadmap.phases ?? []}
+        progress={(selected as any).progress ?? []}
         onPractice={topic => router.push(`/questions?search=${encodeURIComponent(topic)}`)}
         onIncrementProgress={topic => updateProgress.mutate({ topic_name: topic, increment: 1 })}
       />

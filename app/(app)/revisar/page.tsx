@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2 } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -47,6 +47,16 @@ function FlashcardsTab() {
     if (!q) return
     await submit.mutateAsync({ question_id: q.id, session_type: 'flashcard' as SessionType, confidence, duration_sec: elapsedSec })
     setResults(prev => [...prev, { conf: confidence }])
+    if (index + 1 >= questions.length) {
+      setDone(true)
+      if (timerRef.current) clearInterval(timerRef.current)
+    } else {
+      setIndex(i => i + 1)
+    }
+  }
+
+  function handleSkip() {
+    if (!questions) return
     if (index + 1 >= questions.length) {
       setDone(true)
       if (timerRef.current) clearInterval(timerRef.current)
@@ -131,7 +141,7 @@ function FlashcardsTab() {
         <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(index / (questions?.length ?? 1)) * 100}%` }} />
       </div>
       {currentQ && (
-        <Flashcard question={currentQ} index={index} total={questions?.length ?? 0} onRate={handleRate} isSubmitting={submit.isPending} />
+        <Flashcard question={currentQ} index={index} total={questions?.length ?? 0} onRate={handleRate} onSkip={handleSkip} isSubmitting={submit.isPending} />
       )}
     </div>
   )
@@ -197,6 +207,7 @@ function TopicsTab() {
 function ConceptsTab() {
   const t = useT()
   const { data, isLoading } = useConcepts()
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const nodes = data?.nodes ?? []
   const edges = data?.edges ?? []
 
@@ -218,6 +229,14 @@ function ConceptsTab() {
     if (score >= 70) return 'bg-green-500'
     if (score >= 40) return 'bg-yellow-500'
     return 'bg-red-500'
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
 
   return (
@@ -243,21 +262,31 @@ function ConceptsTab() {
         <div className="space-y-3">
           {roots.map(root => {
             const children = childrenByParent.get(root.id) ?? []
+            const expanded = expandedIds.has(root.id)
             return (
               <div key={root.id} className="border rounded-xl p-4 bg-card space-y-3">
-                {/* Root concept */}
-                <div className="flex items-start justify-between gap-3">
+                {/* Root concept — clickable header to expand */}
+                <button
+                  onClick={() => toggleExpand(root.id)}
+                  className="w-full flex items-start justify-between gap-3 text-left"
+                >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${scoreColor(root.score)}`} />
-                      <span className="font-semibold text-sm truncate">{root.name}</span>
+                      <span className="font-semibold text-sm">{root.name}</span>
                       <span className="text-xs tabular-nums text-muted-foreground ml-auto shrink-0">{root.score}/100</span>
                     </div>
-                    {root.description && (
+                    {root.description && !expanded && (
                       <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{root.description}</p>
                     )}
                   </div>
-                </div>
+                  <ChevronDown size={14} className={`shrink-0 text-muted-foreground transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Expanded description */}
+                {expanded && root.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed">{root.description}</p>
+                )}
 
                 {/* Child concepts (tags) */}
                 {children.length > 0 && (

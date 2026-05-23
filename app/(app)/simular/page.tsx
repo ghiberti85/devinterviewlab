@@ -93,7 +93,7 @@ export default function SimularPage() {
                 <div key={pair.rootId} className="flex items-center gap-1 py-0.5">
                   <Link
                     href={`/interview?search=${encodeURIComponent(topic.title)}`}
-                    className="flex-1 flex items-center gap-3 px-2 py-3 min-h-[44px] rounded-md hover:bg-accent transition-colors group"
+                    className="flex-1 min-w-0 flex items-center gap-3 px-2 py-3 min-h-[44px] rounded-md hover:bg-accent transition-colors group"
                   >
                     <MessageSquare size={14} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                     <span className="text-sm truncate">{topic.title}</span>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useSubmitCode, useCodingSessions, useRequestHint, useGenerateProblem, type ProblemDifficulty } from '@/features/live-coding/hooks/useLiveCoding'
+import { useSubmitCode, useCodingSessions, useRequestHint, useGenerateProblem, useSaveProblem, type ProblemDifficulty } from '@/features/live-coding/hooks/useLiveCoding'
 import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { CodeEvaluationFeedback } from '@/lib/supabase/types'
@@ -129,6 +129,7 @@ export default function LiveCodingPage() {
   const submit = useSubmitCode()
   const requestHint = useRequestHint()
   const generateProblem = useGenerateProblem()
+  const saveProblem = useSaveProblem()
   const { data: sessions } = useCodingSessions()
   const isMobile = useIsMobile()
 
@@ -141,6 +142,7 @@ export default function LiveCodingPage() {
   const [aiDifficulty, setAIDifficulty] = useState<ProblemDifficulty>('medium')
   const [aiTopic, setAITopic] = useState('')
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [savedMsg, setSavedMsg] = useState(false)
 
   // Code state
   const [code, setCode] = useState('')
@@ -328,30 +330,34 @@ export default function LiveCodingPage() {
         <div className="space-y-4">
           <div className="border rounded-xl p-4 bg-card space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-medium text-sm">{lc.problem}</h2>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => { setShowAIGenerate(v => !v); setCustomProblem(false); setShowSavedProblems(false) }}
-                  className="text-xs flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:underline"
-                >
-                  <Sparkles size={11} />
-                  {lc.generateProblem}
-                </button>
-                <span className="text-muted-foreground text-xs">·</span>
-                <button
-                  onClick={() => { setShowSavedProblems(v => !v); setShowAIGenerate(false); setCustomProblem(false) }}
-                  className="text-xs flex items-center gap-1 text-primary hover:underline"
-                >
-                  <BookOpen size={11} />
-                  {lc.savedProblems}
-                </button>
-                <span className="text-muted-foreground text-xs">·</span>
-                <button
-                  onClick={() => { setCustomProblem(true); setShowAIGenerate(false); setShowSavedProblems(false); setProblemTitle(''); setProblemDesc('') }}
-                  className="text-xs text-muted-foreground hover:underline"
-                >
-                  {lc.customProblem}
-                </button>
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-medium text-sm">{lc.problem}</h2>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => { setShowAIGenerate(v => !v); setCustomProblem(false); setShowSavedProblems(false) }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showAIGenerate ? 'bg-purple-600 text-white border-purple-600' : 'text-purple-600 dark:text-purple-400 hover:bg-muted border-transparent'}`}
+                  >
+                    <Sparkles size={11} />
+                    <span className="hidden sm:inline">{lc.generateProblem}</span>
+                    <span className="sm:hidden">IA</span>
+                  </button>
+                  <button
+                    onClick={() => { setShowSavedProblems(v => !v); setShowAIGenerate(false); setCustomProblem(false) }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showSavedProblems ? 'bg-primary text-primary-foreground border-primary' : 'text-primary hover:bg-muted border-transparent'}`}
+                  >
+                    <BookOpen size={11} />
+                    <span className="hidden sm:inline">{lc.savedProblems}</span>
+                    <span className="sm:hidden">Salvos</span>
+                  </button>
+                  <button
+                    onClick={() => { setCustomProblem(v => !v); setShowAIGenerate(false); setShowSavedProblems(false); if (!customProblem) { setProblemTitle(''); setProblemDesc('') } }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${customProblem ? 'bg-muted text-foreground border-border' : 'text-muted-foreground hover:bg-muted border-transparent'}`}
+                  >
+                    <span>{lc.customProblem}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -449,8 +455,25 @@ export default function LiveCodingPage() {
           </div>
 
           {!customProblem && problemDesc && (
-            <div className="border rounded-xl p-4 bg-card">
+            <div className="border rounded-xl p-4 bg-card space-y-3">
               <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{problemDesc}</p>
+              {!timerStarted && (
+                <div className="flex items-center gap-2 pt-1 border-t">
+                  <button
+                    onClick={async () => {
+                      setSavedMsg(false)
+                      await saveProblem.mutateAsync({ problem_title: problemTitle, problem_description: problemDesc, language: codingLang })
+                      setSavedMsg(true)
+                      setTimeout(() => setSavedMsg(false), 3000)
+                    }}
+                    disabled={saveProblem.isPending || savedMsg}
+                    className="text-xs flex items-center gap-1 text-primary hover:underline disabled:opacity-50"
+                  >
+                    <BookOpen size={11} />
+                    {savedMsg ? lc.problemSaved : saveProblem.isPending ? lc.saving : lc.saveProblem}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

@@ -98,11 +98,11 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
       )}
 
       {/* Summary */}
-      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{topic.summary}</p>
+      <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
 
       {/* When to use */}
       {topic.when_to_use && (
-        <div className="text-sm border-l-2 border-primary/30 pl-3 text-muted-foreground line-clamp-2">
+        <div className="text-sm border-l-2 border-primary/30 pl-3 text-muted-foreground">
           <span className="font-medium text-foreground">{t.topics.whenToUse}:</span>{' '}
           {topic.when_to_use}
         </div>
@@ -139,7 +139,7 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
                 className="w-full text-left text-xs px-3 py-2.5 min-h-[40px] flex items-center justify-between gap-2 hover:bg-muted/50 transition-colors"
                 onClick={() => setOpenQA(openQA === i ? null : i)}
               >
-                <span className="font-medium line-clamp-2">{item.q}</span>
+                <span className="font-medium">{item.q}</span>
                 <ChevronDown size={12} className={cn('shrink-0 transition-transform', openQA === i && 'rotate-180')} />
               </button>
               {openQA === i && (
