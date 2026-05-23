@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useT } from '@/lib/i18n/useT'
-import { Map, BarChart2, Network, ChevronRight } from 'lucide-react'
+import { Map, BarChart2 } from 'lucide-react'
 
 // Roadmap
 import { useRouter } from 'next/navigation'
@@ -25,7 +25,7 @@ import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useScoreCards } from '@/features/score-cards/hooks/useScoreCards'
 import { ScoreCardList } from '@/features/score-cards/components/ScoreCardList'
 
-type Tab = 'roadmap' | 'progress' | 'concepts'
+type Tab = 'roadmap' | 'progress'
 
 function RoadmapTab() {
   const t = useT()
@@ -167,38 +167,13 @@ function ProgressTab() {
   )
 }
 
-function ConceptsTab() {
-  const t = useT()
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
-      <Link
-        href="/concept-graph"
-        className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10">
-            <Network size={20} className="text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <div className="font-semibold text-sm">{t.nav.concepts}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{t.plan.conceptsLink}</div>
-          </div>
-        </div>
-        <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
-      </Link>
-    </div>
-  )
-}
-
 export default function PlanoPage() {
   const t = useT()
   const [tab, setTab] = useState<Tab>('roadmap')
 
   const tabs = [
-    { id: 'roadmap' as Tab, icon: Map, label: t.nav.roadmap },
+    { id: 'roadmap'  as Tab, icon: Map,      label: t.nav.roadmap },
     { id: 'progress' as Tab, icon: BarChart2, label: t.plan.progress },
-    { id: 'concepts' as Tab, icon: Network, label: t.nav.concepts },
   ]
 
   return (
@@ -226,9 +201,8 @@ export default function PlanoPage() {
         ))}
       </div>
 
-      {tab === 'roadmap' && <RoadmapTab />}
+      {tab === 'roadmap'  && <RoadmapTab />}
       {tab === 'progress' && <ProgressTab />}
-      {tab === 'concepts' && <ConceptsTab />}
     </div>
   )
 }

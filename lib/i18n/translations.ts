@@ -7,7 +7,7 @@ export const translations = {
       stats: 'Stats', liveCoding: 'Live Coding', signOut: 'Sign out',
       history: 'History', scoreCards: 'Score Cards', roadmap: 'Roadmap',
       more: 'More', allSections: 'All sections',
-      today: 'Today', simulate: 'Simulate', review: 'Review', plan: 'My Plan',
+      today: 'Today', simulate: 'Simulate', review: 'Review', plan: 'Plan',
       theme: { light: 'Light', dark: 'Dark', system: 'System' },
     },
     common: {
@@ -270,9 +270,10 @@ export const translations = {
       viewAll: 'View all',
     },
     review: {
-      subtitle: 'Reinforce knowledge — flashcards or quick-reference topics.',
-      flashcards: 'Flashcards',
+      subtitle: 'Reinforce knowledge — topics, flashcards and concept map.',
       topics: 'Topics',
+      flashcards: 'Flashcards',
+      concepts: 'Concepts',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -290,7 +291,7 @@ export const translations = {
       stats: 'Estatísticas', liveCoding: 'Código ao Vivo', signOut: 'Sair',
       history: 'Histórico', scoreCards: 'Score Cards', roadmap: 'Roadmap',
       more: 'Mais', allSections: 'Todas as seções',
-      today: 'Hoje', simulate: 'Simular', review: 'Revisar', plan: 'Meu Plano',
+      today: 'Hoje', simulate: 'Simular', review: 'Revisar', plan: 'Plano',
       theme: { light: 'Claro', dark: 'Escuro', system: 'Sistema' },
     },
     common: {
@@ -509,9 +510,10 @@ export const translations = {
       viewAll: 'Ver todas',
     },
     review: {
-      subtitle: 'Reforce o conhecimento — flashcards ou tópicos de referência rápida.',
-      flashcards: 'Flashcards',
+      subtitle: 'Reforce o conhecimento — tópicos, flashcards e mapa de conceitos.',
       topics: 'Tópicos',
+      flashcards: 'Flashcards',
+      concepts: 'Conceitos',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

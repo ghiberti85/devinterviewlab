@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, CheckCircle, RotateCcw, Loader2 } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -15,8 +15,9 @@ import type { SessionType } from '@/lib/supabase/types'
 import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
+import Link from 'next/link'
 
-type Tab = 'flashcards' | 'topics'
+type Tab = 'topics' | 'flashcards' | 'concepts'
 type FlashMode = 'random' | 'spaced'
 
 function FlashcardsTab() {
@@ -163,13 +164,38 @@ function TopicsTab() {
   )
 }
 
+function ConceptsTab() {
+  const t = useT()
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
+      <Link
+        href="/concept-graph"
+        className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-lg bg-purple-500/10">
+            <Network size={20} className="text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm">{t.nav.concepts}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{t.plan.conceptsLink}</div>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
+      </Link>
+    </div>
+  )
+}
+
 export default function RevisarPage() {
   const t = useT()
-  const [tab, setTab] = useState<Tab>('flashcards')
+  const [tab, setTab] = useState<Tab>('topics')
 
   const tabs = [
-    { id: 'flashcards' as Tab, icon: Layers, label: t.review.flashcards },
-    { id: 'topics' as Tab, icon: BookMarked, label: t.review.topics },
+    { id: 'topics'     as Tab, icon: BookMarked, label: t.review.topics },
+    { id: 'flashcards' as Tab, icon: Layers,     label: t.review.flashcards },
+    { id: 'concepts'   as Tab, icon: Network,    label: t.review.concepts },
   ]
 
   return (
@@ -197,7 +223,9 @@ export default function RevisarPage() {
         ))}
       </div>
 
-      {tab === 'flashcards' ? <FlashcardsTab /> : <TopicsTab />}
+      {tab === 'topics'     && <TopicsTab />}
+      {tab === 'flashcards' && <FlashcardsTab />}
+      {tab === 'concepts'   && <ConceptsTab />}
     </div>
   )
 }
