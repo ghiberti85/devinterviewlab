@@ -82,7 +82,7 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
 
           <button
             onClick={handleDelete}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
+            className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded min-w-[32px] min-h-[32px] flex items-center justify-center"
             title={t.topics.delete}
           >
             <Trash2 size={14} />
@@ -98,11 +98,11 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
       )}
 
       {/* Summary */}
-      <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
+      <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{topic.summary}</p>
 
       {/* When to use */}
       {topic.when_to_use && (
-        <div className="text-sm border-l-2 border-primary/30 pl-3 text-muted-foreground">
+        <div className="text-sm border-l-2 border-primary/30 pl-3 text-muted-foreground line-clamp-2">
           <span className="font-medium text-foreground">{t.topics.whenToUse}:</span>{' '}
           {topic.when_to_use}
         </div>
@@ -136,10 +136,10 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
           {topic.quick_qa.map((item, i) => (
             <div key={i} className="border rounded overflow-hidden">
               <button
-                className="w-full text-left text-xs px-3 py-2 flex items-center justify-between gap-2 hover:bg-muted/50 transition-colors"
+                className="w-full text-left text-xs px-3 py-2.5 min-h-[40px] flex items-center justify-between gap-2 hover:bg-muted/50 transition-colors"
                 onClick={() => setOpenQA(openQA === i ? null : i)}
               >
-                <span className="font-medium">{item.q}</span>
+                <span className="font-medium line-clamp-2">{item.q}</span>
                 <ChevronDown size={12} className={cn('shrink-0 transition-transform', openQA === i && 'rotate-180')} />
               </button>
               {openQA === i && (

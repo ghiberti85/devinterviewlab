@@ -62,7 +62,7 @@ export function Flashcard({ question, index, total, onRate, isSubmitting }: Prop
             {question.body && (
               <div className="border-t pt-3 mt-3">
                 <p className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">
-                  Contexto
+                  {t.practice.context}
                 </p>
                 <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans leading-relaxed">
                   {question.body}
@@ -94,10 +94,10 @@ export function Flashcard({ question, index, total, onRate, isSubmitting }: Prop
                 key={n}
                 onClick={() => onRate(n)}
                 disabled={isSubmitting}
-                className={`${CONFIDENCE_COLORS[n]} text-white rounded-lg py-2.5 text-xs font-medium transition-colors disabled:opacity-50`}
+                className={`${CONFIDENCE_COLORS[n]} text-white rounded-lg min-h-[52px] text-xs font-medium transition-colors disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 px-1`}
               >
-                <div className="text-lg font-bold leading-none mb-0.5">{n}</div>
-                {confidenceLabels[n]}
+                <span className="text-lg font-bold leading-none">{n}</span>
+                <span className="text-[10px] leading-tight opacity-90">{confidenceLabels[n]}</span>
               </button>
             ))}
           </div>

@@ -57,15 +57,15 @@ export default function SimularPage() {
             <h2 className="text-sm font-medium">{t.simulate.recentInterviews}</h2>
             <Link href="/history" className="text-xs text-primary hover:underline">{t.simulate.viewAll}</Link>
           </div>
-          <div className="space-y-2">
+          <div className="divide-y">
             {recentEvals.map((e: any) => (
-              <Link key={e.id} href={`/history/${e.id}`} className="flex items-center justify-between py-2 border-b last:border-0 hover:opacity-80 transition-opacity">
-                <span className="text-sm truncate flex-1 text-muted-foreground">{e.questions?.title ?? '—'}</span>
-                <div className="flex items-center gap-3 shrink-0 ml-3">
+              <Link key={e.id} href={`/history/${e.id}`} className="flex items-center justify-between min-h-[44px] py-2 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors">
+                <span className="text-sm truncate flex-1 text-muted-foreground pr-3">{e.questions?.title ?? '—'}</span>
+                <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-xs font-medium tabular-nums ${e.score >= 75 ? 'text-green-600' : e.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                     {Math.round(e.score)}/100
                   </span>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
                     <Clock size={10} />
                     {new Date(e.created_at).toLocaleDateString()}
                   </span>
@@ -85,28 +85,25 @@ export default function SimularPage() {
               {t.topics.topicsForSimulate}
             </h2>
           </div>
-          <div className="space-y-1">
+          <div className="divide-y">
             {topicPairs.slice(0, 6).map(pair => {
               const topic = pair.current ?? pair.other
               if (!topic) return null
               return (
-                <div key={pair.rootId} className="flex items-center gap-2">
+                <div key={pair.rootId} className="flex items-center gap-1 py-0.5">
                   <Link
                     href={`/interview?search=${encodeURIComponent(topic.title)}`}
-                    className="flex-1 flex items-center justify-between py-2 px-3 rounded-md hover:bg-accent transition-colors group"
+                    className="flex-1 flex items-center gap-3 px-2 py-3 min-h-[44px] rounded-md hover:bg-accent transition-colors group"
                   >
+                    <MessageSquare size={14} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                     <span className="text-sm truncate">{topic.title}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-muted-foreground hidden sm:block">{t.simulate.interviewTitle}</span>
-                      <MessageSquare size={12} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                    </div>
                   </Link>
                   <Link
-                    href={`/live-coding`}
-                    className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-green-600"
+                    href="/live-coding"
+                    className="flex items-center justify-center w-11 h-11 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-green-600 shrink-0"
                     title={t.simulate.codingTitle}
                   >
-                    <Code2 size={14} />
+                    <Code2 size={16} />
                   </Link>
                 </div>
               )
@@ -119,12 +116,12 @@ export default function SimularPage() {
       {recentSessions.length > 0 && (
         <div className="border rounded-xl p-5 bg-card space-y-3">
           <h2 className="text-sm font-medium">{t.simulate.recentCoding}</h2>
-          <div className="space-y-2">
+          <div className="divide-y">
             {recentSessions.map((s: any) => (
-              <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <span className="text-sm truncate flex-1 text-muted-foreground">{s.problem_title}</span>
-                <div className="flex items-center gap-3 shrink-0 ml-3">
-                  <span className="text-xs text-muted-foreground">{s.language}</span>
+              <div key={s.id} className="flex items-center justify-between min-h-[44px] py-2">
+                <span className="text-sm truncate flex-1 text-muted-foreground pr-3">{s.problem_title}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground hidden sm:block">{s.language}</span>
                   {s.score !== null && (
                     <span className={`text-xs font-medium tabular-nums ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
                       {s.score}/100

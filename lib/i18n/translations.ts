@@ -99,7 +99,7 @@ export const translations = {
       newSession: 'New session',
       confidenceLabels: { 1: 'Blank', 2: 'Hard', 3: 'Okay', 4: 'Good', 5: 'Easy' },
       idealAnswer: 'Ideal answer', clickToReveal: 'Click to reveal answer',
-      clickToHide: 'Click to hide answer', question: 'Question',
+      clickToHide: 'Click to hide answer', question: 'Question', context: 'Context',
     },
     generate: {
       title: 'Generate questions from CV or job description',
@@ -295,6 +295,7 @@ export const translations = {
       flashcards: 'Flashcards',
       concepts: 'Concepts',
       noConceptsYet: 'No concepts yet. Generate a topic in the Topics tab to populate the concept map automatically.',
+      openGraph: 'Open graph',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -404,7 +405,7 @@ export const translations = {
       newSession: 'Nova sessão',
       confidenceLabels: { 1: 'Em branco', 2: 'Difícil', 3: 'Ok', 4: 'Bom', 5: 'Fácil' },
       idealAnswer: 'Resposta ideal', clickToReveal: 'Clique para revelar', clickToHide: 'Clique para ocultar',
-      question: 'Questão',
+      question: 'Questão', context: 'Contexto',
     },
     generate: {
       title: 'Gerar questões do CV ou descrição de vaga',
@@ -536,6 +537,7 @@ export const translations = {
       flashcards: 'Flashcards',
       concepts: 'Conceitos',
       noConceptsYet: 'Nenhum conceito ainda. Gere um tópico na aba Tópicos para popular o mapa automaticamente.',
+      openGraph: 'Abrir grafo',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

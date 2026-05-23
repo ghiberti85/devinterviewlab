@@ -162,17 +162,15 @@ function TopicsTab() {
 
       {/* Sync button — only shown when there are existing topics */}
       {!isLoading && pairs && pairs.length > 0 && (
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
-          </div>
+        <div className="flex items-center justify-end gap-3">
+          {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
           <button
             onClick={handleSync}
             disabled={syncTopics.isPending}
-            className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent disabled:opacity-50 transition-colors min-h-[36px]"
           >
             {syncTopics.isPending
-              ? <><Loader2 size={11} className="animate-spin" />{t.topics.syncing}</>
+              ? <><Loader2 size={11} className="animate-spin mr-1" />{t.topics.syncing}</>
               : t.topics.syncAll}
           </button>
         </div>
@@ -226,15 +224,15 @@ function ConceptsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
         <Link
           href="/concept-graph"
-          className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+          className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline shrink-0"
         >
-          <Network size={12} />
-          {t.plan.conceptsLink}
-          <ChevronRight size={12} />
+          <Network size={11} />
+          {t.review.openGraph}
+          <ChevronRight size={11} />
         </Link>
       </div>
 
@@ -313,20 +311,20 @@ export default function RevisarPage() {
         <p className="text-sm text-muted-foreground mt-1">{t.review.subtitle}</p>
       </div>
 
-      {/* Tab selector */}
-      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit">
+      {/* Tab selector — full width on mobile so tabs don't overflow */}
+      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-full sm:w-fit">
         {tabs.map(({ id, icon: Icon, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-[40px] ${
               tab === id
                 ? 'bg-background shadow-sm text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Icon size={14} />
-            {label}
+            <Icon size={14} className="shrink-0" />
+            <span className="truncate">{label}</span>
           </button>
         ))}
       </div>
