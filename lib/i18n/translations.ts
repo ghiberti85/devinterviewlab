@@ -305,6 +305,7 @@ export const translations = {
       concepts: 'Concepts',
       noConceptsYet: 'No concepts yet. Generate a topic in the Topics tab to populate the concept map automatically.',
       openGraph: 'Open graph',
+      generateQuestions: 'Generate questions',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -554,6 +555,7 @@ export const translations = {
       concepts: 'Conceitos',
       noConceptsYet: 'Nenhum conceito ainda. Gere um tópico na aba Tópicos para popular o mapa automaticamente.',
       openGraph: 'Abrir grafo',
+      generateQuestions: 'Gerar questões',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

@@ -17,6 +17,7 @@ import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 // Concepts
 import { useConcepts } from '@/features/concepts/hooks/useConcepts'
+import Link from 'next/link'
 
 type Tab = 'topics' | 'flashcards' | 'concepts'
 type FlashMode = 'random' | 'spaced'
@@ -166,7 +167,17 @@ function TopicsTab() {
 
   return (
     <div className="space-y-4">
-      <TopicGenerator />
+      <div className="space-y-2">
+        <TopicGenerator />
+        <div className="flex justify-end">
+          <Link
+            href="/generate"
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            {t.review.generateQuestions} →
+          </Link>
+        </div>
+      </div>
 
       {/* Sync button — only shown when there are existing topics */}
       {!isLoading && pairs && pairs.length > 0 && (
@@ -305,6 +316,20 @@ function ConceptsTab() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Link to interactive graph */}
+      {!isLoading && nodes.length > 0 && (
+        <div className="flex justify-center pt-2">
+          <Link
+            href="/concept-graph"
+            className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+          >
+            <Network size={12} />
+            {t.review.openGraph}
+            <ChevronRight size={11} />
+          </Link>
         </div>
       )}
     </div>

@@ -15,8 +15,8 @@ export default function SimularPage() {
   const { data: sessions } = useCodingSessions()
   const { data: topicPairs } = useTopics(language as string)
 
-  const recentEvals = evalPages?.data?.slice(0, 3) ?? []
-  const recentSessions = sessions?.slice(0, 3) ?? []
+  const recentEvals = evalPages?.data?.slice(0, 5) ?? []
+  const recentSessions = sessions?.slice(0, 5) ?? []
 
   return (
     <div className="space-y-6 max-w-2xl">
