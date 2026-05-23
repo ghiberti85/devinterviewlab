@@ -5,6 +5,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { NavLinks } from '@/components/NavLinks'
 import { BottomNav } from '@/components/BottomNav'
+import { MobileTopBar } from '@/components/MobileTopBar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -36,10 +37,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Mobile top bar — logo only */}
-      <div className="fixed top-0 left-0 right-0 h-14 bg-background/80 backdrop-blur-md border-b flex items-center px-5 z-40 md:hidden">
-        <span className="font-bold text-primary text-base tracking-tight">DevInterviewLab</span>
-      </div>
+      {/* Mobile top bar — logo + back button on sub-pages */}
+      <MobileTopBar />
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">
