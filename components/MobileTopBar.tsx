@@ -16,7 +16,7 @@ const PARENT_ROUTE: Record<string, string> = {
   '/roadmap':        '/plano',
   '/stats':          '/plano',
   '/score-cards':    '/plano',
-  '/concept-graph':  '/plano',
+  '/concept-graph':  '/revisar',
   '/questions':      '/dashboard',
 }
 

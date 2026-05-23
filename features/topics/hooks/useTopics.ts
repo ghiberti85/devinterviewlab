@@ -67,11 +67,12 @@ export function useGenerateTopic() {
       }
       return res.json()
     },
-    // Invalidate topics + questions (quick_qa items are saved as questions)
+    // Invalidate topics + questions (quick_qa) + concepts (tags → graph)
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['topics'] })
       qc.invalidateQueries({ queryKey: ['questions'] })
       qc.invalidateQueries({ queryKey: ['practice'] })
+      qc.invalidateQueries({ queryKey: ['concepts'] })
     },
   })
 }

@@ -17,6 +17,9 @@ import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 import Link from 'next/link'
 
+// Concepts
+import { useConcepts } from '@/features/concepts/hooks/useConcepts'
+
 type Tab = 'topics' | 'flashcards' | 'concepts'
 type FlashMode = 'random' | 'spaced'
 
@@ -166,24 +169,98 @@ function TopicsTab() {
 
 function ConceptsTab() {
   const t = useT()
+  const { data, isLoading } = useConcepts()
+  const nodes = data?.nodes ?? []
+  const edges = data?.edges ?? []
+
+  // Group child concepts by their root (part_of target)
+  const rootIds = new Set(edges.filter(e => e.relation_type === 'part_of').map(e => e.target_id))
+  const childOf = new Map<string, string>() // childId → parentId
+  edges.filter(e => e.relation_type === 'part_of').forEach(e => childOf.set(e.source_id, e.target_id))
+
+  // Root nodes = those that are targets of part_of, or have no parent
+  const roots = nodes.filter(n => rootIds.has(n.id) || !childOf.has(n.id))
+  // Children grouped by parent id
+  const childrenByParent = new Map<string, typeof nodes>()
+  nodes.filter(n => childOf.has(n.id)).forEach(n => {
+    const pid = childOf.get(n.id)!
+    childrenByParent.set(pid, [...(childrenByParent.get(pid) ?? []), n])
+  })
+
+  function scoreColor(score: number) {
+    if (score >= 70) return 'bg-green-500'
+    if (score >= 40) return 'bg-yellow-500'
+    return 'bg-red-500'
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
-      <Link
-        href="/concept-graph"
-        className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-lg bg-purple-500/10">
-            <Network size={20} className="text-purple-600 dark:text-purple-400" />
-          </div>
-          <div>
-            <div className="font-semibold text-sm">{t.nav.concepts}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{t.plan.conceptsLink}</div>
-          </div>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
+        <Link
+          href="/concept-graph"
+          className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+        >
+          <Network size={12} />
+          {t.plan.conceptsLink}
+          <ChevronRight size={12} />
+        </Link>
+      </div>
+
+      {isLoading && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="border rounded-xl h-24 animate-pulse bg-muted" />
+          ))}
         </div>
-        <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
-      </Link>
+      )}
+
+      {!isLoading && nodes.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+          <Network size={40} className="opacity-30" />
+          <p className="text-sm text-center">{t.review.noConceptsYet}</p>
+        </div>
+      )}
+
+      {!isLoading && roots.length > 0 && (
+        <div className="space-y-3">
+          {roots.map(root => {
+            const children = childrenByParent.get(root.id) ?? []
+            return (
+              <div key={root.id} className="border rounded-xl p-4 bg-card space-y-3">
+                {/* Root concept */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${scoreColor(root.score)}`} />
+                      <span className="font-semibold text-sm truncate">{root.name}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground ml-auto shrink-0">{root.score}/100</span>
+                    </div>
+                    {root.description && (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{root.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Child concepts (tags) */}
+                {children.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1 border-t">
+                    {children.map(child => (
+                      <span
+                        key={child.id}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border bg-muted/50"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${scoreColor(child.score)}`} />
+                        {child.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

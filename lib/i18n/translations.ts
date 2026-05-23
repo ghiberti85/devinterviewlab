@@ -274,6 +274,7 @@ export const translations = {
       topics: 'Topics',
       flashcards: 'Flashcards',
       concepts: 'Concepts',
+      noConceptsYet: 'No concepts yet. Generate a topic in the Topics tab to populate the concept map automatically.',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -514,6 +515,7 @@ export const translations = {
       topics: 'Tópicos',
       flashcards: 'Flashcards',
       concepts: 'Conceitos',
+      noConceptsYet: 'Nenhum conceito ainda. Gere um tópico na aba Tópicos para popular o mapa automaticamente.',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

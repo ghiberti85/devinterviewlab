@@ -80,6 +80,61 @@ export async function POST(req: NextRequest) {
       if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
     }
 
+    // Auto-create concepts: topic title as root node + each tag as child node
+    try {
+      // Fetch existing concept names to avoid duplicates
+      const { data: existingConcepts } = await supabase
+        .from('concepts')
+        .select('id, name')
+        .eq('user_id', user.id)
+
+      const existingNames = new Map<string, string>(
+        (existingConcepts ?? []).map((c: { id: string; name: string }) => [c.name.toLowerCase(), c.id])
+      )
+
+      // Create root concept for the topic title (if not already exists)
+      let rootConceptId: string | null = null
+      const titleKey = generated.title.toLowerCase()
+      if (existingNames.has(titleKey)) {
+        rootConceptId = existingNames.get(titleKey)!
+      } else {
+        const { data: rootConcept } = await supabase
+          .from('concepts')
+          .insert({ user_id: user.id, name: generated.title, description: generated.summary })
+          .select('id')
+          .single()
+        if (rootConcept) rootConceptId = rootConcept.id
+      }
+
+      // Create tag concepts and link them to the root with part_of relation
+      if (rootConceptId && generated.tags?.length) {
+        for (const tag of generated.tags) {
+          const tagKey = tag.toLowerCase()
+          let tagConceptId: string | null = null
+
+          if (existingNames.has(tagKey)) {
+            tagConceptId = existingNames.get(tagKey)!
+          } else {
+            const { data: tagConcept } = await supabase
+              .from('concepts')
+              .insert({ user_id: user.id, name: tag, description: null })
+              .select('id')
+              .single()
+            if (tagConcept) tagConceptId = tagConcept.id
+          }
+
+          if (tagConceptId) {
+            // tag part_of root topic — ignore duplicate relation errors
+            await supabase
+              .from('concept_relations')
+              .insert({ source_id: tagConceptId, target_id: rootConceptId, relation_type: 'part_of' })
+          }
+        }
+      }
+    } catch (conceptErr) {
+      logger.warn('Failed to create concepts from topic', { userId: user.id, error: String(conceptErr) })
+    }
+
     await logUsage({ userId: user.id, endpoint: 'topic', durationMs: Date.now() - start })
     return NextResponse.json(data, { status: 201 })
   } catch (err) {
