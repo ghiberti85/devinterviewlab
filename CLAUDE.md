@@ -47,7 +47,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 
 ### A cada alteração de código (obrigatório antes do commit)
 ```bash
-npm test              # todos os 260 testes devem passar — zero falhas toleradas
+npm test              # todos os 273 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
 ```
 

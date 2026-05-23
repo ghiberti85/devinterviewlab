@@ -172,11 +172,11 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
 ```
 app/
   (app)/              # Rotas protegidas (requer auth)
-    layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs)
+    layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs) + MobileTopBar (back button)
     dashboard/        # "Hoje" — DailyLoopWidget + stats cards + heatmap + atalhos
-    simular/          # Hub: cards Entrevista + Live Coding + sessões recentes
-    revisar/          # Tabs integradas: Flashcards (SM-2) | Flash Topics
-    plano/            # Tabs: Roadmap | Progresso (heatmap+radar+score cards) | Conceitos
+    simular/          # Hub: cards Entrevista + Live Coding + tópicos para praticar + sessões recentes
+    revisar/          # Tabs integradas: Topics | Flashcards (SM-2) | Concepts
+    plano/            # Tabs: Roadmap | Progresso (heatmap+radar+score cards)
     questions/[id]/
     practice/         # mantida (acessível via URL direta)
     interview/        # mantida (acessível via URL direta)
@@ -203,6 +203,7 @@ app/
     coding/           # GET histórico + POST avaliar código (Live Coding)
     coding/hint/      # POST dica socrática (Node Runtime, 20/dia)
     coding/generate/  # POST gerar problema com IA (dificuldade + tópico + linguagem)
+    topics/sync/      # POST sincronizar tópicos existentes → cria questões + conceitos faltantes
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
@@ -225,8 +226,10 @@ app/
 
 components/
   DifficultyBadge.tsx
-  NavLinks.tsx        # 4 itens: Hoje / Simular / Revisar / Meu Plano (desktop)
-  BottomNav.tsx       # 4 tabs fixas no mobile (sem sheet "Mais")
+  NavLinks.tsx        # 4 itens: Hoje / Plano / Revisar / Simular (desktop)
+  BottomNav.tsx       # 4 tabs fixas no mobile — mesma ordem: Hoje / Plano / Revisar / Simular
+  MobileTopBar.tsx    # Top bar mobile: logo nos hubs, logo + ChevronLeft nas sub-páginas
+                      # PARENT_ROUTE mapeia cada sub-rota ao hub pai — concept-graph → /revisar
   ThemeToggle.tsx
   LanguageSelector.tsx # sincroniza idioma com profiles.preferred_language
 
@@ -243,9 +246,10 @@ features/
     components/                 # RoadmapSetup, GapAnalysisCard, RoadmapTimeline
     hooks/                      # useRoadmaps, useRoadmap, useCreateRoadmap, useUpdateTopicProgress
   topics/
-    components/                 # TopicCard (tradução persistida), TopicGenerator
-    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic
-  concepts/hooks/
+    components/                 # TopicCard (tradução persistida, line-clamp em summary/when_to_use), TopicGenerator
+    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics
+  documents/hooks/              # useDocuments, useSavedCV, useUploadDocument, useDeleteDocument, formatFileSize
+  concepts/hooks/               # useConcepts, useCreateConcept, useCreateRelation, useDeleteConcept
   analytics/
     hooks/                      # useAnalytics, useDailyLoop
     components/                 # DailyLoopWidget
@@ -263,7 +267,7 @@ lib/
       generate.prompt.ts
       code-evaluate.prompt.ts   # avaliação de código + process_feedback (hints/idle)
       coding-hint.prompt.ts     # Pair Programmer socrático — nunca revela solução
-      coding-generate.prompt.ts # Geração de problema por IA: dificuldade + tópico
+      coding-generate.prompt.ts # Geração de problema por IA: dificuldade + tópico + linguagem
       score-card.prompt.ts      # síntese de múltiplas avaliações em top 3 forças/gaps
       roadmap.prompt.ts         # roadmap 30/60/90 dias com análise de gap vs vaga
       topic.prompt.ts           # getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt
@@ -375,10 +379,35 @@ e2e/                            # Playwright E2E
 
 ### Nova Navegação por Hubs *(refatoração)*
 - Navegação reduzida de 12 itens para 4 — agrupamento por **intenção do usuário**, não por feature
-- **`/simular`** — hub com cards: Entrevista com IA + Live Coding + sessões/entrevistas recentes
-- **`/revisar`** — tabs integradas na mesma página: Flashcards (SM-2 completo) | Flash Topics (gerador + lista)
-- **`/plano`** — tabs: Roadmap (gap analysis + 30/60/90 dias) | Progresso (heatmap + radar + Score Cards) | Conceitos (link para grafo)
+- Ordem: **Hoje · Plano · Revisar · Simular** (em BottomNav e NavLinks)
+- **`/simular`** — hub com: cards Entrevista + Live Coding · lista de tópicos para praticar (link direto para `/interview?search=`) · sessões/entrevistas recentes
+- **`/revisar`** — tabs: **Topics** (gerador + sync + grid) | **Flashcards** (SM-2 completo) | **Concepts** (cards com score + link para grafo)
+- **`/plano`** — tabs: Roadmap (gap analysis + 30/60/90 dias + upload CV) | Progresso (heatmap + radar + Score Cards)
+- **`MobileTopBar`** — top bar mobile com botão voltar (ChevronLeft) nas sub-páginas; hubs mostram só o logo
 - Páginas antigas (`/practice`, `/interview`, `/roadmap`, `/stats`, `/score-cards`) mantidas e acessíveis via URL direta
+
+### CV Upload + Documentos Armazenados
+- `RoadmapSetup` tem botão "Upload PDF" — faz POST `/api/documents` (multipart, keepStored: true), extrai texto do PDF, preenche o textarea CV automaticamente
+- Botão "Usar CV salvo" aparece se já houver CV no banco — carrega `text_content` sem re-upload
+- Lista de arquivos armazenados (nome, tamanho, data, botão excluir) exibida no setup do roadmap
+- Hooks: `useSavedCV`, `useUploadDocument`, `useDeleteDocument` (em `features/documents/hooks/useDocuments.ts`)
+
+### Flash Topics — Auto-populate Flashcards, Concepts e Simulate
+- **Ao gerar um tópico** (POST `/api/topics`): cria automaticamente:
+  1. Uma `Question` por par `{q, a}` do `quick_qa` → aparecem em Flashcards e AI Interview
+  2. Um `Concept` para o título do tópico (description = summary)
+  3. Um `Concept` por tag, com relação `part_of` → nó raiz do tópico
+  - Deduplicação por nome (consulta existentes antes de inserir); falha não bloqueia o tópico
+- **Sync de tópicos existentes** (POST `/api/topics/sync`): retroativamente processa todos os tópicos do usuário sem duplicar registros
+  - Hook `useSyncTopics()` + botão "Sync to Practice & Concepts" na aba Topics
+  - Retorna `{ questions_created, concepts_created }` com feedback na UI
+- **Aba Concepts em `/revisar`**: exibe cards dos conceitos agrupados (raiz + tags filhas como pills), score colorido, link para grafo interativo
+
+### Geração de Problemas de Live Coding com IA
+- Botão "Gerar com IA" no painel de problemas do Live Coding
+- Seletor de dificuldade (Easy/Medium/Hard com cores) + campo de tópico opcional
+- API: POST `/api/coding/generate` → `{ title, description }` gerados pelo LLM
+- Prompt em `coding-generate.prompt.ts`: exige exemplos, constraints, nunca revela solução
 
 ### Flash Topics *(novo)*
 - `/topics` — biblioteca de referências técnicas rápidas geradas por IA
@@ -499,8 +528,9 @@ e2e/                            # Playwright E2E
 | `topic-prompt.test.ts` | 23 | getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt |
 | `topic-pairs.test.ts` | 10 | groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão |
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
+| `coding-generate-prompt.test.ts` | 13 | getCodingGenerateSystemPrompt (EN, PT, fallback, no-solution, JSON-only), codingGeneratePrompt (difficulty, topic, generic fallback, coding language, system prompt, todos os níveis) |
 
-**Total: 260 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 273 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
