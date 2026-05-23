@@ -67,9 +67,11 @@ export function useGenerateTopic() {
       }
       return res.json()
     },
-    // Invalidate both language views — the new topic must appear in both lists
+    // Invalidate topics + questions (quick_qa items are saved as questions)
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['topics'] })
+      qc.invalidateQueries({ queryKey: ['questions'] })
+      qc.invalidateQueries({ queryKey: ['practice'] })
     },
   })
 }

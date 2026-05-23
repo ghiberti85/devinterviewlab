@@ -8,9 +8,9 @@ import { useT } from '@/lib/i18n/useT'
 
 const TABS = [
   { href: '/dashboard', icon: LayoutDashboard, labelKey: 'today'    as const },
-  { href: '/simular',   icon: Swords,          labelKey: 'simulate' as const },
-  { href: '/revisar',   icon: Layers,          labelKey: 'review'   as const },
   { href: '/plano',     icon: Map,             labelKey: 'plan'     as const },
+  { href: '/revisar',   icon: Layers,          labelKey: 'review'   as const },
+  { href: '/simular',   icon: Swords,          labelKey: 'simulate' as const },
 ]
 
 export function BottomNav() {

@@ -12,9 +12,9 @@ export function NavLinks() {
 
   const NAV = [
     { href: '/dashboard', icon: LayoutDashboard, label: t.nav.today },
-    { href: '/simular',   icon: Swords,          label: t.nav.simulate },
-    { href: '/revisar',   icon: Layers,           label: t.nav.review },
     { href: '/plano',     icon: Map,              label: t.nav.plan },
+    { href: '/revisar',   icon: Layers,           label: t.nav.review },
+    { href: '/simular',   icon: Swords,          label: t.nav.simulate },
   ]
 
   return (

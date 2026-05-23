@@ -4,8 +4,6 @@ import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
 
-export const runtime = 'edge'
-
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -64,6 +62,23 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // Auto-create a Question for each quick_qa pair so they appear in
+    // Simulate (interview practice) and Flashcard review automatically.
+    if (generated.quick_qa?.length) {
+      const questions = generated.quick_qa.map(({ q, a }) => ({
+        user_id: user.id,
+        category_id: categoryId ?? null,
+        title: q,
+        body: null,
+        ideal_answer: a,
+        difficulty,
+        language,
+        is_behavioral: false,
+      }))
+      const { error: qErr } = await supabase.from('questions').insert(questions)
+      if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
+    }
 
     await logUsage({ userId: user.id, endpoint: 'topic', durationMs: Date.now() - start })
     return NextResponse.json(data, { status: 201 })
