@@ -12,7 +12,7 @@ import { useSessionStore } from '@/store/session.store'
 import type { SessionType } from '@/lib/supabase/types'
 
 // Flash Topics
-import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic } from '@/features/topics/hooks/useTopics'
+import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 import Link from 'next/link'
@@ -143,10 +143,41 @@ function TopicsTab() {
   const t = useT()
   const { language } = useSettingsStore()
   const { data: pairs, isLoading } = useTopics(language as string)
+  const syncTopics = useSyncTopics()
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  async function handleSync() {
+    setSyncMsg(null)
+    try {
+      const result = await syncTopics.mutateAsync()
+      setSyncMsg(t.topics.syncDone(result.questions_created, result.concepts_created))
+    } catch {
+      setSyncMsg(t.topics.syncError)
+    }
+  }
 
   return (
     <div className="space-y-4">
       <TopicGenerator />
+
+      {/* Sync button — only shown when there are existing topics */}
+      {!isLoading && pairs && pairs.length > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncTopics.isPending}
+            className="flex items-center gap-1.5 text-xs border px-3 py-1.5 rounded-md hover:bg-accent disabled:opacity-50 transition-colors"
+          >
+            {syncTopics.isPending
+              ? <><Loader2 size={11} className="animate-spin" />{t.topics.syncing}</>
+              : t.topics.syncAll}
+          </button>
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex justify-center py-12">
           <Loader2 className="animate-spin text-muted-foreground" size={24} />

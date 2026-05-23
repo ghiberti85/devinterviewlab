@@ -1,15 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { MessageSquare, Code2, ChevronRight, Clock } from 'lucide-react'
+import { MessageSquare, Code2, ChevronRight, Clock, BookMarked } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useEvaluations } from '@/features/evaluations/hooks/useEvaluations'
 import { useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
+import { useTopics } from '@/features/topics/hooks/useTopics'
+import { useSettingsStore } from '@/store/settings.store'
 
 export default function SimularPage() {
   const t = useT()
+  const { language } = useSettingsStore()
   const { data: evalPages } = useEvaluations(1)
   const { data: sessions } = useCodingSessions()
+  const { data: topicPairs } = useTopics(language as string)
 
   const recentEvals = evalPages?.data?.slice(0, 3) ?? []
   const recentSessions = sessions?.slice(0, 3) ?? []
@@ -68,6 +72,45 @@ export default function SimularPage() {
                 </div>
               </Link>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Topics to practice */}
+      {topicPairs && topicPairs.length > 0 && (
+        <div className="border rounded-xl p-5 bg-card space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium flex items-center gap-2">
+              <BookMarked size={14} className="text-muted-foreground" />
+              {t.topics.topicsForSimulate}
+            </h2>
+          </div>
+          <div className="space-y-1">
+            {topicPairs.slice(0, 6).map(pair => {
+              const topic = pair.current ?? pair.other
+              if (!topic) return null
+              return (
+                <div key={pair.rootId} className="flex items-center gap-2">
+                  <Link
+                    href={`/interview?search=${encodeURIComponent(topic.title)}`}
+                    className="flex-1 flex items-center justify-between py-2 px-3 rounded-md hover:bg-accent transition-colors group"
+                  >
+                    <span className="text-sm truncate">{topic.title}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground hidden sm:block">{t.simulate.interviewTitle}</span>
+                      <MessageSquare size={12} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                  </Link>
+                  <Link
+                    href={`/live-coding`}
+                    className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-green-600"
+                    title={t.simulate.codingTitle}
+                  >
+                    <Code2 size={14} />
+                  </Link>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
