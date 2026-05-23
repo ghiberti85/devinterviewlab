@@ -77,12 +77,12 @@ NEXT_PUBLIC_SENTRY_DSN=<optional>
 ## Tests
 
 ```bash
-npm test                # 273 unit tests (Vitest)
+npm test                # 260 unit tests (Vitest)
 npm run test:coverage   # with coverage report
 npx playwright test     # E2E (requires .env.test configured)
 ```
 
-Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%** (273 tests)
+Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%** (260 tests)
 
 ## Commands
 
