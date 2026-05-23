@@ -34,7 +34,7 @@ The app is organized into 4 hubs — grouped by user intent, not by feature:
 ## Features
 
 - ✅ **AI Interview Coach** — answer questions and get dimension-scored feedback (correctness, completeness, clarity, depth) with follow-up and rebuttal rounds
-- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; textarea fallback on mobile
+- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; AI problem generator (difficulty + topic); textarea fallback on mobile
 - ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm and adaptive Easiness Factor
 - ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation
 - ✅ **CV Analysis + Study Roadmap** — gap analysis against a job description + 30/60/90-day roadmap via streaming
@@ -82,7 +82,7 @@ npm run test:coverage   # with coverage report
 npx playwright test     # E2E (requires .env.test configured)
 ```
 
-Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%**
+Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%** (260 tests)
 
 ## Commands
 

@@ -14,6 +14,7 @@ import {
   codeEvaluatePrompt,
 } from './prompts/code-evaluate.prompt'
 import { codingHintPrompt, getCodingHintSystemPrompt } from './prompts/coding-hint.prompt'
+import { codingGeneratePrompt, getCodingGenerateSystemPrompt, type ProblemDifficulty } from './prompts/coding-generate.prompt'
 import { getScoreCardSystemPrompt, scoreCardPrompt } from './prompts/score-card.prompt'
 import { getRoadmapSystemPrompt, roadmapAnalysisPrompt } from './prompts/roadmap.prompt'
 import { topicAnalysisPrompt, topicTranslatePrompt, getTopicSystemPrompt } from './prompts/topic.prompt'
@@ -291,6 +292,37 @@ export const aiService = {
 
     const raw = safeParseJSON<{ hint: string }>(res.choices[0].message.content ?? '{}')
     return { hint: raw.hint ?? '' }
+  },
+
+  async generateCodingProblem(opts: {
+    difficulty: ProblemDifficulty
+    topic?: string
+    codingLanguage?: string
+    language?: string
+  }): Promise<{ title: string; description: string }> {
+    if (!hasApiKey()) return { title: 'AI not configured', description: '' }
+    const openai = getClient()
+    const { language = 'en' } = opts
+    const systemPrompt = cachedSystemPrompt(
+      `coding-generate:${language}`,
+      () => getCodingGenerateSystemPrompt(language)
+    )
+    const prompt = codingGeneratePrompt(opts)
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      max_tokens: 800,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt.user },
+      ],
+    })
+
+    const raw = safeParseJSON<{ title: string; description: string }>(
+      res.choices[0].message.content ?? '{}'
+    )
+    return { title: raw.title ?? '', description: raw.description ?? '' }
   },
 
   async generateTopic(opts: {

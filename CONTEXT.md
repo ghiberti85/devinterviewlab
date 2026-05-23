@@ -202,6 +202,7 @@ app/
     analytics/
     coding/           # GET histórico + POST avaliar código (Live Coding)
     coding/hint/      # POST dica socrática (Node Runtime, 20/dia)
+    coding/generate/  # POST gerar problema com IA (dificuldade + tópico + linguagem)
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
@@ -233,7 +234,7 @@ features/
   questions/{components,hooks}
   practice/{components,hooks}   # Flashcard com SM-2 + EF
   interview/{components,hooks}
-  live-coding/hooks/            # useCodingSessions, useSubmitCode
+  live-coding/hooks/            # useCodingSessions, useSubmitCode, useRequestHint, useGenerateProblem
   evaluations/hooks/            # useEvaluations(page) — lista paginada
   score-cards/
     components/                 # RadarChart, ScoreCardView, ExportPdfButton, ScoreCardList
@@ -262,6 +263,7 @@ lib/
       generate.prompt.ts
       code-evaluate.prompt.ts   # avaliação de código + process_feedback (hints/idle)
       coding-hint.prompt.ts     # Pair Programmer socrático — nunca revela solução
+      coding-generate.prompt.ts # Geração de problema por IA: dificuldade + tópico
       score-card.prompt.ts      # síntese de múltiplas avaliações em top 3 forças/gaps
       roadmap.prompt.ts         # roadmap 30/60/90 dias com análise de gap vs vaga
       topic.prompt.ts           # getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt
@@ -498,7 +500,7 @@ e2e/                            # Playwright E2E
 | `topic-pairs.test.ts` | 10 | groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão |
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 
-**Total: 247 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 260 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
