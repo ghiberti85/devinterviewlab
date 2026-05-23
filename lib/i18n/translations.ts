@@ -175,6 +175,9 @@ export const translations = {
       topic: 'Topic (optional)',
       topicPlaceholder: 'e.g. arrays, graphs, dynamic programming…',
       generateError: 'Failed to generate problem. Try again.',
+      savedProblems: 'Saved problems',
+      noSavedProblems: 'No saved problems yet. Generate or solve a problem to save it.',
+      loadProblem: 'Use this problem',
     },
     scoreCard: {
       title: 'Score Cards',
@@ -481,6 +484,9 @@ export const translations = {
       topic: 'Tópico (opcional)',
       topicPlaceholder: 'ex: arrays, grafos, programação dinâmica…',
       generateError: 'Falha ao gerar problema. Tente novamente.',
+      savedProblems: 'Problemas salvos',
+      noSavedProblems: 'Nenhum problema salvo ainda. Gere ou resolva um problema para salvá-lo.',
+      loadProblem: 'Usar este problema',
     },
     scoreCard: {
       title: 'Score Cards',

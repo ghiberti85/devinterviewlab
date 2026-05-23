@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2 } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -15,8 +15,6 @@ import type { SessionType } from '@/lib/supabase/types'
 import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
-import Link from 'next/link'
-
 // Concepts
 import { useConcepts } from '@/features/concepts/hooks/useConcepts'
 
@@ -224,17 +222,7 @@ function ConceptsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
-        <Link
-          href="/concept-graph"
-          className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:underline shrink-0"
-        >
-          <Network size={11} />
-          {t.review.openGraph}
-          <ChevronRight size={11} />
-        </Link>
-      </div>
+      <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
 
       {isLoading && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
