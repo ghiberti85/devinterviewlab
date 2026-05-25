@@ -172,22 +172,19 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
 ```
 app/
   (app)/              # Rotas protegidas (requer auth)
-    layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs) + MobileTopBar (back button)
+    layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs) + MobileTopBar (back button + SettingsDrawer)
     dashboard/        # "Hoje" — DailyLoopWidget + stats cards + heatmap + atalhos
-    simular/          # Hub: cards Entrevista + Live Coding + tópicos para praticar + sessões recentes
-    revisar/          # Tabs integradas: Topics | Flashcards (SM-2) | Concepts
-    plano/            # Tabs: Roadmap | Progresso (heatmap+radar+score cards)
+    simular/          # Hub: cards Entrevista + Live Coding + tópicos para praticar + 5 sessões recentes
+    revisar/          # Tabs integradas: Topics | Flashcards (SM-2 + Skip) | Concepts (expansíveis + link grafo)
+    plano/            # Tabs: Roadmap (CV-only ou CV+JD, multi-roadmap selector) | Progresso (heatmap+radar+score cards)
     questions/[id]/
-    practice/         # mantida (acessível via URL direta)
     interview/        # mantida (acessível via URL direta)
     generate/
-    live-coding/      # Live Coding Simulator — Monaco desktop, textarea mobile
+    live-coding/      # Live Coding Simulator — Monaco desktop, textarea mobile; botões IA/Salvos/Custom; Salvar para depois
     history/          # Histórico paginado de avaliações
     history/[id]/     # Replay: resposta + transcrição + feedback IA
-    score-cards/      # mantida (acessível via URL direta)
-    roadmap/          # mantida (acessível via URL direta)
+    score-cards/      # Relatórios visuais de desempenho (acessível via /plano → Progresso)
     concept-graph/
-    stats/
     voice-test/       # Página de diagnóstico (redireciona em produção)
   (auth)/             # Rotas públicas
     login/
@@ -203,6 +200,7 @@ app/
     coding/           # GET histórico + POST avaliar código (Live Coding)
     coding/hint/      # POST dica socrática (Node Runtime, 20/dia)
     coding/generate/  # POST gerar problema com IA (dificuldade + tópico + linguagem)
+    coding/save-problem/ # POST salvar stub de problema (title+desc, código vazio, score null)
     topics/sync/      # POST sincronizar tópicos existentes → cria questões + conceitos faltantes
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
@@ -229,7 +227,8 @@ components/
   NavLinks.tsx        # 4 itens: Hoje / Plano / Revisar / Simular (desktop)
   BottomNav.tsx       # 4 tabs fixas no mobile — mesma ordem: Hoje / Plano / Revisar / Simular
   MobileTopBar.tsx    # Top bar mobile: logo nos hubs, logo + ChevronLeft nas sub-páginas
-                      # PARENT_ROUTE mapeia cada sub-rota ao hub pai — concept-graph → /revisar
+                      # Ícone ⚙ abre SettingsDrawer com ThemeToggle, LanguageSelector e Logout
+                      # PARENT_ROUTE mapeia sub-rotas ao hub pai — concept-graph → /revisar, generate → /revisar, score-cards → /plano
   ThemeToggle.tsx
   LanguageSelector.tsx # sincroniza idioma com profiles.preferred_language
 
@@ -246,8 +245,8 @@ features/
     components/                 # RoadmapSetup, GapAnalysisCard, RoadmapTimeline
     hooks/                      # useRoadmaps, useRoadmap, useCreateRoadmap, useUpdateTopicProgress
   topics/
-    components/                 # TopicCard (tradução persistida, line-clamp em summary/when_to_use), TopicGenerator
-    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics
+    components/                 # TopicCard (tradução persistida, texto completo em summary/when_to_use), TopicGenerator
+    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useSaveProblem
   documents/hooks/              # useDocuments, useSavedCV, useUploadDocument, useDeleteDocument, formatFileSize
   concepts/hooks/               # useConcepts, useCreateConcept, useCreateRelation, useDeleteConcept
   analytics/
@@ -272,7 +271,7 @@ lib/
       roadmap.prompt.ts         # roadmap 30/60/90 dias com análise de gap vs vaga
       topic.prompt.ts           # getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt
   i18n/
-    translations.ts             # EN/PT — inclui liveCoding e dashboard.dailyLoop
+    translations.ts             # EN/PT — inclui liveCoding, dashboard.dailyLoop, review.generateQuestions, practice.skip, roadmap.cvOnly/cvOrJdRequired
     useT.ts
   api/
     rate-limit.ts
@@ -369,10 +368,11 @@ e2e/                            # Playwright E2E
 - Rate limit: 15 score cards/dia
 
 ### Análise de CV + Roadmap de Estudo Personalizado *(F3)*
-- Setup: usuário cola descrição da vaga (opcional) e texto do CV
+- Setup: usuário cola texto do CV (obrigatório) + descrição da vaga (opcional — aceita CV-only; API valida: deve ter JD ou CV)
 - **Análise de Gap**: match_score (%), habilidades presentes vs ausentes vs extras
 - **Roadmap 30/60/90 dias**: 3 fases com tópicos, recursos sugeridos, metas de prática
 - Geração via streaming NDJSON (Edge Runtime)
+- **Múltiplos roadmaps**: dropdown para alternar entre roadmaps salvos; se único, exibe título como texto simples
 - **Progresso manual** por tópico: botão "+1 concluído" persiste em `roadmap_topic_progress`
 - Timeline visual com barras de progresso por fase
 - Rate limit: 5 roadmaps/dia
@@ -380,11 +380,21 @@ e2e/                            # Playwright E2E
 ### Nova Navegação por Hubs *(refatoração)*
 - Navegação reduzida de 12 itens para 4 — agrupamento por **intenção do usuário**, não por feature
 - Ordem: **Hoje · Plano · Revisar · Simular** (em BottomNav e NavLinks)
-- **`/simular`** — hub com: cards Entrevista + Live Coding · lista de tópicos para praticar (link direto para `/interview?search=`) · sessões/entrevistas recentes
-- **`/revisar`** — tabs: **Topics** (gerador + sync + grid) | **Flashcards** (SM-2 completo) | **Concepts** (cards com score + link para grafo)
-- **`/plano`** — tabs: Roadmap (gap analysis + 30/60/90 dias + upload CV) | Progresso (heatmap + radar + Score Cards)
-- **`MobileTopBar`** — top bar mobile com botão voltar (ChevronLeft) nas sub-páginas; hubs mostram só o logo
-- Páginas antigas (`/practice`, `/interview`, `/roadmap`, `/stats`, `/score-cards`) mantidas e acessíveis via URL direta
+- **`/simular`** — hub com: cards Entrevista + Live Coding · lista de tópicos para praticar (link direto para `/interview?search=`) · 5 sessões/entrevistas recentes
+- **`/revisar`** — tabs: **Topics** (gerador + sync + grid + link "Gerar questões →") | **Flashcards** (SM-2 completo + botão Skip/Pular) | **Concepts** (cards expansíveis + link "Abrir grafo" → /concept-graph)
+- **`/plano`** — tabs: Roadmap (CV-only aceito, JD opcional; dropdown para alternar entre múltiplos roadmaps) | Progresso (heatmap + radar + Score Cards)
+- **`MobileTopBar`** — top bar mobile com botão voltar (ChevronLeft) nas sub-páginas; hubs mostram logo + ícone ⚙ que abre SettingsDrawer (ThemeToggle, LanguageSelector, Logout)
+- **Simplificação**: 4 páginas standalone removidas — `/practice`, `/stats`, `/topics`, `/roadmap`; funcionalidades integradas nas abas dos hubs correspondentes
+
+### Simplificação de Navegação *(refatoração)*
+- **4 páginas standalone removidas**: `/practice`, `/stats`, `/topics`, `/roadmap`
+- Funcionalidades integradas nas abas dos hubs:
+  - `/practice` → aba Flashcards em `/revisar`
+  - `/topics` → aba Topics em `/revisar`
+  - `/stats` → aba Progresso em `/plano`
+  - `/roadmap` → aba Roadmap em `/plano`
+- Páginas auxiliares (`/generate`, `/score-cards`, `/concept-graph`, `/history`) mantidas e acessadas via links internos nos hubs
+- Configurações (tema/idioma/logout) acessíveis via ícone ⚙ na MobileTopBar — sem página de settings separada
 
 ### CV Upload + Documentos Armazenados
 - `RoadmapSetup` tem botão "Upload PDF" — faz POST `/api/documents` (multipart, keepStored: true), extrai texto do PDF, preenche o textarea CV automaticamente
@@ -404,14 +414,15 @@ e2e/                            # Playwright E2E
 - **Aba Concepts em `/revisar`**: exibe cards dos conceitos agrupados (raiz + tags filhas como pills), score colorido, link para grafo interativo
 
 ### Geração de Problemas de Live Coding com IA
-- Botão "Gerar com IA" no painel de problemas do Live Coding
-- Seletor de dificuldade (Easy/Medium/Hard com cores) + campo de tópico opcional
+- Seletor de fonte redesenhado: 3 botões destacados (IA / Salvos / Custom) — botão ativo tem destaque visual
+- Botão "Gerar com IA" dentro do painel IA: seletor de dificuldade (Easy/Medium/Hard com cores) + campo de tópico opcional
 - API: POST `/api/coding/generate` → `{ title, description }` gerados pelo LLM
+- **Salvar para depois**: botão visível antes do timer iniciar → chama `useSaveProblem()` → POST `/api/coding/save-problem` (salva stub com código vazio, score null)
 - Prompt em `coding-generate.prompt.ts`: exige exemplos, constraints, nunca revela solução
 
 ### Flash Topics *(novo)*
-- `/topics` — biblioteca de referências técnicas rápidas geradas por IA
-- Cada tópico: resumo 150-250 palavras + "quando usar/evitar" + snippet de código + 4 Q&A de entrevista
+- Aba **Topics** em `/revisar` — biblioteca de referências técnicas rápidas geradas por IA
+- Cada tópico: resumo 150-250 palavras + "quando usar/evitar" (texto completo, sem truncamento) + snippet de código + 4 Q&A de entrevista
 - **Tradução persistida**: botão "Traduzir → EN/PT" no card gera versão no outro idioma via IA e salva no banco
   — ao trocar idioma no app a lista mostra automaticamente a versão já traduzida, sem nova chamada à IA
 - **Modelo de pares**: API retorna todos os tópicos (ambos idiomas); `groupIntoPairs()` agrupa por `rootId = translated_from ?? id`
@@ -565,8 +576,9 @@ Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx
 - **F8 — Pair Programmer IA no Live Coding** — dicas socráticas on-demand + idle detection 60s, métricas de processo, HintPanel colapsável
 - **F2 — Score Card Visual** (`/score-cards`) — radar chart, top forças/lacunas, histórico, export PDF
 - **F3 — Análise CV + Roadmap** (`/roadmap`) — gap analysis, roadmap 30/60/90 dias via streaming, progresso manual por tópico
-- **Flash Topics** (`/topics`) — referências rápidas com Q&A integrado, tradução persistida EN↔PT
+- **Flash Topics** (aba em `/revisar`) — referências rápidas com Q&A integrado, tradução persistida EN↔PT
 - **PWA + Mobile App** — bottom tab bar, bottom sheet, manifest, ícones, safe-area iOS
+- **Simplificação de navegação** — 4 páginas removidas, features integradas em tabs dos hubs; SettingsDrawer no mobile; Skip em flashcards; concepts expansíveis; múltiplos roadmaps
 
 ### Features Planejadas
 1. **Migrar `/api/ai/generate` para Edge Runtime** — extração já isolada em `/api/documents/extract-text`; passar texto pré-extraído resolve timeout 10s Vercel Hobby

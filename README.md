@@ -28,21 +28,21 @@ The app is organized into 4 hubs — grouped by user intent, not by feature:
 |---|---|
 | **Today** (`/dashboard`) | Daily streak, pending flashcards, weak concept, quick actions |
 | **Simulate** (`/simular`) | AI Interview Coach + Live Coding Simulator |
-| **Review** (`/revisar`) | Flashcards (SM-2) and Flash Topics — toggled in the same screen |
-| **My Plan** (`/plano`) | Study Roadmap · Progress (stats + score cards) · Concept Graph |
+| **Review** (`/revisar`) | Flashcards (SM-2 + Skip) · Flash Topics · Expandable Concepts + graph link |
+| **My Plan** (`/plano`) | Study Roadmap (CV-only or CV+JD, multi-roadmap selector) · Progress (stats + score cards) |
 
 ## Features
 
 - ✅ **AI Interview Coach** — answer questions and get dimension-scored feedback (correctness, completeness, clarity, depth) with follow-up and rebuttal rounds
 - ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; AI problem generator (difficulty + topic); textarea fallback on mobile
-- ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm and adaptive Easiness Factor
+- ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm, adaptive Easiness Factor, and Skip button
 - ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation; auto-populates flashcards, concepts, and Simulate on generation
-- ✅ **CV Upload + Roadmap** — upload PDF CV (stored, reusable), gap analysis against a job description + 30/60/90-day roadmap via streaming
+- ✅ **CV Upload + Roadmap** — upload PDF CV (stored, reusable), gap analysis against optional job description + 30/60/90-day roadmap via streaming; multiple saved roadmaps with selector
 - ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
 - ✅ **Evaluation History** — full replay with typed answer and voice transcript side by side
-- ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping
-- ✅ **Analytics** — activity heatmap, topic radar, weakest concepts
-- ✅ **PWA** — 4-tab mobile bottom bar, native install, iOS safe-area support
+- ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping; expandable concept cards in Review tab
+- ✅ **Analytics** — activity heatmap, topic radar, weakest concepts (in My Plan → Progress tab)
+- ✅ **PWA** — 4-tab mobile bottom bar, native install, iOS safe-area support; settings (theme/language/logout) via gear icon in top bar
 - ✅ **Internationalization** — full EN and PT-BR support, language switch synced to DB
 
 ## Getting started
