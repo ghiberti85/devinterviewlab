@@ -43,19 +43,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
-        <div className="flex gap-2 flex-wrap">
-          <Link href="/revisar"
-            className="text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity whitespace-nowrap">
-            {t.dashboard.startPractice}
-          </Link>
-          <Link href="/simular"
-            className="text-sm border px-4 py-2 rounded-md hover:bg-accent transition-colors whitespace-nowrap">
-            {t.dashboard.aiInterview}
-          </Link>
-        </div>
-      </div>
+      <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={BookOpen}    label={t.dashboard.questions}     value={data?.totalQuestions ?? 0}           color="bg-blue-500" />
