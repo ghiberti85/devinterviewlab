@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { checkBruteForce, recordFailedAttempt, resetAttempts } from '@/lib/api/brute-force'
+import { checkBruteForce, getClientIP, recordFailedAttempt, resetAttempts } from '@/lib/api/brute-force'
 
 const IP = '1.2.3.4'
 
@@ -11,6 +11,24 @@ beforeEach(() => {
 afterEach(() => {
   resetAttempts(IP)
   vi.useRealTimers()
+})
+
+describe('getClientIP', () => {
+  function makeReq(headers: Record<string, string>): Request {
+    return new Request('http://localhost/', { headers })
+  }
+
+  it('returns the first IP from x-forwarded-for', () => {
+    expect(getClientIP(makeReq({ 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }))).toBe('1.2.3.4')
+  })
+
+  it('returns x-real-ip when x-forwarded-for is absent', () => {
+    expect(getClientIP(makeReq({ 'x-real-ip': '9.9.9.9' }))).toBe('9.9.9.9')
+  })
+
+  it('returns "unknown" when neither header is present', () => {
+    expect(getClientIP(makeReq({}))).toBe('unknown')
+  })
 })
 
 describe('checkBruteForce', () => {

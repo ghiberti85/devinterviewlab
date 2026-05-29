@@ -50,7 +50,7 @@ export function DailyLoopWidget() {
 
         {/* Weak concept */}
         <Link
-          href="/concept-graph"
+          href="/plano"
           className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent transition-colors"
         >
           <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30">
@@ -68,7 +68,7 @@ export function DailyLoopWidget() {
 
         {/* Due flashcards */}
         <Link
-          href="/practice?mode=spaced"
+          href="/revisar"
           className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent transition-colors"
         >
           <div className="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30">
@@ -86,7 +86,7 @@ export function DailyLoopWidget() {
 
         {/* Live coding shortcut */}
         <Link
-          href="/live-coding"
+          href="/simular"
           className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent transition-colors"
         >
           <div className="p-1.5 rounded-md bg-green-100 dark:bg-green-900/30">

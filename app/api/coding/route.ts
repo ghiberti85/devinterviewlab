@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   const {
     problem_title, problem_description,
     language: codingLanguage, code,
-    time_spent_sec, timer_duration_sec, ui_language = 'pt',
+    time_spent_sec, timer_duration_sec, ui_language = 'en',
     hints_requested = 0, hints_shown = 0, idle_pauses = 0,
   } = body
 

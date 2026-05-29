@@ -33,6 +33,24 @@ describe('generatePrompt', () => {
   it('system prompt instructs model to return only valid JSON', () => {
     expect(generatePrompt('Python', 'medium', 1).system).toContain('ONLY valid JSON')
   })
+
+  it('system prompt enforces minimum answer length guidance', () => {
+    expect(generatePrompt('Go', 'hard', 2).system).toContain('300')
+  })
+
+  it('system prompt includes senior-level framing', () => {
+    const { system } = generatePrompt('System Design', 'hard', 1)
+    expect(system).toContain('senior')
+  })
+
+  it('system prompt bans trivial title-only questions', () => {
+    expect(generatePrompt('React', 'easy', 1).system).toContain('NEVER')
+  })
+
+  it('includes the difficulty in the schema field', () => {
+    const { system } = generatePrompt('CSS', 'hard', 1)
+    expect(system).toContain('"difficulty": "hard"')
+  })
 })
 
 // ─── generateFromContextPrompt ────────────────────────────────────────────────
@@ -192,6 +210,17 @@ describe('codingHintPrompt', () => {
 
   it('generates Portuguese system prompt when language="pt"', () => {
     expect(codingHintPrompt({ ...base, language: 'pt' }).system).toContain('Brazilian Portuguese')
+  })
+
+  it('omits description line when problemDescription is empty', () => {
+    const result = codingHintPrompt({ ...base, problemDescription: '' })
+    expect(result.user).not.toContain('Description:')
+  })
+})
+
+describe('getCodingHintSystemPrompt — unknown language fallback', () => {
+  it('falls back to English for an unknown language code', () => {
+    expect(getCodingHintSystemPrompt('fr')).toContain('English')
   })
 })
 

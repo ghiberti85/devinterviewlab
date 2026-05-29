@@ -68,10 +68,10 @@ export async function POST(request: NextRequest) {
     language?: string
   }
 
-  if (!job_description || job_description.trim().length === 0) {
-    return new Response(JSON.stringify({ error: 'job_description is required.' }), { status: 400 })
+  if (!cv_text?.trim() && !job_description?.trim()) {
+    return new Response(JSON.stringify({ error: 'Provide a job description or CV to generate a roadmap.' }), { status: 400 })
   }
-  if (job_description.length > 8000) {
+  if (job_description && job_description.length > 8000) {
     return new Response(JSON.stringify({ error: 'job_description must be under 8000 characters.' }), { status: 400 })
   }
 
@@ -79,9 +79,12 @@ export async function POST(request: NextRequest) {
     try {
       emit({ status: 'thinking' })
 
+      const effectiveJD = job_description?.trim()
+        || 'General software engineering position — analyze the candidate CV and produce a comprehensive study roadmap covering common interview topics for their background.'
+
       const result = await aiService.analyzeAndGenerateRoadmap({
         cvText: cv_text ? cv_text.slice(0, 3000) : undefined,
-        jobDescription: job_description.slice(0, 2000),
+        jobDescription: effectiveJD.slice(0, 2000),
         language,
       })
 
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
         .insert({
           user_id: user.id,
           job_title: result.job_title,
-          job_description: job_description.slice(0, 8000),
+          job_description: job_description ? job_description.slice(0, 8000) : null,
           cv_text_snapshot: cv_text ? cv_text.slice(0, 20000) : null,
           gap_analysis: result.gap_analysis,
           roadmap: result.roadmap,

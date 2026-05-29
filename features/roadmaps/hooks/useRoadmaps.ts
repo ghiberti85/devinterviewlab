@@ -31,7 +31,7 @@ export function useRoadmap(id: string) {
 
 export function useCreateRoadmap() {
   const queryClient = useQueryClient()
-  return useMutation<StudyRoadmap, Error, { job_description: string; cv_text?: string; language?: string }>({
+  return useMutation<StudyRoadmap, Error, { job_description?: string; cv_text?: string; language?: string }>({
     mutationFn: async (body) => {
       const res = await fetch('/api/roadmaps', {
         method: 'POST',

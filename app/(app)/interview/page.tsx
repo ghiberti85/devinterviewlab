@@ -159,17 +159,17 @@ function InterviewSimulator() {
 
   return (
     <div className="space-y-5 max-w-5xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{t.interview.title}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{t.interview.subtitle(langLabel)}</p>
+      <div className="space-y-3">
+        <h1 className="text-xl font-semibold">{t.interview.title}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">{t.interview.subtitle(langLabel)}</p>
+          <button
+            onClick={pickRandom}
+            className="flex items-center gap-2 border px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors whitespace-nowrap shrink-0"
+          >
+            <Shuffle size={14} /> {t.interview.randomQuestion}
+          </button>
         </div>
-        <button
-          onClick={pickRandom}
-          className="flex items-center gap-2 border px-3 py-2 rounded-md text-sm hover:bg-accent transition-colors whitespace-nowrap"
-        >
-          <Shuffle size={14} /> {t.interview.randomQuestion}
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -211,7 +211,7 @@ function InterviewSimulator() {
 
           {/* Answer area */}
           <div className="border rounded-xl bg-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="text-sm font-medium">{t.interview.yourAnswer}</label>
               <VoiceInput
                 onTranscript={handleVoiceTranscript}

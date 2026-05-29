@@ -178,6 +178,18 @@ export interface StudyRoadmap {
   updated_at: string
   progress?: RoadmapTopicProgress[]
 }
+export interface RoadmapQuestion {
+  id: string
+  roadmap_id: string
+  user_id: string
+  phase_name: string
+  topic_name: string
+  question: string
+  answer: string
+  question_order: number
+  created_at: string
+}
+
 export interface RoadmapTopicProgress {
   id: string
   roadmap_id: string
@@ -187,6 +199,34 @@ export interface RoadmapTopicProgress {
   questions_goal: number
   last_practiced_at: string | null
   created_at: string
+}
+
+export interface TopicQuickQA {
+  q: string
+  a: string
+}
+
+export interface Topic {
+  id: string
+  user_id: string
+  category_id: string | null
+  title: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  summary: string
+  when_to_use: string | null
+  code_snippet: string | null
+  quick_qa: TopicQuickQA[]
+  tags: string[]
+  language: 'en' | 'pt'
+  translated_from: string | null
+  created_at: string
+}
+
+export interface TopicPair {
+  rootId: string
+  rootCreatedAt: string
+  current: Topic | null   // version in the active UI language
+  other: Topic | null     // version in the other language
 }
 
 export interface AnalyticsData {

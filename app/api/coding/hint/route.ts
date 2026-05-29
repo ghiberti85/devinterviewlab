@@ -4,8 +4,6 @@ import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
 
-export const runtime = 'edge'
-
 export async function POST(request: NextRequest) {
   const rl = await checkRateLimit('coding-hint')
   if (!rl.allowed) return rl.response

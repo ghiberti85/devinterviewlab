@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, BookOpen, Dumbbell, MessageSquare, Network, BarChart2, Sparkles, Code2, ClipboardList, PieChart, Map } from 'lucide-react'
+import { Map, Layers, Swords, BarChart2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { cn } from '@/lib/utils'
 
@@ -11,17 +11,10 @@ export function NavLinks() {
   const pathname = usePathname()
 
   const NAV = [
-    { href: '/dashboard',     icon: LayoutDashboard, label: t.nav.dashboard },
-    { href: '/questions',     icon: BookOpen,         label: t.nav.questions },
-    { href: '/generate',      icon: Sparkles,         label: t.nav.generate },
-    { href: '/practice',      icon: Dumbbell,         label: t.nav.practice },
-    { href: '/interview',     icon: MessageSquare,    label: t.nav.interview },
-    { href: '/history',       icon: ClipboardList,    label: t.nav.history },
-    { href: '/score-cards',   icon: PieChart,         label: t.nav.scoreCards },
-    { href: '/roadmap',       icon: Map,              label: t.nav.roadmap },
-    { href: '/live-coding',   icon: Code2,            label: t.nav.liveCoding },
-    { href: '/concept-graph', icon: Network,          label: t.nav.concepts },
-    { href: '/stats',         icon: BarChart2,         label: t.nav.stats },
+    { href: '/plano',   icon: Map,       label: t.nav.plan },
+    { href: '/revisar', icon: Layers,    label: t.nav.review },
+    { href: '/simular', icon: Swords,    label: t.nav.simulate },
+    { href: '/stats',   icon: BarChart2, label: t.nav.stats },
   ]
 
   return (

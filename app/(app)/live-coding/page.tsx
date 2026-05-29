@@ -2,16 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useSubmitCode, useCodingSessions, useRequestHint } from '@/features/live-coding/hooks/useLiveCoding'
+import { useSubmitCode, useCodingSessions, useRequestHint, useGenerateProblem, useSaveProblem, type ProblemDifficulty } from '@/features/live-coding/hooks/useLiveCoding'
 import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { CodeEvaluationFeedback } from '@/lib/supabase/types'
 import {
   Timer, Play, Square, Send, RotateCcw, CheckCircle2, XCircle,
-  AlertCircle, Clock, Lightbulb, X,
+  AlertCircle, Clock, Lightbulb, X, Sparkles, BookOpen,
 } from 'lucide-react'
 
-const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => null,
+})
 
 const TIMER_OPTIONS = [15, 30, 45] as const
 type TimerOption = typeof TIMER_OPTIONS[number]
@@ -72,18 +75,74 @@ function HintPanel({ hint, title, onDismiss, isAuto }: HintPanelProps) {
   )
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches)
+  }, [])
+  return isMobile
+}
+
+interface SavedProblemsPanelProps {
+  sessions: Array<{ problem_title: string; problem_description: string | null; score: number | null; created_at: string }>
+  lc: { savedProblems: string; noSavedProblems: string; loadProblem: string }
+  onSelect: (title: string, desc: string) => void
+}
+
+function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps) {
+  // Deduplicate by title, keep most recent
+  const seen = new Set<string>()
+  const unique = sessions.filter(s => {
+    if (seen.has(s.problem_title)) return false
+    seen.add(s.problem_title)
+    return true
+  })
+
+  if (unique.length === 0) {
+    return <p className="text-xs text-muted-foreground py-2">{lc.noSavedProblems}</p>
+  }
+
+  return (
+    <div className="space-y-1 max-h-52 overflow-y-auto">
+      {unique.map(s => (
+        <button
+          key={s.problem_title}
+          onClick={() => onSelect(s.problem_title, s.problem_description ?? '')}
+          className="w-full text-left px-3 py-2.5 rounded-md hover:bg-accent transition-colors group flex items-center justify-between gap-2 min-h-[44px]"
+        >
+          <span className="text-sm truncate flex-1">{s.problem_title}</span>
+          {s.score !== null && (
+            <span className={`text-xs font-medium tabular-nums shrink-0 ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {s.score}/100
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function LiveCodingPage() {
   const t = useT()
   const lc = t.liveCoding
   const { language: uiLanguage } = useSettingsStore()
   const submit = useSubmitCode()
   const requestHint = useRequestHint()
+  const generateProblem = useGenerateProblem()
+  const saveProblem = useSaveProblem()
   const { data: sessions } = useCodingSessions()
+  const isMobile = useIsMobile()
 
   // Problem state
   const [problemTitle, setProblemTitle] = useState(SAMPLE_PROBLEMS[0].title)
   const [problemDesc, setProblemDesc] = useState(SAMPLE_PROBLEMS[0].description)
   const [customProblem, setCustomProblem] = useState(false)
+  const [showAIGenerate, setShowAIGenerate] = useState(false)
+  const [showSavedProblems, setShowSavedProblems] = useState(false)
+  const [aiDifficulty, setAIDifficulty] = useState<ProblemDifficulty>('medium')
+  const [aiTopic, setAITopic] = useState('')
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [savedMsg, setSavedMsg] = useState(false)
 
   // Code state
   const [code, setCode] = useState('')
@@ -205,6 +264,30 @@ export default function LiveCodingPage() {
     idlePausesRef.current = 0
   }
 
+  async function handleAIGenerate() {
+    setGenerateError(null)
+    try {
+      const result = await generateProblem.mutateAsync({
+        difficulty: aiDifficulty,
+        topic: aiTopic.trim() || undefined,
+        coding_language: codingLang,
+        ui_language: uiLanguage,
+      })
+      setProblemTitle(result.title)
+      setProblemDesc(result.description)
+      setCustomProblem(false)
+      setShowAIGenerate(false)
+      setCode('')
+      setEvaluation(null)
+      setHint(null)
+      setTimerRunning(false)
+      setTimerStarted(false)
+      setTimeLeft(timerDuration * 60)
+    } catch {
+      setGenerateError(lc.generateError)
+    }
+  }
+
   const handleSubmit = useCallback(async () => {
     if (!code.trim()) return
     stopTimer()
@@ -247,16 +330,98 @@ export default function LiveCodingPage() {
         <div className="space-y-4">
           <div className="border rounded-xl p-4 bg-card space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="font-medium text-sm">{lc.problem}</h2>
-              <button
-                onClick={() => { setCustomProblem(true); setProblemTitle(''); setProblemDesc('') }}
-                className="text-xs text-primary hover:underline"
-              >
-                {lc.customProblem}
-              </button>
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-medium text-sm">{lc.problem}</h2>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => { setShowAIGenerate(v => !v); setCustomProblem(false); setShowSavedProblems(false) }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showAIGenerate ? 'bg-purple-600 text-white border-purple-600' : 'text-purple-600 dark:text-purple-400 hover:bg-muted border-transparent'}`}
+                  >
+                    <Sparkles size={11} />
+                    <span className="hidden sm:inline">{lc.generateProblem}</span>
+                    <span className="sm:hidden">IA</span>
+                  </button>
+                  <button
+                    onClick={() => { setShowSavedProblems(v => !v); setShowAIGenerate(false); setCustomProblem(false) }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showSavedProblems ? 'bg-primary text-primary-foreground border-primary' : 'text-primary hover:bg-muted border-transparent'}`}
+                  >
+                    <BookOpen size={11} />
+                    <span className="hidden sm:inline">{lc.savedProblems}</span>
+                    <span className="sm:hidden">Salvos</span>
+                  </button>
+                  <button
+                    onClick={() => { setCustomProblem(v => !v); setShowAIGenerate(false); setShowSavedProblems(false); if (!customProblem) { setProblemTitle(''); setProblemDesc('') } }}
+                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${customProblem ? 'bg-muted text-foreground border-border' : 'text-muted-foreground hover:bg-muted border-transparent'}`}
+                  >
+                    <span>{lc.customProblem}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {!customProblem ? (
+            {showSavedProblems ? (
+              <SavedProblemsPanel
+                sessions={sessions ?? []}
+                lc={lc}
+                onSelect={(title, desc) => {
+                  setProblemTitle(title)
+                  setProblemDesc(desc)
+                  setCustomProblem(false)
+                  setShowSavedProblems(false)
+                  setCode('')
+                  setEvaluation(null)
+                  setHint(null)
+                  setTimerRunning(false)
+                  setTimerStarted(false)
+                  setTimeLeft(timerDuration * 60)
+                }}
+              />
+            ) : showAIGenerate ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">{lc.difficulty}</label>
+                  <div className="flex gap-1.5">
+                    {(['easy', 'medium', 'hard'] as ProblemDifficulty[]).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setAIDifficulty(d)}
+                        className={`flex-1 text-xs py-1.5 rounded-md border transition-colors ${
+                          aiDifficulty === d
+                            ? d === 'easy' ? 'bg-green-500 text-white border-green-500'
+                              : d === 'medium' ? 'bg-yellow-500 text-white border-yellow-500'
+                              : 'bg-red-500 text-white border-red-500'
+                            : 'hover:bg-accent'
+                        }`}
+                      >
+                        {lc[`difficulty${d.charAt(0).toUpperCase() + d.slice(1)}` as 'difficultyEasy' | 'difficultyMedium' | 'difficultyHard']}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">{lc.topic}</label>
+                  <input
+                    value={aiTopic}
+                    onChange={e => setAITopic(e.target.value)}
+                    placeholder={lc.topicPlaceholder}
+                    className="w-full text-sm border rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                {generateError && (
+                  <p className="text-xs text-destructive">{generateError}</p>
+                )}
+                <button
+                  onClick={handleAIGenerate}
+                  disabled={generateProblem.isPending}
+                  className="w-full flex items-center justify-center gap-2 text-sm bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                >
+                  <Sparkles size={14} />
+                  {generateProblem.isPending ? lc.generating : lc.generateProblem}
+                </button>
+              </div>
+            ) : !customProblem ? (
               <div className="space-y-1">
                 {SAMPLE_PROBLEMS.map((p, i) => (
                   <button
@@ -290,8 +455,25 @@ export default function LiveCodingPage() {
           </div>
 
           {!customProblem && problemDesc && (
-            <div className="border rounded-xl p-4 bg-card">
+            <div className="border rounded-xl p-4 bg-card space-y-3">
               <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{problemDesc}</p>
+              {!timerStarted && (
+                <div className="flex items-center gap-2 pt-1 border-t">
+                  <button
+                    onClick={async () => {
+                      setSavedMsg(false)
+                      await saveProblem.mutateAsync({ problem_title: problemTitle, problem_description: problemDesc, language: codingLang })
+                      setSavedMsg(true)
+                      setTimeout(() => setSavedMsg(false), 3000)
+                    }}
+                    disabled={saveProblem.isPending || savedMsg}
+                    className="text-xs flex items-center gap-1 text-primary hover:underline disabled:opacity-50"
+                  >
+                    <BookOpen size={11} />
+                    {savedMsg ? lc.problemSaved : saveProblem.isPending ? lc.saving : lc.saveProblem}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -348,14 +530,14 @@ export default function LiveCodingPage() {
                   onClick={stopTimer}
                   className="flex items-center gap-2 text-sm border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
                 >
-                  <Square size={14} /> Pause
+                  <Square size={14} /> {lc.pause}
                 </button>
               ) : (
                 <button
                   onClick={() => setTimerRunning(true)}
                   className="flex items-center gap-2 text-sm border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
                 >
-                  <Play size={14} /> Resume
+                  <Play size={14} /> {lc.resume}
                 </button>
               )}
             </div>
@@ -403,21 +585,33 @@ export default function LiveCodingPage() {
               </div>
             )}
 
-            <MonacoEditor
-              height="400px"
-              language={codingLang}
-              value={code}
-              onChange={v => setCode(v ?? '')}
-              theme="vs-dark"
-              options={{
-                fontSize: 14,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                padding: { top: 12 },
-                lineNumbers: 'on',
-                tabSize: 2,
-              }}
-            />
+            {isMobile ? (
+              <textarea
+                value={code}
+                onChange={e => setCode(e.target.value)}
+                placeholder={lc.codePlaceholder}
+                spellCheck={false}
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="w-full h-[400px] bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm p-3 resize-none focus:outline-none"
+              />
+            ) : (
+              <MonacoEditor
+                height="400px"
+                language={codingLang}
+                value={code}
+                onChange={v => setCode(v ?? '')}
+                theme="vs-dark"
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  padding: { top: 12 },
+                  lineNumbers: 'on',
+                  tabSize: 2,
+                }}
+              />
+            )}
           </div>
 
           {/* Evaluation results */}

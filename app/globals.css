@@ -56,3 +56,7 @@
 
 .prose pre { @apply bg-muted rounded-lg p-4 overflow-x-auto; }
 .prose code { @apply bg-muted px-1 py-0.5 rounded text-sm; }
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

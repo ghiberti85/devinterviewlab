@@ -47,7 +47,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 
 ### A cada alteração de código (obrigatório antes do commit)
 ```bash
-npm test              # todos os 164 testes devem passar — zero falhas toleradas
+npm test              # todos os 260 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
 ```
 
@@ -58,8 +58,14 @@ npx tsc --noEmit      # zero erros de tipo
 1. `npm test` — zero falhas
 2. `npx tsc --noEmit` — zero erros
 3. `npm run build` — build limpo
-4. Commit seguindo Conventional Commits em português
-5. Push para o branch correto
+4. **Atualizar toda a documentação do projeto** (obrigatório):
+   - `CONTEXT.md` — arquitetura, schema, estrutura de arquivos, funcionalidades, testes
+   - `CLAUDE.md` — contagem de testes, regras ou restrições que mudaram
+   - `README.md` — features, stack, comandos, cobertura de testes
+5. Commit seguindo Conventional Commits em português
+6. Push para o branch correto
+
+> **Regra de documentação:** toda implementação bem-sucedida deve deixar os três arquivos (`CONTEXT.md`, `CLAUDE.md`, `README.md`) sincronizados com o estado real do projeto. Nunca commitar código sem atualizar a documentação correspondente.
 
 > Atalho: use `/check` para rodar tsc + lint + tests de uma vez.
 

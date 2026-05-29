@@ -211,7 +211,7 @@ export default function QuestionDetailPage({ params }: { params: Promise<{ id: s
           <Brain size={15} /> AI coach
         </Link>
         <Link
-          href="/practice"
+          href="/revisar"
           className="flex items-center gap-2 border px-5 py-2.5 rounded-lg text-sm hover:bg-accent transition-colors whitespace-nowrap"
         >
           <Dumbbell size={15} /> Flashcard

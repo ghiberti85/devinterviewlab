@@ -4,7 +4,8 @@ import { LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageSelector } from '@/components/LanguageSelector'
 import { NavLinks } from '@/components/NavLinks'
-import { MobileMenu } from '@/components/MobileMenu'
+import { BottomNav } from '@/components/BottomNav'
+import { MobileTopBar } from '@/components/MobileTopBar'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -13,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Desktop sidebar — hidden on mobile */}
+      {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 border-r flex-col shrink-0">
         <div className="p-5 border-b">
           <span className="font-bold text-primary text-lg">DevInterviewLab</span>
@@ -36,13 +37,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Mobile top bar + slide drawer */}
-      <MobileMenu />
+      {/* Mobile top bar — logo + back button on sub-pages */}
+      <MobileTopBar />
 
-      {/* Main content — offset by top bar on mobile */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto pt-14 md:pt-0 pb-20 md:pb-0">
         <div className="max-w-6xl mx-auto p-4 md:p-6">{children}</div>
       </main>
+
+      {/* Mobile bottom nav */}
+      <BottomNav />
     </div>
   )
 }

@@ -1,33 +1,56 @@
 # DevInterviewLab
 
-Practice technical interview questions with AI feedback, spaced repetition, and a knowledge graph.
+A personal platform for technical interview practice powered by AI, spaced repetition, and quick-reference topic cards.
+
+**Live:** https://devinterviewlab.vercel.app
 
 ## Stack
-- **Frontend/Backend**: Next.js 15 (App Router)
-- **Database + Auth**: Supabase (PostgreSQL + RLS)
-- **Hosting**: Vercel
-- **AI**: Any OpenAI-compatible API (Groq free, Gemini free, or OpenAI paid)
-- **State**: React Query + Zustand
-- **UI**: Tailwind CSS
-- **Charts**: Recharts
-- **Graph**: React Flow
+
+| Layer | Technology |
+|---|---|
+| Frontend/Backend | Next.js 15 (App Router) |
+| Database + Auth | Supabase (PostgreSQL + RLS) |
+| Hosting | Vercel |
+| AI | Groq `llama-3.3-70b-versatile` (OpenAI-compatible) |
+| State | React Query + Zustand |
+| UI | Tailwind CSS + Radix UI |
+| Charts | Recharts |
+| Graph | React Flow |
+| Editor | Monaco Editor (desktop) / textarea fallback (mobile) |
+| Testing | Vitest (unit) + Playwright (E2E) |
+| Monitoring | Sentry |
+
+## Navigation
+
+The app is organized into 4 hubs — grouped by user intent, not by feature:
+
+| Hub | What's inside |
+|---|---|
+| **Today** (`/dashboard`) | Daily streak, pending flashcards, weak concept, quick actions |
+| **Simulate** (`/simular`) | AI Interview Coach + Live Coding Simulator |
+| **Review** (`/revisar`) | Flashcards (SM-2 + Skip) · Flash Topics · Expandable Concepts + graph link |
+| **My Plan** (`/plano`) | Study Roadmap (CV-only or CV+JD, multi-roadmap selector) · Progress (stats + score cards) |
 
 ## Features
-- ✅ Questions CRUD with markdown, categories, tags, difficulty
-- ✅ Flashcard practice with spaced repetition (SM-2)
-- ✅ AI Interview Coach — evaluates answers, scores, detects gaps
-- ✅ STAR analysis for behavioral questions
-- ✅ Knowledge graph (React Flow) with concept scoring
-- ✅ Analytics dashboard with heatmap and topic radar
 
-> The app works fully without an AI key. Only the Interview Coach feature requires one.
+- ✅ **AI Interview Coach** — answer questions and get dimension-scored feedback (correctness, completeness, clarity, depth) with follow-up and rebuttal rounds
+- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; AI problem generator (difficulty + topic); textarea fallback on mobile
+- ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm, adaptive Easiness Factor, and Skip button
+- ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation; auto-populates flashcards, concepts, and Simulate on generation
+- ✅ **CV Upload + Roadmap** — upload PDF CV (stored, reusable), gap analysis against optional job description + 30/60/90-day roadmap via streaming; multiple saved roadmaps with selector
+- ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
+- ✅ **Evaluation History** — full replay with typed answer and voice transcript side by side
+- ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping; expandable concept cards in Review tab
+- ✅ **Analytics** — activity heatmap, topic radar, weakest concepts (in My Plan → Progress tab)
+- ✅ **PWA** — 4-tab mobile bottom bar, native install, iOS safe-area support; settings (theme/language/logout) via gear icon in top bar
+- ✅ **Internationalization** — full EN and PT-BR support, language switch synced to DB
 
 ## Getting started
 
 ```bash
 npm install
 cp .env.example .env.local
-# fill in your keys (see below)
+# fill in the variables below
 npm run dev
 ```
 
@@ -35,31 +58,37 @@ npm run dev
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://idgpscsnbgszhwvhtedy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your anon key from Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase dashboard>
 
-# AI provider — pick ONE (all free options available):
-
-# Option A: Groq (free tier, fastest — recommended)
-# Get key at: https://console.groq.com
+# Groq (free tier, recommended) — https://console.groq.com
 OPENAI_API_KEY=gsk_...
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_MODEL=llama-3.3-70b-versatile
 
-# Option B: Google Gemini (free tier)
-# Get key at: https://aistudio.google.com
-OPENAI_API_KEY=AIza...
-OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-OPENAI_MODEL=gemini-1.5-flash
-
-# Option C: OpenAI (paid)
-OPENAI_API_KEY=sk-...
-# leave OPENAI_BASE_URL and OPENAI_MODEL unset
+SENTRY_DSN=<optional>
+NEXT_PUBLIC_SENTRY_DSN=<optional>
 ```
 
-## Supabase project
-- **Project ID**: `idgpscsnbgszhwvhtedy`
-- **Region**: sa-east-1
-- DB migration already applied — all tables, RLS, and seed categories are live.
+## Supabase
 
-## Vercel env variables to set
-In Vercel → Settings → Environment Variables, add the same keys above.
+- **Project ID**: `idgpscsnbgszhwvhtedy` · **Region**: `sa-east-1`
+- Migrations live in `supabase/migrations/` — apply in ascending order
+
+## Tests
+
+```bash
+npm test                # 260 unit tests (Vitest)
+npm run test:coverage   # with coverage report
+npx playwright test     # E2E (requires .env.test configured)
+```
+
+Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%** (260 tests)
+
+## Commands
+
+```bash
+npm run dev        # development server
+npm run build      # production build
+npm run lint       # ESLint
+npx tsc --noEmit   # TypeScript check
+```

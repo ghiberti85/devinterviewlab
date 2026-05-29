@@ -11,6 +11,8 @@ export const DAILY_LIMITS: Record<string, number> = {
   'coding-hint': 20,
   'score-card':  15,
   'roadmap':     5,
+  'topic':           30,
+  'topic-translate': 50,
 }
 
 export async function checkRateLimit(endpoint: string): Promise<
