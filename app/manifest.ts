@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'DevInterviewLab',
     short_name: 'DevILab',
     description: 'Practice technical interviews with AI feedback and adaptive learning',
-    start_url: '/dashboard',
+    start_url: '/plano',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#6366f1',

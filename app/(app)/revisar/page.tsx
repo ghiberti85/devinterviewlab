@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronDown, HelpCircle } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -172,14 +172,6 @@ function TopicsTab() {
     <div className="space-y-4">
       <div className="space-y-2">
         <TopicGenerator />
-        <div className="flex justify-end">
-          <Link
-            href="/generate"
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            {t.review.generateQuestions} →
-          </Link>
-        </div>
       </div>
 
       {/* Sync button — only shown when there are existing topics */}
@@ -322,19 +314,6 @@ function ConceptsTab() {
         </div>
       )}
 
-      {/* Link to interactive graph */}
-      {!isLoading && nodes.length > 0 && (
-        <div className="flex justify-center pt-2">
-          <Link
-            href="/concept-graph"
-            className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 hover:underline"
-          >
-            <Network size={12} />
-            {t.review.openGraph}
-            <ChevronRight size={11} />
-          </Link>
-        </div>
-      )}
     </div>
   )
 }

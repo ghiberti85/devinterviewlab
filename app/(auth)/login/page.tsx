@@ -9,7 +9,7 @@ export default async function LoginPage({
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (user) redirect('/dashboard')
+  if (user) redirect('/plano')
 
   const { error, message, redirect: redirectPath } = await searchParams
 

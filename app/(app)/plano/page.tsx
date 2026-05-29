@@ -119,7 +119,7 @@ function RoadmapTab() {
       <RoadmapTimeline
         phases={selected.roadmap.phases ?? []}
         progress={(selected as any).progress ?? []}
-        onPractice={topic => router.push(`/questions?search=${encodeURIComponent(topic)}`)}
+        onPractice={topic => router.push(`/simular?topic=${encodeURIComponent(topic)}`)}
         onIncrementProgress={topic => updateProgress.mutate({ topic_name: topic, increment: 1 })}
       />
     </div>
