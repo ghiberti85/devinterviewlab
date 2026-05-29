@@ -80,14 +80,13 @@ export async function middleware(request: NextRequest) {
 
   // ── Route protection ────────────────────────────────────────────────────────
   const protectedPaths = [
-    "/dashboard",
-    "/questions",
-    "/practice",
-    "/interview",
-    "/generate",
-    "/concept-graph",
+    "/plano",
+    "/revisar",
+    "/simular",
     "/stats",
-    "/voice-test",
+    "/interview",
+    "/live-coding",
+    "/history",
   ];
 
   if (protectedPaths.some((p) => pathname.startsWith(p))) {

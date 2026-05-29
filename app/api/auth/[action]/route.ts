@@ -92,7 +92,7 @@ export async function POST(
 
     resetAttempts(ip);
     logger.info("Sign-in success", { userId: data.user.id });
-    const dest = redirect && redirect.startsWith("/") ? redirect : "/dashboard";
+    const dest = redirect && redirect.startsWith("/") ? redirect : "/plano";
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
@@ -154,7 +154,7 @@ export async function POST(
     }
 
     logger.info("Sign-up success", { userId: data.user.id });
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/plano", request.url));
   }
 
   if (action === "signout") {
@@ -167,7 +167,7 @@ export async function POST(
     if (code) {
       await supabase.auth.exchangeCodeForSession(code);
     }
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/plano", request.url));
   }
 
   return NextResponse.redirect(new URL("/login", request.url));
