@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -18,8 +18,11 @@ import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 // Concepts
 import { useConcepts } from '@/features/concepts/hooks/useConcepts'
 import Link from 'next/link'
+// Roadmap questions
+import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
+import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 
-type Tab = 'topics' | 'flashcards' | 'concepts'
+type Tab = 'topics' | 'flashcards' | 'concepts' | 'questions'
 type FlashMode = 'random' | 'spaced'
 
 function FlashcardsTab() {
@@ -336,14 +339,131 @@ function ConceptsTab() {
   )
 }
 
+function QuestionsTab() {
+  const t = useT()
+  const { data: roadmaps, isLoading: roadmapsLoading } = useRoadmaps()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedTopic, setSelectedTopic] = useState<string>('all')
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  const allRoadmaps = roadmaps ?? []
+  const currentId = selectedId ?? allRoadmaps[0]?.id ?? null
+  const { data: questions, isLoading: qLoading } = useRoadmapQuestions(currentId)
+
+  const topics = questions
+    ? Array.from(new Set(questions.map(q => q.topic_name)))
+    : []
+
+  const filtered = questions
+    ? (selectedTopic === 'all' ? questions : questions.filter(q => q.topic_name === selectedTopic))
+    : []
+
+  function toggleAnswer(id: string) {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  if (roadmapsLoading) {
+    return <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+  }
+
+  if (allRoadmaps.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+        <HelpCircle size={40} className="opacity-30" />
+        <p className="text-sm">{t.review.noRoadmaps}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Roadmap selector */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <select
+          value={currentId ?? ''}
+          onChange={e => { setSelectedId(e.target.value); setSelectedTopic('all') }}
+          className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs"
+        >
+          {allRoadmaps.map(r => (
+            <option key={r.id} value={r.id}>
+              {r.job_title ?? t.roadmap.cvOnly} — {new Date(r.created_at).toLocaleDateString()}
+            </option>
+          ))}
+        </select>
+
+        {/* Topic filter */}
+        {topics.length > 0 && (
+          <select
+            value={selectedTopic}
+            onChange={e => setSelectedTopic(e.target.value)}
+            className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs"
+          >
+            <option value="all">{t.review.allTopics}</option>
+            {topics.map(tp => <option key={tp} value={tp}>{tp}</option>)}
+          </select>
+        )}
+      </div>
+
+      {qLoading && (
+        <div className="flex justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {!qLoading && filtered.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+          <HelpCircle size={40} className="opacity-30" />
+          <p className="text-sm text-center">{t.roadmap.noQuestions}</p>
+        </div>
+      )}
+
+      {!qLoading && filtered.length > 0 && (
+        <div className="space-y-3">
+          {filtered.map(q => {
+            const open = expandedIds.has(q.id)
+            return (
+              <div key={q.id} className="border rounded-xl p-4 bg-card space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">{q.phase_name}</span>
+                      <span className="text-[10px] text-muted-foreground">{q.topic_name}</span>
+                    </div>
+                    <p className="text-sm font-medium leading-snug">{q.question}</p>
+                  </div>
+                  <button
+                    onClick={() => toggleAnswer(q.id)}
+                    className="shrink-0 text-xs text-primary hover:underline mt-1"
+                  >
+                    {open ? t.review.hideAnswer : t.review.showAnswer}
+                  </button>
+                </div>
+                {open && (
+                  <div className="text-sm text-muted-foreground bg-muted/40 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
+                    {q.answer}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function RevisarPage() {
   const t = useT()
   const [tab, setTab] = useState<Tab>('topics')
 
   const tabs = [
-    { id: 'topics'     as Tab, icon: BookMarked, label: t.review.topics },
-    { id: 'flashcards' as Tab, icon: Layers,     label: t.review.flashcards },
-    { id: 'concepts'   as Tab, icon: Network,    label: t.review.concepts },
+    { id: 'topics'     as Tab, icon: BookMarked,  label: t.review.topicsTab },
+    { id: 'questions'  as Tab, icon: HelpCircle,  label: t.review.questionsTab },
+    { id: 'concepts'   as Tab, icon: Network,     label: t.review.conceptsTab },
   ]
 
   return (
@@ -371,9 +491,9 @@ export default function RevisarPage() {
         ))}
       </div>
 
-      {tab === 'topics'     && <TopicsTab />}
-      {tab === 'flashcards' && <FlashcardsTab />}
-      {tab === 'concepts'   && <ConceptsTab />}
+      {tab === 'topics'    && <TopicsTab />}
+      {tab === 'questions' && <QuestionsTab />}
+      {tab === 'concepts'  && <ConceptsTab />}
     </div>
   )
 }
