@@ -7,7 +7,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { LanguageSelector } from './LanguageSelector'
 import { useT } from '@/lib/i18n/useT'
 
-const HUB_ROUTES = new Set(['/dashboard', '/simular', '/revisar', '/plano'])
+const HUB_ROUTES = new Set(['/plano', '/simular', '/revisar', '/stats'])
 
 const PARENT_ROUTE: Record<string, string> = {
   '/live-coding':    '/simular',
@@ -16,7 +16,9 @@ const PARENT_ROUTE: Record<string, string> = {
   '/generate':       '/revisar',
   '/score-cards':    '/plano',
   '/concept-graph':  '/revisar',
-  '/questions':      '/dashboard',
+  '/questions':      '/plano',
+  '/dashboard':      '/plano',
+  '/roadmap':        '/plano',
 }
 
 function getParentRoute(pathname: string): string | null {

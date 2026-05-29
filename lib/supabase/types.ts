@@ -178,6 +178,18 @@ export interface StudyRoadmap {
   updated_at: string
   progress?: RoadmapTopicProgress[]
 }
+export interface RoadmapQuestion {
+  id: string
+  roadmap_id: string
+  user_id: string
+  phase_name: string
+  topic_name: string
+  question: string
+  answer: string
+  question_order: number
+  created_at: string
+}
+
 export interface RoadmapTopicProgress {
   id: string
   roadmap_id: string

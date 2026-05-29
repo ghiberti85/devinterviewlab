@@ -453,6 +453,51 @@ export const aiService = {
     }
   },
 
+  async generateRoadmapQuestions(opts: {
+    topicName: string
+    phaseName: string
+    language?: string
+  }): Promise<Array<{ question: string; answer: string }>> {
+    if (!hasApiKey()) return []
+    const openai = getClient()
+    const { topicName, phaseName, language = 'en' } = opts
+    const langLabel = language === 'pt' ? 'Portuguese (Brazilian)' : 'English'
+
+    const systemPrompt = `You are a technical interview coach. Generate exactly 5 interview questions with detailed answers. Return only valid JSON, no markdown.`
+
+    const userPrompt = `Generate exactly 5 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
+
+Return a JSON object with this exact format:
+{
+  "questions": [
+    {
+      "question": "...",
+      "answer": "..."
+    }
+  ]
+}
+
+Requirements:
+- Questions must be realistic interview questions
+- Answers must be detailed (150-300 words each), demonstrating mastery
+- Cover different aspects of the topic
+- Language: ${langLabel}`
+
+    const res = await openai.chat.completions.create({
+      model: getModel(),
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    })
+
+    const raw = safeParseJSON<{ questions: Array<{ question: string; answer: string }> }>(
+      res.choices[0].message.content ?? '{}'
+    )
+    return raw.questions ?? []
+  },
+
   async analyzeAndGenerateRoadmap(opts: {
     cvText?: string
     jobDescription: string

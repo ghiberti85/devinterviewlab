@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Swords, Layers, Map } from 'lucide-react'
+import { Map, Layers, Swords, BarChart2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { cn } from '@/lib/utils'
 
@@ -11,10 +11,10 @@ export function NavLinks() {
   const pathname = usePathname()
 
   const NAV = [
-    { href: '/dashboard', icon: LayoutDashboard, label: t.nav.today },
-    { href: '/plano',     icon: Map,              label: t.nav.plan },
-    { href: '/revisar',   icon: Layers,           label: t.nav.review },
-    { href: '/simular',   icon: Swords,          label: t.nav.simulate },
+    { href: '/plano',   icon: Map,       label: t.nav.plan },
+    { href: '/revisar', icon: Layers,    label: t.nav.review },
+    { href: '/simular', icon: Swords,    label: t.nav.simulate },
+    { href: '/stats',   icon: BarChart2, label: t.nav.stats },
   ]
 
   return (

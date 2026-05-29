@@ -8,6 +8,7 @@ import { Map, BarChart2 } from 'lucide-react'
 // Roadmap
 import { useRouter } from 'next/navigation'
 import { useRoadmaps, useUpdateTopicProgress } from '@/features/roadmaps/hooks/useRoadmaps'
+import { useGenerateRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
 import { GapAnalysisCard } from '@/features/roadmaps/components/GapAnalysisCard'
 import { RoadmapTimeline } from '@/features/roadmaps/components/RoadmapTimeline'
@@ -34,10 +35,13 @@ function RoadmapTab() {
   const { data: roadmaps, isLoading } = useRoadmaps()
   const [showSetup, setShowSetup] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [genError, setGenError] = useState<string | null>(null)
+  const [genSuccess, setGenSuccess] = useState<string | null>(null)
 
   const allRoadmaps = roadmaps ?? []
   const selected = allRoadmaps.find(r => r.id === selectedId) ?? allRoadmaps[0] ?? null
   const updateProgress = useUpdateTopicProgress(selected?.id ?? '')
+  const generateQuestions = useGenerateRoadmapQuestions()
 
   function handleCreated(roadmap: StudyRoadmap) {
     queryClient.setQueryData<StudyRoadmap[]>(['roadmaps'], old => [roadmap, ...(old ?? [])])
@@ -83,10 +87,31 @@ function RoadmapTab() {
             {selected.job_title ?? t.roadmap.cvOnly}
           </span>
         )}
-        <button onClick={() => setShowSetup(true)} className="text-xs text-primary hover:underline shrink-0">
-          {t.roadmap.newRoadmap}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={async () => {
+              if (!selected) return
+              setGenError(null)
+              setGenSuccess(null)
+              try {
+                const result = await generateQuestions.mutateAsync(selected.id)
+                setGenSuccess(t.roadmap.questionsGenerated(result.count))
+              } catch {
+                setGenError(t.roadmap.questionsGenerateError)
+              }
+            }}
+            disabled={generateQuestions.isPending}
+            className="text-xs text-primary hover:underline disabled:opacity-50"
+          >
+            {generateQuestions.isPending ? t.roadmap.generatingQuestions : t.roadmap.generateQuestions}
+          </button>
+          <button onClick={() => setShowSetup(true)} className="text-xs text-muted-foreground hover:underline">
+            {t.roadmap.newRoadmap}
+          </button>
+        </div>
       </div>
+      {genError && <p className="text-xs text-red-500">{genError}</p>}
+      {genSuccess && <p className="text-xs text-green-600">{genSuccess}</p>}
       <GapAnalysisCard
         gap_analysis={selected.gap_analysis}
         job_title={selected.job_title}
