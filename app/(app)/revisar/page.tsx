@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronDown, HelpCircle } from 'lucide-react'
+import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle, Trash2, BookOpen, Brain } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -437,11 +437,11 @@ function QuestionsTab() {
 
 export default function RevisarPage() {
   const t = useT()
-  const [tab, setTab] = useState<Tab>('topics')
+  const [tab, setTab] = useState<Tab>('questions')
 
   const tabs = [
-    { id: 'topics'     as Tab, icon: BookMarked,  label: t.review.topicsTab },
     { id: 'questions'  as Tab, icon: HelpCircle,  label: t.review.questionsTab },
+    { id: 'topics'     as Tab, icon: BookMarked,  label: t.review.topicsTab },
     { id: 'concepts'   as Tab, icon: Network,     label: t.review.conceptsTab },
   ]
 
