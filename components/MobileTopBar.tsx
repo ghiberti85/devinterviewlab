@@ -10,15 +10,9 @@ import { useT } from '@/lib/i18n/useT'
 const HUB_ROUTES = new Set(['/plano', '/simular', '/revisar', '/stats'])
 
 const PARENT_ROUTE: Record<string, string> = {
-  '/live-coding':    '/simular',
-  '/interview':      '/simular',
-  '/history':        '/simular',
-  '/generate':       '/revisar',
-  '/score-cards':    '/plano',
-  '/concept-graph':  '/revisar',
-  '/questions':      '/plano',
-  '/dashboard':      '/plano',
-  '/roadmap':        '/plano',
+  '/live-coding': '/simular',
+  '/interview':   '/simular',
+  '/history':     '/simular',
 }
 
 function getParentRoute(pathname: string): string | null {
