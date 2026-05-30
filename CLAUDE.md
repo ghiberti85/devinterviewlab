@@ -102,6 +102,33 @@ ci: adicionar GitHub Actions para TypeScript e testes
 
 ---
 
+## Regra de idioma — obrigatória em toda a UI
+
+> **O app tem um idioma ativo (EN ou PT) lido via `useSettingsStore().language`.
+> Todo conteúdo exibido ao usuário DEVE estar no idioma ativo.
+> Nunca exibir conteúdo misto (parte em EN, parte em PT) na mesma tela.**
+
+Aplicar em todo lugar que exibe dados do banco com campo `language`:
+
+```typescript
+const { language } = useSettingsStore()
+
+// Questões de roadmap
+const filtered = questions.filter(q => q.language === language)
+
+// Conceitos
+const nodes = allNodes.filter(n => !n.language || n.language === language)
+
+// Tópicos — já tratado via useTopics(language) que agrupa em pares EN/PT
+```
+
+**Checklist ao criar qualquer componente que exibe dados com idioma:**
+- [ ] Busca ou filtra por `language` antes de renderizar
+- [ ] O dropdown/filtro de tópicos também filtra por idioma (para não mostrar tópicos sem questões no idioma atual)
+- [ ] Contadores e estatísticas contam apenas itens no idioma atual
+
+---
+
 ## Regras de código
 
 ### TypeScript

@@ -40,9 +40,12 @@ function RoadmapPracticeSection() {
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
   const { data: questions } = useRoadmapQuestions(currentId)
 
-  const topics = questions ? Array.from(new Set(questions.map(q => q.topic_name))) : []
+  const topics = questions
+    ? Array.from(new Set(questions.filter(q => q.language === language).map(q => q.topic_name)))
+    : []
   const filtered = questions
     ? (selectedTopic === 'all' ? questions : questions.filter(q => q.topic_name === selectedTopic))
+        .filter(q => q.language === language)
     : []
 
   async function handleSubmitAnswer() {

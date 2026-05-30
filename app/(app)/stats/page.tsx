@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { BarChart2, TrendingUp, BookOpen, CheckCircle2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
+import { useSettingsStore } from '@/store/settings.store'
 import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
@@ -27,21 +28,26 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
 
 function RoadmapStats({ roadmapId }: { roadmapId: string }) {
   const t = useT()
+  const { language } = useSettingsStore()
   const { data: questions, isLoading } = useRoadmapQuestions(roadmapId)
 
   if (isLoading) {
     return <div className="h-24 animate-pulse bg-muted rounded-xl" />
   }
 
-  const total = questions?.length ?? 0
+  // Count only questions in the current language
+  const langQuestions = (questions ?? []).filter(q => q.language === language)
+  const total = langQuestions.length
 
-  // Group by topic to show breakdown
   const byTopic = new Map<string, number>()
-  questions?.forEach(q => {
+  langQuestions.forEach(q => {
     byTopic.set(q.topic_name, (byTopic.get(q.topic_name) ?? 0) + 1)
   })
 
   const topicData = Array.from(byTopic.entries()).map(([name, count]) => ({ name, count }))
+  const maxNameLen = topicData.reduce((m, d) => Math.max(m, d.name.length), 0)
+  // Clamp YAxis width: 8px per char, min 80, max 160
+  const yAxisWidth = Math.min(160, Math.max(80, maxNameLen * 7))
 
   return (
     <div className="space-y-4">
@@ -50,13 +56,19 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
       </div>
 
       {topicData.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card">
+        <div className="border rounded-xl p-4 bg-card overflow-hidden">
           <h3 className="text-sm font-medium mb-4">{t.stats.roadmapProgress}</h3>
-          <ResponsiveContainer width="100%" height={Math.max(160, topicData.length * 32)}>
-            <BarChart data={topicData} layout="vertical" margin={{ left: 8 }}>
+          <ResponsiveContainer width="100%" height={Math.max(160, topicData.length * 36)}>
+            <BarChart data={topicData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
+              <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={yAxisWidth}
+                tick={{ fontSize: 10 }}
+                tickFormatter={(v: string) => v.length > 20 ? v.slice(0, 18) + '…' : v}
+              />
               <Tooltip />
               <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                 {topicData.map((_, i) => (
@@ -81,7 +93,7 @@ export default function StatsPage() {
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl w-full min-w-0">
       <div>
         <h1 className="text-xl font-semibold">{t.stats.title}</h1>
       </div>
