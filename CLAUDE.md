@@ -1,7 +1,13 @@
 # CLAUDE.md — DevInterviewLab
 
 Guia operacional para o Claude Code neste repositório.
-Leia o `CONTEXT.md` para arquitetura completa, schema do banco e decisões técnicas.
+
+| Documento | Conteúdo |
+|---|---|
+| `CONTEXT.md` | Arquitetura completa, schema do banco, estrutura de arquivos |
+| `DECISIONS.md` | Por que cada decisão técnica foi tomada — **leia antes de reverter algo** |
+| `KNOWN_ISSUES.md` | Gotchas, armadilhas e workarounds ativos — **leia antes de "corrigir" algo** |
+| `PROMPTS.md` | Catálogo de todos os prompts de IA: input, output, token budget, restrições |
 
 ---
 
