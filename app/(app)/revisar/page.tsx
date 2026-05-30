@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle, Trash2, BookOpen, Brain } from 'lucide-react'
+import { BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronDown, HelpCircle, BookOpen, Brain } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -12,15 +12,15 @@ import { useSessionStore } from '@/store/session.store'
 import type { SessionType } from '@/lib/supabase/types'
 
 // Flash Topics
-import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
+import { useTopics, useGenerateTopic, useTranslateTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 // Concepts
-import { useConcepts, useDeleteConcept, useBulkDeleteConcepts } from '@/features/concepts/hooks/useConcepts'
+import { useConcepts, useBulkDeleteConcepts } from '@/features/concepts/hooks/useConcepts'
 import Link from 'next/link'
 // Roadmap questions
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
-import { useRoadmapQuestions, useDeleteRoadmapQuestion, useGenerateTopicQuestions, useBulkDeleteRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useRoadmapQuestions, useGenerateTopicQuestions, useBulkDeleteRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { useCreateConcept } from '@/features/concepts/hooks/useConcepts'
 
 type Tab = 'topics' | 'flashcards' | 'concepts' | 'questions'
@@ -157,7 +157,6 @@ function TopicsTab() {
   const { language } = useSettingsStore()
   const { data: pairs, isLoading } = useTopics(language as string)
   const syncTopics = useSyncTopics()
-  const deleteTopic = useDeleteTopic()
   const bulkDelete = useBulkDeleteTopics()
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
@@ -288,19 +287,6 @@ function TopicsTab() {
                 </div>
               )}
               <TopicCard pair={pair} />
-              {!selectMode && (
-                <button
-                  onClick={() => {
-                    const id = pair.current?.id ?? pair.other?.id
-                    if (id) deleteTopic.mutate({ id })
-                  }}
-                  disabled={deleteTopic.isPending}
-                  title={t.review.deleteTopic}
-                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 border opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:border-red-300 transition-all disabled:opacity-40"
-                >
-                  <Trash2 size={12} />
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -313,7 +299,6 @@ function ConceptsTab() {
   const t = useT()
   const { language } = useSettingsStore()
   const { data, isLoading } = useConcepts()
-  const deleteConcept = useDeleteConcept()
   const bulkDelete = useBulkDeleteConcepts()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [selectMode, setSelectMode] = useState(false)
@@ -479,16 +464,6 @@ function ConceptsTab() {
                       <ChevronDown size={14} className={`shrink-0 text-muted-foreground transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`} />
                     )}
                   </button>
-                  {!selectMode && (
-                    <button
-                      onClick={() => deleteConcept.mutate(root.id)}
-                      disabled={deleteConcept.isPending}
-                      title={t.review.deleteConcept}
-                      className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 shrink-0"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
                 </div>
 
                 {/* Expanded description */}
@@ -506,16 +481,6 @@ function ConceptsTab() {
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${scoreColor(child.score)}`} />
                         {child.name}
-                        {!selectMode && (
-                          <button
-                            onClick={e => { e.stopPropagation(); deleteConcept.mutate(child.id) }}
-                            disabled={deleteConcept.isPending}
-                            title={t.review.deleteConcept}
-                            className="ml-0.5 opacity-0 group-hover/child:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
-                          >
-                            <Trash2 size={9} />
-                          </button>
-                        )}
                       </span>
                     ))}
                   </div>
@@ -544,7 +509,6 @@ function QuestionsTab() {
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedId ?? allRoadmaps[0]?.id ?? null
   const { data: questions, isLoading: qLoading } = useRoadmapQuestions(currentId)
-  const deleteQuestion = useDeleteRoadmapQuestion(currentId ?? '')
   const bulkDelete = useBulkDeleteRoadmapQuestions(currentId ?? '')
   const generateMore = useGenerateTopicQuestions(currentId ?? '')
   const generateTopic = useGenerateTopic()
@@ -609,15 +573,6 @@ function QuestionsTab() {
 
   function setAction(id: string, state: string) {
     setActionStates(prev => ({ ...prev, [id]: state }))
-  }
-
-  async function handleDelete(questionId: string) {
-    setAction(questionId, 'deleting')
-    try {
-      await deleteQuestion.mutateAsync(questionId)
-    } finally {
-      setAction(questionId, '')
-    }
   }
 
   async function handleGenerateTopic(q: { id: string; topic_name: string; answer: string }) {
@@ -764,7 +719,6 @@ function QuestionsTab() {
         <div className="space-y-3">
           {filtered.map(q => {
             const open = expandedIds.has(q.id)
-            const deleting = actionStates[q.id] === 'deleting'
             const topicLoading = actionStates[q.id + '-topic'] === 'loading'
             const topicDone = actionStates[q.id + '-topic'] === 'done'
             const conceptLoading = actionStates[q.id + '-concept'] === 'loading'
@@ -793,22 +747,12 @@ function QuestionsTab() {
                     <p className="text-sm font-medium leading-snug">{q.question}</p>
                   </div>
                   {!selectMode && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => toggleAnswer(q.id)}
-                        className="text-xs text-primary hover:underline mt-1"
-                      >
-                        {open ? t.review.hideAnswer : t.review.showAnswer}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(q.id)}
-                        disabled={deleting}
-                        title={t.review.deleteQuestion}
-                        className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40"
-                      >
-                        {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => toggleAnswer(q.id)}
+                      className="text-xs text-primary hover:underline mt-1 shrink-0"
+                    >
+                      {open ? t.review.hideAnswer : t.review.showAnswer}
+                    </button>
                   )}
                 </div>
                 {open && !selectMode && (
