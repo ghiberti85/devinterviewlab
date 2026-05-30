@@ -550,6 +550,18 @@ function QuestionsTab() {
   const generateTopic = useGenerateTopic()
   const createConcept = useCreateConcept()
 
+  // Persistent indicators: check existing topics and concepts by topic_name
+  const { data: topicPairs } = useTopics(language as string)
+  const { data: conceptData } = useConcepts()
+  const existingTopicNames = new Set(
+    (topicPairs ?? []).map(p => p.current?.title?.toLowerCase()).filter(Boolean) as string[]
+  )
+  const existingConceptNames = new Set(
+    (conceptData?.nodes ?? [])
+      .filter(n => !n.language || n.language === language)
+      .map(n => n.name.toLowerCase())
+  )
+
   const topics = questions
     ? Array.from(new Set(questions.map(q => q.topic_name)))
     : []
@@ -806,29 +818,37 @@ function QuestionsTab() {
                 )}
                 {/* Actions: generate topic / concept */}
                 {!selectMode && (
-                  <div className="flex gap-2 pt-1 border-t">
-                    <button
-                      onClick={() => handleGenerateTopic(q)}
-                      disabled={topicLoading || topicDone}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                    >
-                      {topicLoading
-                        ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                        : topicDone
-                          ? <span className="text-green-600">✓ {t.review.generateTopicFromQ}</span>
+                  <div className="flex gap-2 pt-1 border-t flex-wrap">
+                    {existingTopicNames.has(q.topic_name.toLowerCase()) ? (
+                      <span className="flex items-center gap-1 text-[10px] text-green-600">
+                        <CheckCircle size={10} />{t.review.topicAlreadyGenerated}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleGenerateTopic(q)}
+                        disabled={topicLoading}
+                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                      >
+                        {topicLoading
+                          ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
                           : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
-                    </button>
-                    <button
-                      onClick={() => handleGenerateConcept(q)}
-                      disabled={conceptLoading || conceptDone}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                    >
-                      {conceptLoading
-                        ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                        : conceptDone
-                          ? <span className="text-green-600">✓ {t.review.generateConceptFromQ}</span>
+                      </button>
+                    )}
+                    {existingConceptNames.has(q.topic_name.toLowerCase()) ? (
+                      <span className="flex items-center gap-1 text-[10px] text-green-600">
+                        <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleGenerateConcept(q)}
+                        disabled={conceptLoading}
+                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                      >
+                        {conceptLoading
+                          ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
                           : <><Brain size={10} />{t.review.generateConceptFromQ}</>}
-                    </button>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
