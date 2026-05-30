@@ -15,16 +15,46 @@ export function useRoadmapQuestions(roadmapId: string | null) {
   })
 }
 
-export function useGenerateRoadmapQuestions() {
+export function useDeleteRoadmapQuestion(roadmapId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (roadmapId: string) => {
-      const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, { method: 'POST' })
+    mutationFn: async (questionId: string) => {
+      const res = await fetch(`/api/roadmaps/${roadmapId}/questions/${questionId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete question')
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
+  })
+}
+
+export function useClearRoadmapQuestions(roadmapId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to clear questions')
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
+  })
+}
+
+// Generates questions for one topic. existingQuestions avoids repeats.
+export function useGenerateTopicQuestions(roadmapId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (payload: {
+      topicName: string
+      phaseName: string
+      language?: string
+      existingQuestions?: string[]
+    }) => {
+      const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
       if (!res.ok) throw new Error('Failed to generate questions')
       return res.json() as Promise<{ count: number }>
     },
-    onSuccess: (_, roadmapId) => {
-      qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] })
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
   })
 }

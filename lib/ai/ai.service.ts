@@ -457,13 +457,18 @@ export const aiService = {
     topicName: string
     phaseName: string
     language?: string
+    existingQuestions?: string[]
   }): Promise<Array<{ question: string; answer: string }>> {
     if (!hasApiKey()) return []
     const openai = getClient()
-    const { topicName, phaseName, language = 'en' } = opts
+    const { topicName, phaseName, language = 'en', existingQuestions = [] } = opts
     const langLabel = language === 'pt' ? 'Portuguese (Brazilian)' : 'English'
 
     const systemPrompt = `You are a technical interview coach. Generate exactly 5 interview questions with detailed answers. Return only valid JSON, no markdown.`
+
+    const avoidBlock = existingQuestions.length > 0
+      ? `\n\nDo NOT repeat or rephrase these already-existing questions:\n${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+      : ''
 
     const userPrompt = `Generate exactly 5 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
 
@@ -481,7 +486,7 @@ Requirements:
 - Questions must be realistic interview questions
 - Answers must be detailed (150-300 words each), demonstrating mastery
 - Cover different aspects of the topic
-- Language: ${langLabel}`
+- Language: ${langLabel}${avoidBlock}`
 
     const res = await openai.chat.completions.create({
       model: getModel(),
