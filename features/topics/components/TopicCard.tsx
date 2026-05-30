@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, Trash2, Code2, Zap, Languages, Loader2 } from 'lucide-react'
+import { ChevronDown, Code2, Zap, Languages, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TopicPair } from '@/lib/supabase/types'
-import { useDeleteTopic, useTranslateTopic } from '../hooks/useTopics'
+import { useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 
@@ -12,7 +12,6 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
   const { language } = useSettingsStore()
   const [openQA, setOpenQA] = useState<number | null>(null)
   const [showCode, setShowCode] = useState(false)
-  const deleteTopic = useDeleteTopic()
   const translateTopic = useTranslateTopic()
 
   // Show the current-language version; fall back to the other language
@@ -31,12 +30,6 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
 
   function handleTranslate() {
     translateTopic.mutate({ id: sourceToTranslate.id, currentLanguage: language as string })
-  }
-
-  function handleDelete() {
-    // Delete only the current-language version; keep the other language
-    const toDelete = pair.current ?? pair.other
-    if (toDelete) deleteTopic.mutate({ id: toDelete.id })
   }
 
   return (
@@ -80,13 +73,6 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
             </button>
           )}
 
-          <button
-            onClick={handleDelete}
-            className="text-muted-foreground hover:text-destructive transition-colors p-2 rounded min-w-[32px] min-h-[32px] flex items-center justify-center"
-            title={t.topics.delete}
-          >
-            <Trash2 size={14} />
-          </button>
         </div>
       </div>
 
