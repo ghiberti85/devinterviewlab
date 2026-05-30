@@ -50,13 +50,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: 201 });
   }
 
-  // Creating a concept — return existing if same name already exists for user
+  // Creating a concept — return existing if same name + language already exists for user
   if (body.name) {
+    const lang = body.language ?? 'en'
     const { data: existing } = await supabase
       .from("concepts")
       .select("*")
       .eq("user_id", user.id)
       .ilike("name", body.name)
+      .eq("language", lang)
       .limit(1)
       .single();
     if (existing) return NextResponse.json(existing, { status: 200 });
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("concepts")
-    .insert({ ...body, user_id: user.id })
+    .insert({ ...body, user_id: user.id, language: body.language ?? 'en' })
     .select()
     .single();
 

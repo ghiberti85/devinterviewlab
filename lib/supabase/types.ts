@@ -44,6 +44,8 @@ export interface Concept {
   name: string
   description: string | null
   score: number
+  language: string
+  translated_from: string | null
   created_at: string
 }
 
@@ -187,6 +189,7 @@ export interface RoadmapQuestion {
   question: string
   answer: string
   question_order: number
+  language: string
   created_at: string
 }
 

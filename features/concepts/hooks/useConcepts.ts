@@ -15,7 +15,7 @@ export function useConcepts() {
 export function useCreateConcept() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (body: { name: string; description?: string }) => {
+    mutationFn: async (body: { name: string; description?: string; language?: string }) => {
       const res = await fetch('/api/concepts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

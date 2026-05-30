@@ -229,16 +229,22 @@ function TopicsTab() {
 
 function ConceptsTab() {
   const t = useT()
+  const { language } = useSettingsStore()
   const { data, isLoading } = useConcepts()
   const deleteConcept = useDeleteConcept()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  const nodes = data?.nodes ?? []
+  const allNodes = data?.nodes ?? []
   const edges = data?.edges ?? []
 
+  // Filter nodes by current language (fall back to showing all if no language field)
+  const nodes = allNodes.filter(n => !n.language || n.language === language)
+
   // Group child concepts by their root (part_of target)
-  const rootIds = new Set(edges.filter(e => e.relation_type === 'part_of').map(e => e.target_id))
+  const nodeIds = new Set(nodes.map(n => n.id))
+  const rootIds = new Set(edges.filter(e => e.relation_type === 'part_of' && nodeIds.has(e.target_id)).map(e => e.target_id))
   const childOf = new Map<string, string>() // childId → parentId
-  edges.filter(e => e.relation_type === 'part_of').forEach(e => childOf.set(e.source_id, e.target_id))
+  edges.filter(e => e.relation_type === 'part_of' && nodeIds.has(e.source_id) && nodeIds.has(e.target_id))
+    .forEach(e => childOf.set(e.source_id, e.target_id))
 
   // Root nodes = those that are targets of part_of, or have no parent
   const roots = nodes.filter(n => rootIds.has(n.id) || !childOf.has(n.id))
@@ -377,6 +383,7 @@ function QuestionsTab() {
 
   const filtered = questions
     ? (selectedTopic === 'all' ? questions : questions.filter(q => q.topic_name === selectedTopic))
+        .filter(q => q.language === language)
     : []
 
   function toggleAnswer(id: string) {
@@ -421,6 +428,7 @@ function QuestionsTab() {
       await createConcept.mutateAsync({
         name: q.topic_name,
         description: q.answer.slice(0, 300),
+        language: language as string,
       })
       setAction(q.id + '-concept', 'done')
       setTimeout(() => setAction(q.id + '-concept', ''), 2000)

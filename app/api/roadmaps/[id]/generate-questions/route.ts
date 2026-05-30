@@ -127,13 +127,14 @@ export async function POST(
     return NextResponse.json({ count: 0 })
   }
 
-  // DB-level dedup: filter out questions already stored for this roadmap+topic
+  // DB-level dedup: filter out questions already stored for this roadmap+topic+language
   const { data: storedQs } = await supabase
     .from('roadmap_questions')
     .select('question')
     .eq('roadmap_id', id)
     .eq('user_id', user.id)
     .eq('topic_name', topicName)
+    .eq('language', language)
 
   const storedTexts = new Set((storedQs ?? []).map((q: { question: string }) => q.question.toLowerCase()))
   const dedupedPairs = pairs.filter(p => !storedTexts.has(p.question.toLowerCase()))
@@ -150,6 +151,7 @@ export async function POST(
     question: pair.question,
     answer: pair.answer,
     question_order: questionOrder++,
+    language,
   }))
 
   const { error: insertError } = await supabase

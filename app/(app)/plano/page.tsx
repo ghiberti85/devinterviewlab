@@ -97,7 +97,6 @@ function RoadmapTab() {
               setGenError(null)
               setGenSuccess(null)
               setGenProgress(null)
-              const { language } = useSettingsStore.getState()
               const phases = selected.roadmap?.phases ?? []
               const allTopics = phases.flatMap(p => p.topics.map(t => ({ topicName: t.name, phaseName: p.label })))
               if (allTopics.length === 0) return
@@ -105,14 +104,20 @@ function RoadmapTab() {
                 // Clear all existing questions first
                 await clearQuestions.mutateAsync()
                 let totalGenerated = 0
-                for (let i = 0; i < allTopics.length; i++) {
-                  setGenProgress({ current: i, total: allTopics.length })
-                  const result = await generateTopicQuestions.mutateAsync({
-                    topicName: allTopics[i].topicName,
-                    phaseName: allTopics[i].phaseName,
-                    language: language as string,
-                  })
-                  totalGenerated += result.count
+                const languages = ['en', 'pt']
+                const total = allTopics.length * languages.length
+                let current = 0
+                for (const lang of languages) {
+                  for (const topic of allTopics) {
+                    setGenProgress({ current, total })
+                    const result = await generateTopicQuestions.mutateAsync({
+                      topicName: topic.topicName,
+                      phaseName: topic.phaseName,
+                      language: lang,
+                    })
+                    totalGenerated += result.count
+                    current++
+                  }
                 }
                 setGenProgress(null)
                 setGenSuccess(t.roadmap.questionsGenerated(totalGenerated))

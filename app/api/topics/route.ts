@@ -35,9 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'topicName is required' }, { status: 400 })
   }
 
+  const targetLanguage = language === 'en' ? 'pt' : 'en'
   const start = Date.now()
+
   try {
-    // Check for existing topic with same title + language to avoid duplicates
+    // Return existing if same title + language already exists
     const { data: existing } = await supabase
       .from('topics')
       .select('*')
@@ -51,11 +53,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existing, { status: 200 })
     }
 
-    const generated = await aiService.generateTopic({
-      topicName: topicName.trim(),
-      difficulty,
-      language,
-    })
+    // Generate in the requested language
+    const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language })
 
     const { data, error } = await supabase
       .from('topics')
@@ -77,80 +76,120 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    // Auto-create a Question for each quick_qa pair — deduplicate by title
-    if (generated.quick_qa?.length) {
-      const { data: existingQs } = await supabase
-        .from('questions')
-        .select('title')
-        .eq('user_id', user.id)
-      const existingTitles = new Set((existingQs ?? []).map((q: { title: string }) => q.title.toLowerCase()))
+    // Auto-translate to the other language (background — non-blocking for the response)
+    type TranslatedTopic = { title: string; summary: string; when_to_use: string; quick_qa: { q: string; a: string }[]; tags: string[] }
+    let translatedData: TranslatedTopic | null = null
+    try {
+      const raw = await aiService.translateTopic({
+        topic: {
+          title: generated.title,
+          summary: generated.summary,
+          when_to_use: generated.when_to_use ?? '',
+          quick_qa: generated.quick_qa,
+          tags: generated.tags,
+        },
+        targetLanguage,
+      })
+      translatedData = raw as TranslatedTopic
 
-      const questions = generated.quick_qa
-        .filter(({ q }) => !existingTitles.has(q.toLowerCase()))
-        .map(({ q, a }) => ({
-          user_id: user.id,
-          category_id: categoryId ?? null,
-          title: q,
-          body: null,
-          ideal_answer: a,
-          difficulty,
-          language,
-          is_behavioral: false,
-        }))
-      if (questions.length) {
-        const { error: qErr } = await supabase.from('questions').insert(questions)
-        if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
+      await supabase.from('topics').insert({
+        user_id: user!.id,
+        category_id: categoryId ?? null,
+        title: translatedData.title,
+        difficulty,
+        summary: translatedData.summary,
+        when_to_use: translatedData.when_to_use,
+        code_snippet: generated.code_snippet,
+        quick_qa: translatedData.quick_qa,
+        tags: translatedData.tags,
+        language: targetLanguage,
+        translated_from: data.id,
+      })
+    } catch (translateErr) {
+      logger.warn('Failed to auto-translate topic', { userId: user!.id, topicId: data.id, error: String(translateErr) })
+    }
+
+    // Auto-create practice questions for BOTH languages — deduplicate by title
+    const { data: existingQs } = await supabase.from('questions').select('title').eq('user_id', user.id)
+    const existingTitles = new Set((existingQs ?? []).map((q: { title: string }) => q.title.toLowerCase()))
+
+    const questionsToInsert: object[] = []
+
+    for (const { q, a } of (generated.quick_qa ?? [])) {
+      if (!existingTitles.has(q.toLowerCase())) {
+        questionsToInsert.push({ user_id: user.id, category_id: categoryId ?? null, title: q, body: null, ideal_answer: a, difficulty, language, is_behavioral: false })
+        existingTitles.add(q.toLowerCase())
       }
     }
 
-    // Auto-create concepts: topic title as root node + each tag as child node
-    try {
-      // Fetch existing concept names to avoid duplicates
-      const { data: existingConcepts } = await supabase
-        .from('concepts')
-        .select('id, name')
-        .eq('user_id', user.id)
+    if (translatedData) {
+      for (const { q, a } of (translatedData.quick_qa ?? [])) {
+        if (!existingTitles.has(q.toLowerCase())) {
+          questionsToInsert.push({ user_id: user.id, category_id: categoryId ?? null, title: q, body: null, ideal_answer: a, difficulty, language: targetLanguage, is_behavioral: false })
+          existingTitles.add(q.toLowerCase())
+        }
+      }
+    }
 
+    if (questionsToInsert.length) {
+      const { error: qErr } = await supabase.from('questions').insert(questionsToInsert)
+      if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
+    }
+
+    // Auto-create concepts in BOTH languages
+    try {
+      const { data: existingConcepts } = await supabase.from('concepts').select('id, name, language').eq('user_id', user.id)
       const existingNames = new Map<string, string>(
-        (existingConcepts ?? []).map((c: { id: string; name: string }) => [c.name.toLowerCase(), c.id])
+        (existingConcepts ?? []).map((c: { id: string; name: string; language: string }) => [`${c.name.toLowerCase()}:${c.language}`, c.id])
       )
 
-      // Create root concept for the topic title (if not already exists)
-      let rootConceptId: string | null = null
-      const titleKey = generated.title.toLowerCase()
-      if (existingNames.has(titleKey)) {
-        rootConceptId = existingNames.get(titleKey)!
-      } else {
-        const { data: rootConcept } = await supabase
-          .from('concepts')
-          .insert({ user_id: user.id, name: generated.title, description: generated.summary })
-          .select('id')
-          .single()
-        if (rootConcept) rootConceptId = rootConcept.id
+      async function createConceptPair(
+        primaryName: string, primaryDesc: string | null, primaryLang: string,
+        translatedName: string | null, translatedDesc: string | null, translatedLang: string
+      ) {
+        const primaryKey = `${primaryName.toLowerCase()}:${primaryLang}`
+        let primaryId: string | null = existingNames.get(primaryKey) ?? null
+
+        if (!primaryId) {
+          const { data: c } = await supabase
+            .from('concepts')
+            .insert({ user_id: user!.id, name: primaryName, description: primaryDesc, language: primaryLang, translated_from: null })
+            .select('id').single()
+          if (c) { primaryId = c.id; existingNames.set(primaryKey, primaryId!) }
+        }
+
+        if (translatedName && primaryId) {
+          const translatedKey = `${translatedName.toLowerCase()}:${translatedLang}`
+          if (!existingNames.has(translatedKey)) {
+            const { data: c } = await supabase
+              .from('concepts')
+              .insert({ user_id: user!.id, name: translatedName, description: translatedDesc, language: translatedLang, translated_from: primaryId })
+              .select('id').single()
+            if (c) existingNames.set(translatedKey, c.id)
+          }
+        }
+
+        return primaryId
       }
 
-      // Create tag concepts and link them to the root with part_of relation
-      if (rootConceptId && generated.tags?.length) {
-        for (const tag of generated.tags) {
-          const tagKey = tag.toLowerCase()
-          let tagConceptId: string | null = null
+      // Root concept (topic title)
+      const rootId = await createConceptPair(
+        generated.title, generated.summary, language,
+        translatedData?.title ?? null, translatedData?.summary ?? null, targetLanguage
+      )
 
-          if (existingNames.has(tagKey)) {
-            tagConceptId = existingNames.get(tagKey)!
-          } else {
-            const { data: tagConcept } = await supabase
-              .from('concepts')
-              .insert({ user_id: user.id, name: tag, description: null })
-              .select('id')
-              .single()
-            if (tagConcept) tagConceptId = tagConcept.id
-          }
+      // Tag concepts linked to root
+      if (rootId && generated.tags?.length) {
+        const allTags = generated.tags
+        const translatedTags = translatedData?.tags ?? []
 
-          if (tagConceptId) {
-            // tag part_of root topic — ignore duplicate relation errors
-            await supabase
-              .from('concept_relations')
-              .insert({ source_id: tagConceptId, target_id: rootConceptId, relation_type: 'part_of' })
+        for (let i = 0; i < allTags.length; i++) {
+          const tagId = await createConceptPair(
+            allTags[i], null, language,
+            translatedTags[i] ?? null, null, targetLanguage
+          )
+          if (tagId) {
+            await supabase.from('concept_relations').insert({ source_id: tagId, target_id: rootId, relation_type: 'part_of' })
           }
         }
       }
