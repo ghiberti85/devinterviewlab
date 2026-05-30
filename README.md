@@ -1,94 +1,123 @@
 # DevInterviewLab
 
-A personal platform for technical interview practice powered by AI, spaced repetition, and quick-reference topic cards.
+Plataforma pessoal de prática para entrevistas técnicas, alimentada por IA, repetição espaçada e referências rápidas por tópico.
 
-**Live:** https://devinterviewlab.vercel.app
+**Live:** https://devinterviewlab.vercel.app  
+**CI:** GitHub Actions — TypeScript · Lint · 260 testes · Build  
+**Deploy:** Vercel (automático ao mergear para `main`)
+
+---
 
 ## Stack
 
-| Layer | Technology |
+| Camada | Tecnologia |
 |---|---|
 | Frontend/Backend | Next.js 15 (App Router) |
 | Database + Auth | Supabase (PostgreSQL + RLS) |
-| Hosting | Vercel |
+| Hosting | Vercel (Hobby) |
 | AI | Groq `llama-3.3-70b-versatile` (OpenAI-compatible) |
-| State | React Query + Zustand |
+| Estado | React Query + Zustand |
 | UI | Tailwind CSS + Radix UI |
 | Charts | Recharts |
 | Graph | React Flow |
 | Editor | Monaco Editor (desktop) / textarea fallback (mobile) |
-| Testing | Vitest (unit) + Playwright (E2E) |
-| Monitoring | Sentry |
+| Testes | Vitest (unit) — 260 testes |
+| CI | GitHub Actions |
+| Monitoramento | Sentry |
 
-## Navigation
+---
 
-The app is organized into 4 hubs — grouped by user intent, not by feature:
+## Navegação
 
-| Hub | What's inside |
+O app está organizado em 4 hubs agrupados por intenção do usuário:
+
+| Hub | O que tem |
 |---|---|
-| **Today** (`/dashboard`) | Daily streak, pending flashcards, weak concept, quick actions |
-| **Simulate** (`/simular`) | AI Interview Coach + Live Coding Simulator |
-| **Review** (`/revisar`) | Flashcards (SM-2 + Skip) · Flash Topics · Expandable Concepts + graph link |
-| **My Plan** (`/plano`) | Study Roadmap (CV-only or CV+JD, multi-roadmap selector) · Progress (stats + score cards) |
+| **Simular** (`/simular`) | AI Interview Coach + Live Coding Simulator |
+| **Revisar** (`/revisar`) | **Questões do Roadmap** (padrão) · Flash Topics · Flashcards SM-2 · Conceitos |
+| **Plano** (`/plano`) | Roadmap de estudo (CV + vaga) com progresso · Analytics + Score Cards |
+| **Stats** (`/stats`) | Heatmap · Radar chart · Conceitos fracos |
+
+---
 
 ## Features
 
-- ✅ **AI Interview Coach** — answer questions and get dimension-scored feedback (correctness, completeness, clarity, depth) with follow-up and rebuttal rounds
-- ✅ **Live Coding Simulator** — Monaco Editor, 7 languages, configurable timer, Socratic Pair Programmer AI; AI problem generator (difficulty + topic); textarea fallback on mobile
-- ✅ **Flashcard Practice** — spaced repetition with SM-2 algorithm, adaptive Easiness Factor, and Skip button
-- ✅ **Flash Topics** — AI-generated quick-reference cards with embedded Q&A, persistent EN↔PT translation; auto-populates flashcards, concepts, and Simulate on generation
-- ✅ **CV Upload + Roadmap** — upload PDF CV (stored, reusable), gap analysis against optional job description + 30/60/90-day roadmap via streaming; multiple saved roadmaps with selector
-- ✅ **Visual Score Card** — radar chart synthesized from multiple evaluations + PDF export
-- ✅ **Evaluation History** — full replay with typed answer and voice transcript side by side
-- ✅ **Concept Graph** — React Flow with concept scoring and dependency mapping; expandable concept cards in Review tab
-- ✅ **Analytics** — activity heatmap, topic radar, weakest concepts (in My Plan → Progress tab)
-- ✅ **PWA** — 4-tab mobile bottom bar, native install, iOS safe-area support; settings (theme/language/logout) via gear icon in top bar
-- ✅ **Internationalization** — full EN and PT-BR support, language switch synced to DB
+- ✅ **Questões por Roadmap** — geração de Q&A por tópico com barra de progresso real; delete por questão; gerar tópico/conceito a partir de cada questão; sem repetições ao regerar
+- ✅ **AI Interview Coach** — score por dimensão (correção, completude, clareza, profundidade) com réplica e tréplica
+- ✅ **Live Coding Simulator** — Monaco Editor, 7 linguagens, timer configurável, Pair Programmer socrático
+- ✅ **Flashcard Practice** — repetição espaçada SM-2 com Easiness Factor adaptativo + Skip
+- ✅ **Flash Topics** — referências rápidas com Q&A integrado, tradução persistida EN↔PT; auto-popula flashcards e conceitos
+- ✅ **CV Upload + Roadmap** — análise de gap CV vs vaga, roadmap 30/60/90 dias; múltiplos roadmaps com selector
+- ✅ **Score Card Visual** — radar chart de múltiplas avaliações, export PDF
+- ✅ **Grafo de Conceitos** — React Flow com pontuação e dependências; delete de conceitos individuais
+- ✅ **Analytics** — heatmap de atividade, radar por tópico, conceitos mais fracos
+- ✅ **PWA** — bottom bar mobile, install nativo, iOS safe-area
+- ✅ **i18n** — EN e PT-BR completos, sincronizado com banco de dados
+
+---
+
+## Como contribuir
+
+```
+1. Criar branch de feature: git checkout -b feat/nome
+2. Desenvolver + rodar /check (tsc + lint + tests)
+3. Abrir Pull Request → CI roda automaticamente
+4. Merge apenas com CI verde → deploy automático no Vercel
+```
+
+---
 
 ## Getting started
 
 ```bash
 npm install
 cp .env.example .env.local
-# fill in the variables below
+# preencher variáveis abaixo
 npm run dev
 ```
 
-## Environment variables
+## Variáveis de ambiente
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://idgpscsnbgszhwvhtedy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do Supabase dashboard>
 
-# Groq (free tier, recommended) — https://console.groq.com
+# Groq (free tier) — https://console.groq.com
 OPENAI_API_KEY=gsk_...
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_MODEL=llama-3.3-70b-versatile
 
-SENTRY_DSN=<optional>
-NEXT_PUBLIC_SENTRY_DSN=<optional>
+SENTRY_DSN=<opcional>
+NEXT_PUBLIC_SENTRY_DSN=<opcional>
 ```
 
 ## Supabase
 
-- **Project ID**: `idgpscsnbgszhwvhtedy` · **Region**: `sa-east-1`
-- Migrations live in `supabase/migrations/` — apply in ascending order
+- **Project ID**: `idgpscsnbgszhwvhtedy` · **Região**: `sa-east-1`
+- Migrations em `supabase/migrations/` — aplicar em ordem crescente
 
-## Tests
+---
+
+## Testes
 
 ```bash
-npm test                # 260 unit tests (Vitest)
-npm run test:coverage   # with coverage report
-npx playwright test     # E2E (requires .env.test configured)
+npm test                # 260 testes unitários (Vitest)
+npm run test:coverage   # com relatório de cobertura
 ```
 
-Current coverage: **Statements 97% · Branches 90% · Functions 100% · Lines 98%** (260 tests)
+**Cobertura atual:** Statements 97% · Branches 90% · Functions 100% · Lines 98%
 
-## Commands
+O CI roda `npm test` + `npx tsc --noEmit` + `npm run lint` + `npm run build` em todo push e PR.  
+**Merge bloqueado se qualquer check falhar.**
+
+---
+
+## Comandos
 
 ```bash
-npm run dev        # development server
-npm run build      # production build
+npm run dev        # servidor de desenvolvimento
+npm run build      # build de produção
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript check
+npm test           # testes unitários
 ```

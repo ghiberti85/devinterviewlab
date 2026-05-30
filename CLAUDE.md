@@ -34,7 +34,8 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 | Estado cliente | Zustand — `useSessionStore` (timer), `useSettingsStore` (idioma/tema) |
 | UI | Tailwind CSS + Radix UI — componentes em `components/` |
 | Monitoramento | Sentry (tunnel via `/monitoring`) |
-| Testes | Vitest (`__tests__/unit/`) |
+| Testes | Vitest (`__tests__/unit/`) — **260 testes, zero falhas toleradas** |
+| CI | GitHub Actions (`.github/workflows/ci.yml`) — bloqueia merge se CI falhar |
 
 ---
 
@@ -45,14 +46,25 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 2. Rode `npx tsc --noEmit` para confirmar estado inicial limpo
 3. Entenda o impacto em outros arquivos
 
-### A cada alteração de código (obrigatório antes do commit)
+### A cada alteração de código — obrigatório antes do commit
 ```bash
-npm test              # todos os 260 testes devem passar — zero falhas toleradas
+npm test              # 260 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
+npm run lint          # zero warnings
 ```
 
-> **Regra:** se o seu código quebra um teste existente, corrija o teste **ou** o código antes de continuar.
-> Se criou um módulo novo com lógica pura (sem Supabase/IA), adicione testes unitários em `__tests__/unit/`.
+> **Regra de testes:** se o código quebra um teste existente, corrija o teste **ou** o código antes de continuar.
+> Se criou um módulo com lógica pura (sem Supabase/IA), **adicione testes unitários** em `__tests__/unit/`.
+> Cada nova feature deve ter pelo menos um teste cobrindo o caminho feliz e um caso de borda.
+
+### Workflow de PR — sempre seguir este fluxo
+1. Desenvolver em branch de feature (`feat/nome`, `fix/nome`, `refactor/nome`)
+2. Rodar `/check` antes de fazer push
+3. Abrir Pull Request para `main`
+4. CI roda automaticamente (TypeScript + Lint + Tests + Build)
+5. **Merge apenas com CI verde** — nunca fazer merge com CI falhando
+6. Merge dispara deploy automático no Vercel
+7. Verificar deploy em produção após merge
 
 ### A cada entrega
 1. `npm test` — zero falhas
@@ -63,20 +75,23 @@ npx tsc --noEmit      # zero erros de tipo
    - `CLAUDE.md` — contagem de testes, regras ou restrições que mudaram
    - `README.md` — features, stack, comandos, cobertura de testes
 5. Commit seguindo Conventional Commits em português
-6. Push para o branch correto
+6. Push e abrir PR
 
-> **Regra de documentação:** toda implementação bem-sucedida deve deixar os três arquivos (`CONTEXT.md`, `CLAUDE.md`, `README.md`) sincronizados com o estado real do projeto. Nunca commitar código sem atualizar a documentação correspondente.
+> **Regra de documentação:** toda implementação bem-sucedida deve deixar os três arquivos (`CONTEXT.md`, `CLAUDE.md`, `README.md`) sincronizados com o estado real do projeto. Nunca commitar código sem atualizar a documentação.
+
+> **Regra de limpeza:** ao remover uma feature, remover também rotas de API, hooks, componentes, traduções e testes relacionados. Deixar o código enxuto.
 
 > Atalho: use `/check` para rodar tsc + lint + tests de uma vez.
 
 ### Padrão de commit
 ```
-feat: adicionar Live Coding Simulator
+feat: adicionar geração de questões por roadmap com progresso
 fix: corrigir timeout na avaliação de respostas longas
-test: adicionar cobertura para brute-force.ts
+test: adicionar cobertura para roadmap-questions
 security: validar magic bytes no upload
 refactor: extrair lógica SM-2 para hook separado
-docs: atualizar CONTEXT.md
+docs: atualizar CONTEXT.md com tabela roadmap_questions
+ci: adicionar GitHub Actions para TypeScript e testes
 ```
 
 ---
@@ -95,9 +110,8 @@ docs: atualizar CONTEXT.md
 - Server Components apenas para páginas sem estado ou interatividade
 - Nunca hardcodar strings — sempre via `useT()` + `translations.ts`
 
-### API Routes
+### API Routes — estrutura mínima obrigatória
 ```typescript
-// Estrutura mínima de toda rota protegida
 const supabase = await createClient()
 const { data: { user } } = await supabase.auth.getUser()
 if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -105,7 +119,7 @@ if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 const rl = await checkRateLimit('endpoint-name')
 if (!rl.allowed) return rl.response
 ```
-- Erros: `sanitizeError()` em produção
+- Erros: `sanitizeError()` em produção — nunca expor stack traces
 - Logs: `logger.info/warn/error()` — nunca `console.log`
 - Nunca expor detalhes internos do Supabase ou da IA
 
@@ -122,6 +136,59 @@ if (!rl.allowed) return rl.response
 
 ---
 
+## Segurança — regras obrigatórias
+
+> Toda nova rota de API deve satisfazer **todos** estes requisitos antes de ir para produção.
+
+| Requisito | Como implementar |
+|---|---|
+| Autenticação | `supabase.auth.getUser()` + retornar 401 se não autenticado |
+| Rate limiting | `checkRateLimit('endpoint-name')` antes de qualquer processamento |
+| Erros sanitizados | `sanitizeError(error)` em produção — nunca expor mensagens internas |
+| RLS no banco | Todas as queries filtram por `user_id` E têm política RLS |
+| Uploads | `validateFileBuffer()` verifica magic bytes, MIME e tamanho |
+| Inputs | Nunca confiar em dados do cliente — validar tipo, tamanho e domínio |
+| Secrets | Nunca commitar `.env*` — usar Vercel Environment Variables |
+| Logs | `logger.info/error()` com userId — sem dados sensíveis nos logs |
+| CORS | Validar `Origin` em POSTs — middleware de segurança já configurado |
+
+**Checklist de segurança para cada PR:**
+- [ ] Rota tem `getUser()` + 401 se não autenticado
+- [ ] Rota tem `checkRateLimit()` antes de IA ou operações custosas
+- [ ] Erros usam `sanitizeError()` antes de retornar ao cliente
+- [ ] Nenhum `console.log` com dados do usuário
+- [ ] Nenhum secret hardcoded ou exposto no client bundle
+
+---
+
+## Testes — regras e padrões
+
+### Quando adicionar testes
+- **Obrigatório:** todo módulo em `lib/` com lógica pura (funções, serviços, utilitários)
+- **Obrigatório:** todo prompt de IA (`lib/ai/prompts/`) — testar EN, PT, schema JSON, edge cases
+- **Opcional mas recomendado:** hooks de React Query com mock de fetch
+
+### Estrutura de um teste de qualidade
+```typescript
+describe('nomeDaFuncao', () => {
+  it('caminho feliz — comportamento esperado', () => { ... })
+  it('caso de borda — input vazio', () => { ... })
+  it('caso de borda — idioma PT', () => { ... })
+  it('falha graceful — input inválido', () => { ... })
+})
+```
+
+### O que testar em prompts de IA
+1. Output em EN e PT produzem respostas diferentes
+2. Schema JSON correto (campos obrigatórios presentes)
+3. Dados do input aparecem no prompt gerado
+4. Edge cases: input vazio, campos opcionais ausentes
+5. Sem vazamento de dados entre chamadas
+
+### Contagem atual: **260 testes** — atualizar este número a cada PR
+
+---
+
 ## Arquitetura de features
 
 ### Padrão de estrutura
@@ -132,6 +199,7 @@ features/<nome>/
 
 app/(app)/<nome>/page.tsx    # página protegida
 app/api/<nome>/route.ts      # API route
+__tests__/unit/<nome>.test.ts  # testes unitários
 ```
 
 ### Adicionando tradução
@@ -144,6 +212,15 @@ app/api/<nome>/route.ts      # API route
 3. Políticas USING + WITH CHECK para SELECT, INSERT, UPDATE, DELETE
 4. Índices em FKs e colunas mais consultadas
 5. Tipo em `lib/supabase/types.ts`
+6. Atualizar `CONTEXT.md` com schema da tabela
+
+### Removendo uma feature
+1. Remover página(s) e componentes
+2. Remover rota(s) de API
+3. Remover hook(s) React Query
+4. Remover chaves de tradução em `translations.ts`
+5. Remover testes relacionados
+6. Atualizar `CONTEXT.md`, `CLAUDE.md`, `README.md`
 
 ---
 
@@ -153,7 +230,8 @@ app/api/<nome>/route.ts      # API route
 - Remover funcionalidades existentes
 - Mudar modelo de IA padrão (`llama-3.3-70b-versatile`)
 - Alterar políticas de RLS
-- Push para `main` em vez do branch de feature
+- Push direto para `main` sem PR
+- Force push em qualquer branch
 
 ---
 
@@ -166,7 +244,7 @@ app/api/<nome>/route.ts      # API route
 | Groq Free | 6k tokens/min, 500k tokens/dia |
 | Sentry Free | 5k erros/mês |
 
-**Antes de abrir para outros usuários:** implementar streaming nas rotas de IA, Supabase Pro, sistema de quotas, landing page, OAuth Google/GitHub.
+**Antes de abrir para outros usuários:** streaming nas rotas de IA, Supabase Pro, sistema de quotas, landing page, OAuth Google/GitHub.
 
 ---
 
@@ -181,7 +259,7 @@ const { data: { user } } = await supabase.auth.getUser()
 
 **Rate limit:**
 ```typescript
-import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
+import { checkRateLimit, sanitizeError } from '@/lib/api/rate-limit'
 const rl = await checkRateLimit('endpoint-name')
 if (!rl.allowed) return rl.response
 ```
@@ -212,8 +290,8 @@ if (!result.valid) return NextResponse.json({ error: result.error }, { status: 4
 
 ## Próximas features (por prioridade)
 
-1. **Live Coding Simulator** — Monaco Editor, timer 15/30/45min, avaliação de IA estática, tabela `coding_sessions`
-2. **Daily Learning Loop** — widget no dashboard, streak de dias (nova coluna em `profiles`)
-3. **Streaming nas respostas de IA** — `ReadableStream`, resolve timeout do Vercel Hobby
-4. **Testes E2E (Playwright)** — cadastro → login → gerar questão → avaliar → flashcard
-5. **OAuth Google/GitHub** — reduzir atrito no cadastro
+1. **Streaming nas respostas de IA** — `ReadableStream`, resolve timeout do Vercel Hobby
+2. **OAuth Google/GitHub** — reduzir atrito no cadastro
+3. **Testes E2E completos (Playwright)** — cadastro → login → gerar questão → avaliar → flashcard
+4. **Quiz Mode** — múltipla escolha, completar código, encontrar bug
+5. **Mock Interview Bidirecional** — entrevistador IA com voz em tempo real

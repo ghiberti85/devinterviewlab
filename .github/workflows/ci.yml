@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Type-check · Lint · Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript — zero errors
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          # Dummy values so Next.js doesn't fail on missing env at build time
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          OPENAI_API_KEY: placeholder
+          OPENAI_BASE_URL: https://api.groq.com/openai/v1
+          OPENAI_MODEL: llama-3.3-70b-versatile

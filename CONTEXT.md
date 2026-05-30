@@ -42,7 +42,7 @@ NEXT_PUBLIC_SENTRY_DSN=<mesmo dsn>
 
 ## Arquitetura do Banco de Dados (Supabase)
 
-Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
+Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **18 tabelas**.
 
 ### Tabelas
 
@@ -144,6 +144,14 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **17 tabelas**.
 - Políticas: SELECT/INSERT/UPDATE por user_id
 - Migration: `supabase/migrations/20260515000004_study_roadmaps.sql`
 
+**roadmap_questions** — questões de entrevista geradas por IA para cada tópico do roadmap *(adicionada em 2026-05-30)*
+- id (uuid, PK), roadmap_id (uuid, FK study_roadmaps ON DELETE CASCADE), user_id (uuid, FK auth.users ON DELETE CASCADE)
+- phase_name (text), topic_name (text), question (text), answer (text)
+- question_order (int, default 0), created_at
+- Políticas: SELECT/INSERT/DELETE por user_id
+- Índices: idx_roadmap_questions_roadmap_id, idx_roadmap_questions_user_id
+- Migration: `supabase/migrations/20260529000000_roadmap_questions.sql`
+
 **user_documents** — (atualizada em 2026-05-15)
 - extracted_text (text, nullable) — texto extraído do PDF para uso no roadmap sem re-processar
 - Migration: `supabase/migrations/20260515000005_user_documents_extracted_text.sql`
@@ -205,7 +213,9 @@ app/
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
-    roadmaps/[id]/progress/  # PATCH incrementar progresso de tópico
+    roadmaps/[id]/progress/         # PATCH incrementar progresso de tópico
+    roadmaps/[id]/generate-questions/ # GET lista questões · DELETE limpa todas · POST gera por tópico (append, sem delete)
+    roadmaps/[id]/questions/[questionId]/ # DELETE questão individual
     topics/           # GET todos os tópicos do usuário (ambos idiomas) + POST gerar
     topics/[id]/      # GET + DELETE
     topics/[id]/translate/  # POST traduzir e persistir (Node Runtime, 50/dia, idempotente)
@@ -244,6 +254,7 @@ features/
   roadmaps/
     components/                 # RoadmapSetup, GapAnalysisCard, RoadmapTimeline
     hooks/                      # useRoadmaps, useRoadmap, useCreateRoadmap, useUpdateTopicProgress
+                                # useRoadmapQuestions, useDeleteRoadmapQuestion, useClearRoadmapQuestions, useGenerateTopicQuestions
   topics/
     components/                 # TopicCard (tradução persistida, texto completo em summary/when_to_use), TopicGenerator
     hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useSaveProblem
@@ -300,6 +311,7 @@ supabase/
     20260515000005_user_documents_extracted_text.sql
     20260515000006_topics.sql
     20260515000007_topics_language.sql
+    20260529000000_roadmap_questions.sql
 
 e2e/                            # Playwright E2E
   fixtures.ts
@@ -376,6 +388,19 @@ e2e/                            # Playwright E2E
 - **Progresso manual** por tópico: botão "+1 concluído" persiste em `roadmap_topic_progress`
 - Timeline visual com barras de progresso por fase
 - Rate limit: 5 roadmaps/dia
+
+### Questões de Entrevista por Roadmap *(adicionado em 2026-05-30)*
+- **Aba Revisar → Questões** é a primeira aba (padrão ao abrir `/revisar`)
+- Geração por tópico com barra de progresso real: o cliente orquestra uma chamada por tópico, exibindo `X/Y tópicos (Z%)`
+- IA recebe lista de questões já existentes para evitar repetições (`existingQuestions` no prompt)
+- Delete individual de questão via botão lixeira no card
+- Delete em lote via `DELETE /api/roadmaps/[id]/generate-questions` (limpa tudo antes de regerar)
+- Botão "Gerar tópico" em cada questão → cria Flash Topic a partir do `topic_name`
+- Botão "Adicionar conceito" em cada questão → cria Concept com `description = answer.slice(0, 300)`
+- Filtro por tópico + botão "Gerar mais" para o tópico selecionado (com `existingQuestions` para deduplicar)
+- Delete de tópicos Flash (hover no card) e conceitos (raiz e filhos) na aba Revisar
+- API: `GET/DELETE /api/roadmaps/[id]/generate-questions` · `POST /api/roadmaps/[id]/generate-questions` (corpo: `{ topicName, phaseName, language, existingQuestions? }`) · `DELETE /api/roadmaps/[id]/questions/[questionId]`
+- Segurança: todas as rotas têm `getUser()` + `checkRateLimit()` + `sanitizeError()`
 
 ### Nova Navegação por Hubs *(refatoração)*
 - Navegação reduzida de 12 itens para 4 — agrupamento por **intenção do usuário**, não por feature
@@ -469,10 +494,10 @@ e2e/                            # Playwright E2E
 
 | Item | Detalhes |
 |---|---|
-| RLS | Todas as 12 tabelas com USING + WITH CHECK explícito |
+| RLS | Todas as 18 tabelas com USING + WITH CHECK explícito |
 | Constraints DB | Tamanho de texto, domínios de enum, score 0-100 |
 | Security Headers | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
-| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 15 coding/dia, 20 coding-hint/dia, 15 score-card/dia, 5 roadmap/dia, 30 topic/dia, 50 topic-translate/dia |
+| Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 15 coding/dia, 20 coding-hint/dia, 15 score-card/dia, 5 roadmap/dia, 30 topic/dia, 50 topic-translate/dia, N roadmap-generate-questions/dia |
 | Brute Force | 10 tentativas / 15min por IP, bloqueio de 15min |
 | Anti-enumeração | Mesma mensagem para email existente/inexistente |
 | Magic bytes | Valida conteúdo real do arquivo, não só MIME type |
