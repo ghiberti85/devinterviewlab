@@ -8,12 +8,13 @@ import { Map, BarChart2 } from 'lucide-react'
 // Roadmap
 import { useRouter } from 'next/navigation'
 import { useRoadmaps, useUpdateTopicProgress } from '@/features/roadmaps/hooks/useRoadmaps'
-import { useGenerateRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useGenerateTopicQuestions, useClearRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
 import { GapAnalysisCard } from '@/features/roadmaps/components/GapAnalysisCard'
 import { RoadmapTimeline } from '@/features/roadmaps/components/RoadmapTimeline'
 import type { StudyRoadmap } from '@/lib/supabase/types'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSettingsStore } from '@/store/settings.store'
 
 // Stats
 import {
@@ -37,11 +38,13 @@ function RoadmapTab() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
   const [genSuccess, setGenSuccess] = useState<string | null>(null)
+  const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null)
 
   const allRoadmaps = roadmaps ?? []
   const selected = allRoadmaps.find(r => r.id === selectedId) ?? allRoadmaps[0] ?? null
   const updateProgress = useUpdateTopicProgress(selected?.id ?? '')
-  const generateQuestions = useGenerateRoadmapQuestions()
+  const generateTopicQuestions = useGenerateTopicQuestions(selected?.id ?? '')
+  const clearQuestions = useClearRoadmapQuestions(selected?.id ?? '')
 
   function handleCreated(roadmap: StudyRoadmap) {
     queryClient.setQueryData<StudyRoadmap[]>(['roadmaps'], old => [roadmap, ...(old ?? [])])
@@ -93,23 +96,57 @@ function RoadmapTab() {
               if (!selected) return
               setGenError(null)
               setGenSuccess(null)
+              setGenProgress(null)
+              const { language } = useSettingsStore.getState()
+              const phases = selected.roadmap?.phases ?? []
+              const allTopics = phases.flatMap(p => p.topics.map(t => ({ topicName: t.name, phaseName: p.label })))
+              if (allTopics.length === 0) return
               try {
-                const result = await generateQuestions.mutateAsync(selected.id)
-                setGenSuccess(t.roadmap.questionsGenerated(result.count))
+                // Clear all existing questions first
+                await clearQuestions.mutateAsync()
+                let totalGenerated = 0
+                for (let i = 0; i < allTopics.length; i++) {
+                  setGenProgress({ current: i, total: allTopics.length })
+                  const result = await generateTopicQuestions.mutateAsync({
+                    topicName: allTopics[i].topicName,
+                    phaseName: allTopics[i].phaseName,
+                    language: language as string,
+                  })
+                  totalGenerated += result.count
+                }
+                setGenProgress(null)
+                setGenSuccess(t.roadmap.questionsGenerated(totalGenerated))
               } catch {
+                setGenProgress(null)
                 setGenError(t.roadmap.questionsGenerateError)
               }
             }}
-            disabled={generateQuestions.isPending}
+            disabled={generateTopicQuestions.isPending || clearQuestions.isPending}
             className="text-xs text-primary hover:underline disabled:opacity-50"
           >
-            {generateQuestions.isPending ? t.roadmap.generatingQuestions : t.roadmap.generateQuestions}
+            {genProgress
+              ? t.roadmap.generatingProgress(genProgress.current, genProgress.total)
+              : t.roadmap.generateQuestions}
           </button>
           <button onClick={() => setShowSetup(true)} className="text-xs text-muted-foreground hover:underline">
             {t.roadmap.newRoadmap}
           </button>
         </div>
       </div>
+      {genProgress && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{t.roadmap.generatingProgress(genProgress.current, genProgress.total)}</span>
+            <span>{Math.round((genProgress.current / genProgress.total) * 100)}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
       {genError && <p className="text-xs text-red-500">{genError}</p>}
       {genSuccess && <p className="text-xs text-green-600">{genSuccess}</p>}
       <GapAnalysisCard
