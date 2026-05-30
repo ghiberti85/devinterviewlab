@@ -361,6 +361,11 @@ export const translations = {
       deleteConcept: 'Delete concept',
       generateTopicFromQ: 'Generate topic',
       generateConceptFromQ: 'Add concept',
+      selectMode: 'Select',
+      cancelSelect: 'Cancel',
+      selectAll: 'Select all',
+      deleteSelected: (n: number) => `Delete ${n} selected`,
+      bulkDeleting: 'Deleting…',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -656,6 +661,11 @@ export const translations = {
       deleteConcept: 'Excluir conceito',
       generateTopicFromQ: 'Gerar tópico',
       generateConceptFromQ: 'Adicionar conceito',
+      selectMode: 'Selecionar',
+      cancelSelect: 'Cancelar',
+      selectAll: 'Selecionar todos',
+      deleteSelected: (n: number) => `Excluir ${n} selecionado${n !== 1 ? 's' : ''}`,
+      bulkDeleting: 'Excluindo…',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

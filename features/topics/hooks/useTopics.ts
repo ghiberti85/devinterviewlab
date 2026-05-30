@@ -121,3 +121,19 @@ export function useDeleteTopic() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
   })
 }
+
+export function useBulkDeleteTopics() {
+  const qc = useQueryClient()
+  return useMutation<{ deleted: number }, Error, { ids: string[] }>({
+    mutationFn: async ({ ids }) => {
+      const res = await fetch('/api/topics/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) throw new Error('Failed to bulk delete topics')
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+  })
+}

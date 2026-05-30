@@ -12,15 +12,15 @@ import { useSessionStore } from '@/store/session.store'
 import type { SessionType } from '@/lib/supabase/types'
 
 // Flash Topics
-import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics } from '@/features/topics/hooks/useTopics'
+import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 // Concepts
-import { useConcepts, useDeleteConcept } from '@/features/concepts/hooks/useConcepts'
+import { useConcepts, useDeleteConcept, useBulkDeleteConcepts } from '@/features/concepts/hooks/useConcepts'
 import Link from 'next/link'
 // Roadmap questions
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
-import { useRoadmapQuestions, useDeleteRoadmapQuestion, useGenerateTopicQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useRoadmapQuestions, useDeleteRoadmapQuestion, useGenerateTopicQuestions, useBulkDeleteRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { useCreateConcept } from '@/features/concepts/hooks/useConcepts'
 
 type Tab = 'topics' | 'flashcards' | 'concepts' | 'questions'
@@ -158,7 +158,10 @@ function TopicsTab() {
   const { data: pairs, isLoading } = useTopics(language as string)
   const syncTopics = useSyncTopics()
   const deleteTopic = useDeleteTopic()
+  const bulkDelete = useBulkDeleteTopics()
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   async function handleSync() {
     setSyncMsg(null)
@@ -170,25 +173,91 @@ function TopicsTab() {
     }
   }
 
+  function toggleSelect(rootId: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(rootId) ? next.delete(rootId) : next.add(rootId)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (!pairs) return
+    if (selected.size === pairs.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(pairs.map(p => p.rootId)))
+    }
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function handleBulkDelete() {
+    if (!pairs) return
+    const ids = pairs
+      .filter(p => selected.has(p.rootId))
+      .map(p => p.current?.id ?? p.other?.id)
+      .filter((id): id is string => !!id)
+    if (ids.length === 0) return
+    await bulkDelete.mutateAsync({ ids })
+    exitSelectMode()
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <TopicGenerator />
       </div>
 
-      {/* Sync button — only shown when there are existing topics */}
       {!isLoading && pairs && pairs.length > 0 && (
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3 flex-wrap">
           {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
-          <button
-            onClick={handleSync}
-            disabled={syncTopics.isPending}
-            className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent disabled:opacity-50 transition-colors min-h-[36px]"
-          >
-            {syncTopics.isPending
-              ? <><Loader2 size={11} className="animate-spin mr-1" />{t.topics.syncing}</>
-              : t.topics.syncAll}
-          </button>
+          {selectMode ? (
+            <>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.size === pairs.length}
+                  onChange={toggleSelectAll}
+                />
+                {t.review.selectAll}
+              </label>
+              <button
+                onClick={handleBulkDelete}
+                disabled={selected.size === 0 || bulkDelete.isPending}
+                className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
+              >
+                {bulkDelete.isPending ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</> : t.review.deleteSelected(selected.size)}
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+              >
+                {t.review.cancelSelect}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleSync}
+                disabled={syncTopics.isPending}
+                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent disabled:opacity-50 transition-colors min-h-[36px]"
+              >
+                {syncTopics.isPending
+                  ? <><Loader2 size={11} className="animate-spin mr-1" />{t.topics.syncing}</>
+                  : t.topics.syncAll}
+              </button>
+              <button
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+              >
+                {t.review.selectMode}
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -206,19 +275,32 @@ function TopicsTab() {
       {!isLoading && pairs && pairs.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pairs.map(pair => (
-            <div key={pair.rootId} className="relative group">
+            <div key={pair.rootId} className={`relative group ${selectMode ? 'cursor-pointer' : ''}`} onClick={selectMode ? () => toggleSelect(pair.rootId) : undefined}>
+              {selectMode && (
+                <div className="absolute top-2 left-2 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(pair.rootId)}
+                    onChange={() => toggleSelect(pair.rootId)}
+                    onClick={e => e.stopPropagation()}
+                    className="w-4 h-4"
+                  />
+                </div>
+              )}
               <TopicCard pair={pair} />
-              <button
-                onClick={() => {
-                  const id = pair.current?.id ?? pair.other?.id
-                  if (id) deleteTopic.mutate({ id })
-                }}
-                disabled={deleteTopic.isPending}
-                title={t.review.deleteTopic}
-                className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 border opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:border-red-300 transition-all disabled:opacity-40"
-              >
-                <Trash2 size={12} />
-              </button>
+              {!selectMode && (
+                <button
+                  onClick={() => {
+                    const id = pair.current?.id ?? pair.other?.id
+                    if (id) deleteTopic.mutate({ id })
+                  }}
+                  disabled={deleteTopic.isPending}
+                  title={t.review.deleteTopic}
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 border opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:border-red-300 transition-all disabled:opacity-40"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -232,7 +314,10 @@ function ConceptsTab() {
   const { language } = useSettingsStore()
   const { data, isLoading } = useConcepts()
   const deleteConcept = useDeleteConcept()
+  const bulkDelete = useBulkDeleteConcepts()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const allNodes = data?.nodes ?? []
   const edges = data?.edges ?? []
 

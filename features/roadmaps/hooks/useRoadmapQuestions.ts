@@ -37,6 +37,22 @@ export function useClearRoadmapQuestions(roadmapId: string) {
   })
 }
 
+export function useBulkDeleteRoadmapQuestions(roadmapId: string) {
+  const qc = useQueryClient()
+  return useMutation<{ deleted: number }, Error, { ids: string[] }>({
+    mutationFn: async ({ ids }) => {
+      const res = await fetch(`/api/roadmaps/${roadmapId}/questions/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      })
+      if (!res.ok) throw new Error('Failed to bulk delete questions')
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
+  })
+}
+
 // Generates questions for one topic in both EN and PT.
 // Server handles language and dedup — client only needs topicName + phaseName.
 export function useGenerateTopicQuestions(roadmapId: string) {
