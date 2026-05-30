@@ -127,7 +127,22 @@ export async function POST(
     return NextResponse.json({ count: 0 })
   }
 
-  const toInsert: Omit<RoadmapQuestion, 'id' | 'created_at'>[] = pairs.map(pair => ({
+  // DB-level dedup: filter out questions already stored for this roadmap+topic
+  const { data: storedQs } = await supabase
+    .from('roadmap_questions')
+    .select('question')
+    .eq('roadmap_id', id)
+    .eq('user_id', user.id)
+    .eq('topic_name', topicName)
+
+  const storedTexts = new Set((storedQs ?? []).map((q: { question: string }) => q.question.toLowerCase()))
+  const dedupedPairs = pairs.filter(p => !storedTexts.has(p.question.toLowerCase()))
+
+  if (dedupedPairs.length === 0) {
+    return NextResponse.json({ count: 0 })
+  }
+
+  const toInsert: Omit<RoadmapQuestion, 'id' | 'created_at'>[] = dedupedPairs.map(pair => ({
     roadmap_id: id,
     user_id: user.id,
     phase_name: phaseName,
@@ -146,6 +161,6 @@ export async function POST(
     return NextResponse.json({ error: sanitizeError(insertError) }, { status: 500 })
   }
 
-  logger.info('Generated roadmap questions for topic', { userId: user.id, roadmapId: id, topic: topicName, count: pairs.length })
+  logger.info('Generated roadmap questions for topic', { userId: user.id, roadmapId: id, topic: topicName, count: dedupedPairs.length })
   return NextResponse.json({ count: pairs.length })
 }

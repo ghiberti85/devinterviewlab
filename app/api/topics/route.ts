@@ -37,6 +37,20 @@ export async function POST(req: NextRequest) {
 
   const start = Date.now()
   try {
+    // Check for existing topic with same title + language to avoid duplicates
+    const { data: existing } = await supabase
+      .from('topics')
+      .select('*')
+      .eq('user_id', user.id)
+      .ilike('title', topicName.trim())
+      .eq('language', language)
+      .limit(1)
+      .single()
+
+    if (existing) {
+      return NextResponse.json(existing, { status: 200 })
+    }
+
     const generated = await aiService.generateTopic({
       topicName: topicName.trim(),
       difficulty,
@@ -63,21 +77,30 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    // Auto-create a Question for each quick_qa pair so they appear in
-    // Simulate (interview practice) and Flashcard review automatically.
+    // Auto-create a Question for each quick_qa pair — deduplicate by title
     if (generated.quick_qa?.length) {
-      const questions = generated.quick_qa.map(({ q, a }) => ({
-        user_id: user.id,
-        category_id: categoryId ?? null,
-        title: q,
-        body: null,
-        ideal_answer: a,
-        difficulty,
-        language,
-        is_behavioral: false,
-      }))
-      const { error: qErr } = await supabase.from('questions').insert(questions)
-      if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
+      const { data: existingQs } = await supabase
+        .from('questions')
+        .select('title')
+        .eq('user_id', user.id)
+      const existingTitles = new Set((existingQs ?? []).map((q: { title: string }) => q.title.toLowerCase()))
+
+      const questions = generated.quick_qa
+        .filter(({ q }) => !existingTitles.has(q.toLowerCase()))
+        .map(({ q, a }) => ({
+          user_id: user.id,
+          category_id: categoryId ?? null,
+          title: q,
+          body: null,
+          ideal_answer: a,
+          difficulty,
+          language,
+          is_behavioral: false,
+        }))
+      if (questions.length) {
+        const { error: qErr } = await supabase.from('questions').insert(questions)
+        if (qErr) logger.warn('Failed to create questions from quick_qa', { userId: user.id, error: qErr.message })
+      }
     }
 
     // Auto-create concepts: topic title as root node + each tag as child node
