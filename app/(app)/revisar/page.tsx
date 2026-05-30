@@ -354,9 +354,75 @@ function ConceptsTab() {
     })
   }
 
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === roots.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(roots.map(r => r.id)))
+    }
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    await bulkDelete.mutateAsync({ ids })
+    exitSelectMode()
+  }
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
+        {!isLoading && roots.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {selectMode ? (
+              <>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === roots.length}
+                    onChange={toggleSelectAll}
+                  />
+                  {t.review.selectAll}
+                </label>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selected.size === 0 || bulkDelete.isPending}
+                  className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
+                >
+                  {bulkDelete.isPending ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</> : t.review.deleteSelected(selected.size)}
+                </button>
+                <button
+                  onClick={exitSelectMode}
+                  className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+                >
+                  {t.review.cancelSelect}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+              >
+                {t.review.selectMode}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {isLoading && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -379,11 +445,24 @@ function ConceptsTab() {
             const children = childrenByParent.get(root.id) ?? []
             const expanded = expandedIds.has(root.id)
             return (
-              <div key={root.id} className="border rounded-xl p-4 bg-card space-y-3">
+              <div
+                key={root.id}
+                className={`border rounded-xl p-4 bg-card space-y-3 ${selectMode ? 'cursor-pointer' : ''}`}
+                onClick={selectMode ? () => toggleSelect(root.id) : undefined}
+              >
                 {/* Root concept — clickable header to expand */}
                 <div className="flex items-start gap-2">
+                  {selectMode && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(root.id)}
+                      onChange={() => toggleSelect(root.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 mt-0.5 shrink-0"
+                    />
+                  )}
                   <button
-                    onClick={() => toggleExpand(root.id)}
+                    onClick={selectMode ? undefined : () => toggleExpand(root.id)}
                     className="flex-1 flex items-start justify-between gap-3 text-left"
                   >
                     <div className="flex-1 min-w-0">
@@ -396,16 +475,20 @@ function ConceptsTab() {
                         <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{root.description}</p>
                       )}
                     </div>
-                    <ChevronDown size={14} className={`shrink-0 text-muted-foreground transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`} />
+                    {!selectMode && (
+                      <ChevronDown size={14} className={`shrink-0 text-muted-foreground transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
-                  <button
-                    onClick={() => deleteConcept.mutate(root.id)}
-                    disabled={deleteConcept.isPending}
-                    title={t.review.deleteConcept}
-                    className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 shrink-0"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {!selectMode && (
+                    <button
+                      onClick={() => deleteConcept.mutate(root.id)}
+                      disabled={deleteConcept.isPending}
+                      title={t.review.deleteConcept}
+                      className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 shrink-0"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Expanded description */}
@@ -423,14 +506,16 @@ function ConceptsTab() {
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${scoreColor(child.score)}`} />
                         {child.name}
-                        <button
-                          onClick={() => deleteConcept.mutate(child.id)}
-                          disabled={deleteConcept.isPending}
-                          title={t.review.deleteConcept}
-                          className="ml-0.5 opacity-0 group-hover/child:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
-                        >
-                          <Trash2 size={9} />
-                        </button>
+                        {!selectMode && (
+                          <button
+                            onClick={e => { e.stopPropagation(); deleteConcept.mutate(child.id) }}
+                            disabled={deleteConcept.isPending}
+                            title={t.review.deleteConcept}
+                            className="ml-0.5 opacity-0 group-hover/child:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
+                          >
+                            <Trash2 size={9} />
+                          </button>
+                        )}
                       </span>
                     ))}
                   </div>
@@ -453,11 +538,14 @@ function QuestionsTab() {
   const [selectedTopic, setSelectedTopic] = useState<string>('all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [actionStates, setActionStates] = useState<Record<string, string>>({})
+  const [selectMode, setSelectMode] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedId ?? allRoadmaps[0]?.id ?? null
   const { data: questions, isLoading: qLoading } = useRoadmapQuestions(currentId)
   const deleteQuestion = useDeleteRoadmapQuestion(currentId ?? '')
+  const bulkDelete = useBulkDeleteRoadmapQuestions(currentId ?? '')
   const generateMore = useGenerateTopicQuestions(currentId ?? '')
   const generateTopic = useGenerateTopic()
   const createConcept = useCreateConcept()
@@ -470,6 +558,34 @@ function QuestionsTab() {
     ? (selectedTopic === 'all' ? questions : questions.filter(q => q.topic_name === selectedTopic))
         .filter(q => q.language === language)
     : []
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === filtered.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filtered.map(q => q.id)))
+    }
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelected(new Set())
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    await bulkDelete.mutateAsync({ ids })
+    exitSelectMode()
+  }
 
   function toggleAnswer(id: string) {
     setExpandedIds(prev => {
@@ -569,19 +685,53 @@ function QuestionsTab() {
         )}
       </div>
 
-      {/* Generate more button for selected topic */}
-      {!qLoading && selectedTopic !== 'all' && filtered.length > 0 && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => {
-              const phaseName = filtered[0]?.phase_name ?? ''
-              handleGenerateMoreForTopic(selectedTopic, phaseName)
-            }}
-            disabled={generateMore.isPending}
-            className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1"
-          >
-            {generateMore.isPending ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</> : t.roadmap.generateQuestions}
-          </button>
+      {/* Bulk select controls */}
+      {!qLoading && filtered.length > 0 && (
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          {selectedTopic !== 'all' && (
+            <button
+              onClick={() => {
+                const phaseName = filtered[0]?.phase_name ?? ''
+                handleGenerateMoreForTopic(selectedTopic, phaseName)
+              }}
+              disabled={generateMore.isPending}
+              className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1 mr-auto"
+            >
+              {generateMore.isPending ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</> : t.roadmap.generateQuestions}
+            </button>
+          )}
+          {selectMode ? (
+            <>
+              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.size === filtered.length && filtered.length > 0}
+                  onChange={toggleSelectAll}
+                />
+                {t.review.selectAll}
+              </label>
+              <button
+                onClick={handleBulkDelete}
+                disabled={selected.size === 0 || bulkDelete.isPending}
+                className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
+              >
+                {bulkDelete.isPending ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</> : t.review.deleteSelected(selected.size)}
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+              >
+                {t.review.cancelSelect}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setSelectMode(true)}
+              className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+            >
+              {t.review.selectMode}
+            </button>
+          )}
         </div>
       )}
 
@@ -608,8 +758,21 @@ function QuestionsTab() {
             const conceptLoading = actionStates[q.id + '-concept'] === 'loading'
             const conceptDone = actionStates[q.id + '-concept'] === 'done'
             return (
-              <div key={q.id} className="border rounded-xl p-4 bg-card space-y-2">
+              <div
+                key={q.id}
+                className={`border rounded-xl p-4 bg-card space-y-2 ${selectMode ? 'cursor-pointer' : ''}`}
+                onClick={selectMode ? () => toggleSelect(q.id) : undefined}
+              >
                 <div className="flex items-start justify-between gap-2">
+                  {selectMode && (
+                    <input
+                      type="checkbox"
+                      checked={selected.has(q.id)}
+                      onChange={() => toggleSelect(q.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="w-4 h-4 mt-1 shrink-0"
+                    />
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">{q.phase_name}</span>
@@ -617,53 +780,57 @@ function QuestionsTab() {
                     </div>
                     <p className="text-sm font-medium leading-snug">{q.question}</p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => toggleAnswer(q.id)}
-                      className="text-xs text-primary hover:underline mt-1"
-                    >
-                      {open ? t.review.hideAnswer : t.review.showAnswer}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(q.id)}
-                      disabled={deleting}
-                      title={t.review.deleteQuestion}
-                      className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40"
-                    >
-                      {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                    </button>
-                  </div>
+                  {!selectMode && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => toggleAnswer(q.id)}
+                        className="text-xs text-primary hover:underline mt-1"
+                      >
+                        {open ? t.review.hideAnswer : t.review.showAnswer}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(q.id)}
+                        disabled={deleting}
+                        title={t.review.deleteQuestion}
+                        className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40"
+                      >
+                        {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {open && (
+                {open && !selectMode && (
                   <div className="text-sm text-muted-foreground bg-muted/40 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
                     {q.answer}
                   </div>
                 )}
                 {/* Actions: generate topic / concept */}
-                <div className="flex gap-2 pt-1 border-t">
-                  <button
-                    onClick={() => handleGenerateTopic(q)}
-                    disabled={topicLoading || topicDone}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                  >
-                    {topicLoading
-                      ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                      : topicDone
-                        ? <span className="text-green-600">✓ {t.review.generateTopicFromQ}</span>
-                        : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
-                  </button>
-                  <button
-                    onClick={() => handleGenerateConcept(q)}
-                    disabled={conceptLoading || conceptDone}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                  >
-                    {conceptLoading
-                      ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                      : conceptDone
-                        ? <span className="text-green-600">✓ {t.review.generateConceptFromQ}</span>
-                        : <><Brain size={10} />{t.review.generateConceptFromQ}</>}
-                  </button>
-                </div>
+                {!selectMode && (
+                  <div className="flex gap-2 pt-1 border-t">
+                    <button
+                      onClick={() => handleGenerateTopic(q)}
+                      disabled={topicLoading || topicDone}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                    >
+                      {topicLoading
+                        ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
+                        : topicDone
+                          ? <span className="text-green-600">✓ {t.review.generateTopicFromQ}</span>
+                          : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
+                    </button>
+                    <button
+                      onClick={() => handleGenerateConcept(q)}
+                      disabled={conceptLoading || conceptDone}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                    >
+                      {conceptLoading
+                        ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
+                        : conceptDone
+                          ? <span className="text-green-600">✓ {t.review.generateConceptFromQ}</span>
+                          : <><Brain size={10} />{t.review.generateConceptFromQ}</>}
+                    </button>
+                  </div>
+                )}
               </div>
             )
           })}
