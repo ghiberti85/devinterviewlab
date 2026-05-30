@@ -438,15 +438,8 @@ function QuestionsTab() {
   }
 
   async function handleGenerateMoreForTopic(topicName: string, phaseName: string) {
-    const existingQs = (questions ?? [])
-      .filter(q => q.topic_name === topicName)
-      .map(q => q.question)
-    await generateMore.mutateAsync({
-      topicName,
-      phaseName,
-      language: language as string,
-      existingQuestions: existingQs,
-    })
+    // Server fetches existing questions per language and handles dedup
+    await generateMore.mutateAsync({ topicName, phaseName })
   }
 
   if (roadmapsLoading) {

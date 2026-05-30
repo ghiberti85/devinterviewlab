@@ -37,16 +37,12 @@ export function useClearRoadmapQuestions(roadmapId: string) {
   })
 }
 
-// Generates questions for one topic. existingQuestions avoids repeats.
+// Generates questions for one topic in both EN and PT.
+// Server handles language and dedup — client only needs topicName + phaseName.
 export function useGenerateTopicQuestions(roadmapId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: {
-      topicName: string
-      phaseName: string
-      language?: string
-      existingQuestions?: string[]
-    }) => {
+    mutationFn: async (payload: { topicName: string; phaseName: string }) => {
       const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

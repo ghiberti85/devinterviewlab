@@ -5,7 +5,7 @@ import { checkRateLimit, sanitizeError } from '@/lib/api/rate-limit'
 import { aiService } from '@/lib/ai/ai.service'
 import type { RoadmapQuestion } from '@/lib/supabase/types'
 
-// GET /api/roadmaps/[id]/generate-questions — returns existing questions
+// GET — returns existing questions for the roadmap
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +30,7 @@ export async function GET(
   return NextResponse.json(data ?? [])
 }
 
-// DELETE /api/roadmaps/[id]/generate-questions — clears all questions for the roadmap
+// DELETE — clears all questions for the roadmap
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -54,9 +54,8 @@ export async function DELETE(
   return new NextResponse(null, { status: 204 })
 }
 
-// POST /api/roadmaps/[id]/generate-questions
-// Body: { topicName, phaseName, language?, existingQuestions? }
-// Generates Q&A for a single topic and appends (no delete). Skips if topic already has questions.
+// POST — generates questions for ONE topic in BOTH EN and PT
+// Body: { topicName, phaseName }
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -72,11 +71,9 @@ export async function POST(
   const body = await request.json().catch(() => ({})) as {
     topicName?: string
     phaseName?: string
-    language?: string
-    existingQuestions?: string[]
   }
 
-  const { topicName, phaseName, language = 'en', existingQuestions = [] } = body
+  const { topicName, phaseName } = body
 
   if (!topicName || !phaseName) {
     return NextResponse.json({ error: 'topicName and phaseName are required.' }, { status: 400 })
@@ -94,7 +91,18 @@ export async function POST(
     return NextResponse.json({ error: 'Roadmap not found.' }, { status: 404 })
   }
 
-  // Get the current max question_order for this roadmap to append correctly
+  // Fetch existing questions per language for dedup (server handles it — client doesn't need to)
+  const { data: existingRows } = await supabase
+    .from('roadmap_questions')
+    .select('question, language')
+    .eq('roadmap_id', id)
+    .eq('user_id', user.id)
+    .eq('topic_name', topicName)
+
+  const existingEn = (existingRows ?? []).filter(q => q.language === 'en').map(q => q.question)
+  const existingPt = (existingRows ?? []).filter(q => q.language === 'pt').map(q => q.question)
+
+  // Get current max question_order to append correctly
   const { data: orderData } = await supabase
     .from('roadmap_questions')
     .select('question_order')
@@ -105,64 +113,49 @@ export async function POST(
 
   let questionOrder = orderData?.[0]?.question_order != null ? orderData[0].question_order + 1 : 0
 
-  // Generate Q&A for the topic
-  let pairs: Array<{ question: string; answer: string }> = []
-  try {
-    pairs = await aiService.generateRoadmapQuestions({
-      topicName,
-      phaseName,
-      language,
-      existingQuestions,
-    })
-  } catch (err) {
-    logger.error('Failed to generate questions for topic', err as Error, {
-      userId: user.id,
-      roadmapId: id,
-      topic: topicName,
-    })
-    return NextResponse.json({ error: 'AI generation failed.' }, { status: 500 })
-  }
+  // Generate EN and PT in parallel
+  const [enPairs, ptPairs] = await Promise.all([
+    aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'en', existingQuestions: existingEn }).catch(err => {
+      logger.error('Failed to generate EN questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
+      return []
+    }),
+    aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'pt', existingQuestions: existingPt }).catch(err => {
+      logger.error('Failed to generate PT questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
+      return []
+    }),
+  ])
 
-  if (pairs.length === 0) {
+  // DB-level dedup (safety net)
+  const enTexts = new Set(existingEn.map(q => q.toLowerCase()))
+  const ptTexts = new Set(existingPt.map(q => q.toLowerCase()))
+  const dedupedEn = enPairs.filter(p => !enTexts.has(p.question.toLowerCase()))
+  const dedupedPt = ptPairs.filter(p => !ptTexts.has(p.question.toLowerCase()))
+
+  const toInsert: Omit<RoadmapQuestion, 'id' | 'created_at'>[] = [
+    ...dedupedEn.map(pair => ({
+      roadmap_id: id, user_id: user.id, phase_name: phaseName, topic_name: topicName,
+      question: pair.question, answer: pair.answer, question_order: questionOrder++, language: 'en',
+    })),
+    ...dedupedPt.map(pair => ({
+      roadmap_id: id, user_id: user.id, phase_name: phaseName, topic_name: topicName,
+      question: pair.question, answer: pair.answer, question_order: questionOrder++, language: 'pt',
+    })),
+  ]
+
+  if (toInsert.length === 0) {
     return NextResponse.json({ count: 0 })
   }
 
-  // DB-level dedup: filter out questions already stored for this roadmap+topic+language
-  const { data: storedQs } = await supabase
-    .from('roadmap_questions')
-    .select('question')
-    .eq('roadmap_id', id)
-    .eq('user_id', user.id)
-    .eq('topic_name', topicName)
-    .eq('language', language)
-
-  const storedTexts = new Set((storedQs ?? []).map((q: { question: string }) => q.question.toLowerCase()))
-  const dedupedPairs = pairs.filter(p => !storedTexts.has(p.question.toLowerCase()))
-
-  if (dedupedPairs.length === 0) {
-    return NextResponse.json({ count: 0 })
-  }
-
-  const toInsert: Omit<RoadmapQuestion, 'id' | 'created_at'>[] = dedupedPairs.map(pair => ({
-    roadmap_id: id,
-    user_id: user.id,
-    phase_name: phaseName,
-    topic_name: topicName,
-    question: pair.question,
-    answer: pair.answer,
-    question_order: questionOrder++,
-    language,
-  }))
-
-  const { error: insertError } = await supabase
-    .from('roadmap_questions')
-    .insert(toInsert)
+  const { error: insertError } = await supabase.from('roadmap_questions').insert(toInsert)
 
   if (insertError) {
     logger.error('Failed to insert roadmap questions', insertError, { userId: user.id, roadmapId: id })
     return NextResponse.json({ error: sanitizeError(insertError) }, { status: 500 })
   }
 
-  logger.info('Generated roadmap questions for topic', { userId: user.id, roadmapId: id, topic: topicName, count: dedupedPairs.length })
-  return NextResponse.json({ count: pairs.length })
+  logger.info('Generated bilingual roadmap questions', {
+    userId: user.id, roadmapId: id, topic: topicName,
+    en: dedupedEn.length, pt: dedupedPt.length,
+  })
+  return NextResponse.json({ count: toInsert.length })
 }
