@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { BarChart2, BookOpen, CheckCircle2, Code2 } from 'lucide-react'
+import { BookOpen, Code2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
@@ -15,13 +14,13 @@ import {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: React.ElementType }) {
   return (
-    <div className="border rounded-xl p-4 bg-card flex items-center gap-3">
-      <div className="p-2.5 rounded-lg bg-primary/10 shrink-0">
-        <Icon size={18} className="text-primary" />
+    <div className="border rounded-xl p-4 bg-card flex items-center gap-3 min-w-0">
+      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+        <Icon size={16} className="text-primary" />
       </div>
-      <div>
+      <div className="min-w-0">
         <div className="text-xl font-bold tabular-nums">{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-xs text-muted-foreground leading-tight">{label}</div>
       </div>
     </div>
   )
@@ -52,10 +51,10 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label={t.stats.questionsTotal ?? 'Total'} value={total} icon={BookOpen} />
-        <StatCard label={t.stats.questionsTheoretical ?? 'Theoretical'} value={theoretical} icon={BookOpen} />
-        <StatCard label={t.stats.questionsLiveCoding ?? 'Live Coding'} value={liveCoding} icon={Code2} />
+      <div className="grid grid-cols-3 gap-2">
+        <StatCard label={t.stats.questionsTotal} value={total} icon={BookOpen} />
+        <StatCard label={t.stats.questionsTheoretical} value={theoretical} icon={BookOpen} />
+        <StatCard label={t.stats.questionsLiveCoding} value={liveCoding} icon={Code2} />
       </div>
 
       {topicData.length > 0 && (
@@ -88,7 +87,6 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
 export default function StatsPage() {
   const t = useT()
-  const { data, isLoading } = useAnalytics()
   const { data: roadmaps } = useRoadmaps()
   const { data: codingSessions } = useCodingSessions()
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null)
@@ -104,21 +102,20 @@ export default function StatsPage() {
       </div>
 
       {/* Overall stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label={t.stats.totalQuestions} value={data?.totalQuestions ?? '—'} icon={BookOpen} />
-        <StatCard label={t.stats.totalSessions} value={data?.totalSessions ?? '—'} icon={CheckCircle2} />
-        <StatCard label={t.stats.codingSessions ?? 'Code sessions'} value={totalCodingSessions} icon={Code2} />
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label={t.stats.flashcards} value="—" icon={BookOpen} />
+        <StatCard label={t.stats.codingSessions} value={totalCodingSessions} icon={Code2} />
       </div>
 
       {/* Roadmap stats */}
       {allRoadmaps.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-semibold text-sm">{t.stats.roadmapProgress}</h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="font-semibold text-sm shrink-0">{t.stats.roadmapProgress}</h2>
             <select
               value={currentId ?? ''}
               onChange={e => setSelectedRoadmapId(e.target.value)}
-              className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary max-w-xs"
+              className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary min-w-0 flex-1 max-w-xs"
             >
               {allRoadmaps.map(r => (
                 <option key={r.id} value={r.id}>
