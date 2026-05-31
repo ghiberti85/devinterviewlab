@@ -57,27 +57,29 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
       </div>
 
       {topicData.length > 0 && (
-        <div className="border rounded-xl p-4 bg-card overflow-hidden">
+        <div className="border rounded-xl p-4 bg-card overflow-x-hidden">
           <h3 className="text-sm font-medium mb-4">{t.stats.questionsPerTopic ?? 'Questions per topic'}</h3>
-          <ResponsiveContainer width="100%" height={Math.max(160, topicData.length * 36)}>
-            <BarChart data={topicData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={yAxisWidth}
-                tick={{ fontSize: 10 }}
-                tickFormatter={(v: string) => v.length > 20 ? v.slice(0, 18) + '…' : v}
-              />
-              <Tooltip />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                {topicData.map((_, i) => (
-                  <Cell key={i} fill="#6366f1" />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-hidden">
+            <ResponsiveContainer width="99%" height={Math.max(160, topicData.length * 36)}>
+              <BarChart data={topicData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={yAxisWidth}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v: string) => v.length > 20 ? v.slice(0, 18) + '…' : v}
+                />
+                <Tooltip />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {topicData.map((_, i) => (
+                    <Cell key={i} fill="#6366f1" />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
@@ -99,7 +101,7 @@ export default function StatsPage() {
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
 
   return (
-    <div className="space-y-6 max-w-2xl w-full min-w-0">
+    <div className="space-y-6 max-w-2xl w-full min-w-0 overflow-x-hidden">
       <div>
         <h1 className="text-xl font-semibold">{t.stats.title}</h1>
       </div>
