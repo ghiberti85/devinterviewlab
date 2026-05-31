@@ -190,6 +190,7 @@ export interface RoadmapQuestion {
   answer: string
   question_order: number
   language: string
+  question_type: 'theoretical' | 'live_coding'
   created_at: string
 }
 
