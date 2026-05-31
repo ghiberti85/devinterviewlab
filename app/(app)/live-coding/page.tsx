@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useSubmitCode, useCodingSessions, useRequestHint, useGenerateProblem, useSaveProblem, type ProblemDifficulty } from '@/features/live-coding/hooks/useLiveCoding'
+import { useSubmitCode, useCodingSessions, useRequestHint, useGenerateProblem, useSaveProblem, useDeleteCodingProblem, type ProblemDifficulty } from '@/features/live-coding/hooks/useLiveCoding'
 import { useSettingsStore } from '@/store/settings.store'
 import { useT } from '@/lib/i18n/useT'
 import type { CodeEvaluationFeedback } from '@/lib/supabase/types'
@@ -71,12 +71,16 @@ function useIsMobile() {
 
 interface SavedProblemsPanelProps {
   sessions: Array<{ problem_title: string; problem_description: string | null; score: number | null; created_at: string }>
-  lc: { savedProblems: string; noSavedProblems: string; loadProblem: string; noDescription?: string }
+  lc: { savedProblems: string; noSavedProblems: string; loadProblem: string; noDescription?: string; deleteHint?: string; confirmDelete?: string; cancel?: string }
   onSelect: (title: string, desc: string) => void
 }
 
 function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps) {
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const deleteSession = useDeleteCodingProblem()
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Deduplicate by title, keep most recent
   const seen = new Set<string>()
   const unique = sessions.filter(s => {
@@ -85,6 +89,19 @@ function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps)
     return true
   })
 
+  function startLongPress(title: string) {
+    longPressTimer.current = setTimeout(() => setConfirmDelete(title), 500)
+  }
+  function cancelLongPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current)
+  }
+
+  async function handleDelete(title: string) {
+    await deleteSession.mutateAsync(title)
+    setConfirmDelete(null)
+    if (expanded === title) setExpanded(null)
+  }
+
   if (unique.length === 0) {
     return <p className="text-xs text-muted-foreground py-2">{lc.noSavedProblems}</p>
   }
@@ -92,35 +109,65 @@ function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps)
   return (
     <div className="space-y-1 max-h-72 overflow-y-auto">
       {unique.map(s => (
-        <div key={s.problem_title} className="rounded-md border border-transparent hover:border-border transition-colors">
-          <button
-            onClick={() => setExpanded(expanded === s.problem_title ? null : s.problem_title)}
-            className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-2 min-h-[44px]"
-          >
-            <span className="text-sm truncate flex-1">{s.problem_title}</span>
-            {s.score !== null && (
-              <span className={`text-xs font-medium tabular-nums shrink-0 ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {s.score}/100
-              </span>
-            )}
-          </button>
-          {expanded === s.problem_title && (
-            <div className="px-3 pb-3 space-y-2">
-              {s.problem_description ? (
-                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{s.problem_description}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground italic">{lc.noDescription ?? 'No description saved.'}</p>
-              )}
-              <button
-                onClick={() => onSelect(s.problem_title, s.problem_description ?? '')}
-                className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
-              >
-                {lc.loadProblem}
-              </button>
+        <div key={s.problem_title} className="rounded-md border border-transparent hover:border-border transition-colors select-none">
+          {confirmDelete === s.problem_title ? (
+            <div className="px-3 py-2.5 flex items-center justify-between gap-2 bg-red-500/10 rounded-md">
+              <span className="text-xs text-red-600 dark:text-red-400 flex-1">{lc.confirmDelete ?? 'Delete this problem?'}</span>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => handleDelete(s.problem_title)}
+                  disabled={deleteSession.isPending}
+                  className="text-xs bg-red-500 text-white px-2.5 py-1 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors"
+                >
+                  {deleteSession.isPending ? '…' : 'Delete'}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="text-xs border px-2.5 py-1 rounded-md hover:bg-accent transition-colors"
+                >
+                  {lc.cancel ?? 'Cancel'}
+                </button>
+              </div>
             </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setExpanded(expanded === s.problem_title ? null : s.problem_title)}
+                onMouseDown={() => startLongPress(s.problem_title)}
+                onMouseUp={cancelLongPress}
+                onMouseLeave={cancelLongPress}
+                onTouchStart={() => startLongPress(s.problem_title)}
+                onTouchEnd={cancelLongPress}
+                onTouchMove={cancelLongPress}
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-2 min-h-[44px]"
+              >
+                <span className="text-sm truncate flex-1">{s.problem_title}</span>
+                {s.score !== null && (
+                  <span className={`text-xs font-medium tabular-nums shrink-0 ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {s.score}/100
+                  </span>
+                )}
+              </button>
+              {expanded === s.problem_title && (
+                <div className="px-3 pb-3 space-y-2">
+                  {s.problem_description ? (
+                    <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{s.problem_description}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">{lc.noDescription ?? 'No description saved.'}</p>
+                  )}
+                  <button
+                    onClick={() => onSelect(s.problem_title, s.problem_description ?? '')}
+                    className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+                  >
+                    {lc.loadProblem}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       ))}
+      <p className="text-[10px] text-muted-foreground/50 text-center pt-1">{lc.deleteHint ?? 'Hold to delete'}</p>
     </div>
   )
 }

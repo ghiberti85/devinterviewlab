@@ -15,6 +15,17 @@ export function useCodingSessions() {
   })
 }
 
+export function useDeleteCodingProblem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (title: string) => {
+      const res = await fetch(`/api/coding?title=${encodeURIComponent(title)}`, { method: 'DELETE' })
+      if (!res.ok && res.status !== 204) throw new Error('Failed to delete')
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['coding-sessions'] }),
+  })
+}
+
 export function useRequestHint() {
   return useMutation({
     mutationFn: async (body: {
