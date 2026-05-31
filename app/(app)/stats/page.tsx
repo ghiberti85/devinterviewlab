@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { BarChart2, TrendingUp, BookOpen, CheckCircle2 } from 'lucide-react'
+import { BarChart2, BookOpen, CheckCircle2, Code2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
   ResponsiveContainer,
@@ -35,7 +36,6 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
     return <div className="h-24 animate-pulse bg-muted rounded-xl" />
   }
 
-  // Count only questions in the current language
   const langQuestions = (questions ?? []).filter(q => q.language === language)
   const total = langQuestions.length
 
@@ -46,7 +46,6 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
   const topicData = Array.from(byTopic.entries()).map(([name, count]) => ({ name, count }))
   const maxNameLen = topicData.reduce((m, d) => Math.max(m, d.name.length), 0)
-  // Clamp YAxis width: 8px per char, min 80, max 160
   const yAxisWidth = Math.min(160, Math.max(80, maxNameLen * 7))
 
   return (
@@ -87,10 +86,12 @@ export default function StatsPage() {
   const t = useT()
   const { data, isLoading } = useAnalytics()
   const { data: roadmaps } = useRoadmaps()
+  const { data: codingSessions } = useCodingSessions()
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null)
 
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
+  const totalCodingSessions = codingSessions?.length ?? '—'
 
   return (
     <div className="space-y-6 max-w-2xl w-full min-w-0">
@@ -99,34 +100,10 @@ export default function StatsPage() {
       </div>
 
       {/* Overall stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard label={t.stats.totalQuestions} value={data?.totalQuestions ?? '—'} icon={BookOpen} />
         <StatCard label={t.stats.totalSessions} value={data?.totalSessions ?? '—'} icon={CheckCircle2} />
-        <StatCard
-          label={t.stats.avgConfidence}
-          value={data?.avgConfidence ? data.avgConfidence.toFixed(1) : '—'}
-          icon={TrendingUp}
-        />
-        <StatCard label={t.stats.topicScores} value={data?.topicScores?.length ?? '—'} icon={BarChart2} />
-      </div>
-
-      {/* Activity heatmap */}
-      <div className="border rounded-xl p-5 bg-card">
-        <h2 className="font-semibold text-sm mb-4">{t.stats.dailyActivity}</h2>
-        {isLoading && <div className="h-16 animate-pulse bg-muted rounded-lg" />}
-        {!isLoading && data?.heatmap.length ? (
-          <div className="flex flex-wrap gap-1">
-            {data.heatmap.slice(-90).map(({ date, count }) => (
-              <div
-                key={date}
-                title={`${date}: ${count}`}
-                className={`w-3 h-3 rounded-sm ${count === 0 ? 'bg-muted' : count <= 2 ? 'bg-green-200 dark:bg-green-900' : count <= 4 ? 'bg-green-400 dark:bg-green-700' : 'bg-green-600 dark:bg-green-500'}`}
-              />
-            ))}
-          </div>
-        ) : (
-          !isLoading && <p className="text-sm text-muted-foreground">{t.stats.noActivity}</p>
-        )}
+        <StatCard label={t.stats.codingSessions ?? 'Code sessions'} value={totalCodingSessions} icon={Code2} />
       </div>
 
       {/* Roadmap stats */}
@@ -153,30 +130,6 @@ export default function StatsPage() {
       {allRoadmaps.length === 0 && (
         <div className="border rounded-xl p-5 bg-card text-center">
           <p className="text-sm text-muted-foreground">{t.stats.noRoadmaps}</p>
-        </div>
-      )}
-
-      {/* Recent sessions */}
-      {data?.recentSessions && data.recentSessions.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card space-y-3">
-          <h2 className="font-semibold text-sm">{t.stats.recentSessions}</h2>
-          <div className="divide-y">
-            {data.recentSessions.slice(0, 10).map(s => (
-              <div key={s.id} className="flex items-center justify-between min-h-[44px] py-2">
-                <span className="text-sm truncate flex-1 text-muted-foreground pr-3">
-                  {s.questions?.title ?? '—'}
-                </span>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`text-xs font-medium ${s.confidence >= 4 ? 'text-green-600' : s.confidence >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {s.confidence}/5
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:block">
-                    {new Date(s.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>

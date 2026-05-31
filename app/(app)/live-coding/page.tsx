@@ -23,20 +23,6 @@ const CODING_LANGUAGES = [
   'javascript', 'typescript', 'python', 'java', 'cpp', 'go', 'rust',
 ] as const
 
-const SAMPLE_PROBLEMS = [
-  {
-    title: 'Two Sum',
-    description: 'Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nExample:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]',
-  },
-  {
-    title: 'Valid Parentheses',
-    description: 'Given a string `s` containing just the characters `(`, `)`, `{`, `}`, `[` and `]`, determine if the input string is valid.\n\nAn input string is valid if:\n- Open brackets must be closed by the same type of brackets.\n- Open brackets must be closed in the correct order.\n\nExample:\nInput: s = "()[]{}" → Output: true\nInput: s = "(]" → Output: false',
-  },
-  {
-    title: 'Reverse Linked List',
-    description: 'Given the head of a singly linked list, reverse the list, and return the reversed list.\n\nExample:\nInput: head = [1,2,3,4,5]\nOutput: [5,4,3,2,1]',
-  },
-]
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -134,10 +120,9 @@ export default function LiveCodingPage() {
   const isMobile = useIsMobile()
 
   // Problem state
-  const [problemTitle, setProblemTitle] = useState(SAMPLE_PROBLEMS[0].title)
-  const [problemDesc, setProblemDesc] = useState(SAMPLE_PROBLEMS[0].description)
-  const [customProblem, setCustomProblem] = useState(false)
-  const [showAIGenerate, setShowAIGenerate] = useState(false)
+  const [problemTitle, setProblemTitle] = useState('')
+  const [problemDesc, setProblemDesc] = useState('')
+  const [showAIGenerate, setShowAIGenerate] = useState(true)
   const [showSavedProblems, setShowSavedProblems] = useState(false)
   const [aiDifficulty, setAIDifficulty] = useState<ProblemDifficulty>('medium')
   const [aiTopic, setAITopic] = useState('')
@@ -239,18 +224,6 @@ export default function LiveCodingPage() {
 
   function stopTimer() { setTimerRunning(false) }
 
-  function selectProblem(idx: number) {
-    setProblemTitle(SAMPLE_PROBLEMS[idx].title)
-    setProblemDesc(SAMPLE_PROBLEMS[idx].description)
-    setCustomProblem(false)
-    setCode('')
-    setEvaluation(null)
-    setHint(null)
-    setTimerRunning(false)
-    setTimerStarted(false)
-    setTimeLeft(timerDuration * 60)
-  }
-
   function resetAll() {
     setCode('')
     setEvaluation(null)
@@ -275,7 +248,6 @@ export default function LiveCodingPage() {
       })
       setProblemTitle(result.title)
       setProblemDesc(result.description)
-      setCustomProblem(false)
       setShowAIGenerate(false)
       setCode('')
       setEvaluation(null)
@@ -336,7 +308,7 @@ export default function LiveCodingPage() {
                 </div>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => { setShowAIGenerate(v => !v); setCustomProblem(false); setShowSavedProblems(false) }}
+                    onClick={() => { setShowAIGenerate(v => !v); setShowSavedProblems(false) }}
                     className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showAIGenerate ? 'bg-purple-600 text-white border-purple-600' : 'text-purple-600 dark:text-purple-400 hover:bg-muted border-transparent'}`}
                   >
                     <Sparkles size={11} />
@@ -344,18 +316,12 @@ export default function LiveCodingPage() {
                     <span className="sm:hidden">IA</span>
                   </button>
                   <button
-                    onClick={() => { setShowSavedProblems(v => !v); setShowAIGenerate(false); setCustomProblem(false) }}
+                    onClick={() => { setShowSavedProblems(v => !v); setShowAIGenerate(false) }}
                     className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${showSavedProblems ? 'bg-primary text-primary-foreground border-primary' : 'text-primary hover:bg-muted border-transparent'}`}
                   >
                     <BookOpen size={11} />
                     <span className="hidden sm:inline">{lc.savedProblems}</span>
                     <span className="sm:hidden">Salvos</span>
-                  </button>
-                  <button
-                    onClick={() => { setCustomProblem(v => !v); setShowAIGenerate(false); setShowSavedProblems(false); if (!customProblem) { setProblemTitle(''); setProblemDesc('') } }}
-                    className={`flex-1 text-xs flex items-center justify-center gap-1 py-1.5 rounded-md border transition-colors min-h-[36px] ${customProblem ? 'bg-muted text-foreground border-border' : 'text-muted-foreground hover:bg-muted border-transparent'}`}
-                  >
-                    <span>{lc.customProblem}</span>
                   </button>
                 </div>
               </div>
@@ -368,7 +334,6 @@ export default function LiveCodingPage() {
                 onSelect={(title, desc) => {
                   setProblemTitle(title)
                   setProblemDesc(desc)
-                  setCustomProblem(false)
                   setShowSavedProblems(false)
                   setCode('')
                   setEvaluation(null)
@@ -421,40 +386,10 @@ export default function LiveCodingPage() {
                   {generateProblem.isPending ? lc.generating : lc.generateProblem}
                 </button>
               </div>
-            ) : !customProblem ? (
-              <div className="space-y-1">
-                {SAMPLE_PROBLEMS.map((p, i) => (
-                  <button
-                    key={p.title}
-                    onClick={() => selectProblem(i)}
-                    className={`w-full text-left text-sm px-3 py-2 rounded-md transition-colors ${
-                      problemTitle === p.title ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-accent'
-                    }`}
-                  >
-                    {p.title}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <input
-                  value={problemTitle}
-                  onChange={e => setProblemTitle(e.target.value)}
-                  placeholder="Problem title…"
-                  className="w-full text-sm border rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <textarea
-                  value={problemDesc}
-                  onChange={e => setProblemDesc(e.target.value)}
-                  placeholder={lc.problemPlaceholder}
-                  rows={5}
-                  className="w-full text-sm border rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                />
-              </div>
-            )}
+            ) : null}
           </div>
 
-          {!customProblem && problemDesc && (
+          {problemDesc && (
             <div className="border rounded-xl p-4 bg-card space-y-3">
               <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">{problemDesc}</p>
               {!timerStarted && (
