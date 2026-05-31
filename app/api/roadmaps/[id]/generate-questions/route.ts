@@ -110,7 +110,6 @@ export async function POST(
 
   let questionOrder = orderData?.[0]?.question_order != null ? orderData[0].question_order + 1 : 0
 
-  // Generate sequentially (not parallel) to stay within Vercel 10s timeout
   const enPairs = await aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'en', existingQuestions: existingEn, questionType }).catch(err => {
     logger.error('Failed to generate EN questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
     return []
