@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { BookOpen, CheckCircle2, Code2 } from 'lucide-react'
+import { BookOpen, Code2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import {
@@ -93,7 +92,6 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
 export default function StatsPage() {
   const t = useT()
-  const { data } = useAnalytics()
   const { data: roadmaps } = useRoadmaps()
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null)
 
@@ -104,11 +102,6 @@ export default function StatsPage() {
     <div className="space-y-6 max-w-2xl w-full min-w-0">
       <div>
         <h1 className="text-xl font-semibold">{t.stats.title}</h1>
-      </div>
-
-      {/* Practice sessions */}
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label={t.stats.totalSessions} value={data?.totalSessions ?? '—'} icon={CheckCircle2} />
       </div>
 
       {/* Roadmap question breakdown */}

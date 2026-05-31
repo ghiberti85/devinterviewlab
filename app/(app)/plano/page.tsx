@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Loader2, Plus, FileText, Code2 } from 'lucide-r
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
-import { useGenerateTopicQuestions, useClearRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useGenerateTopicQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
 import type { StudyRoadmap } from '@/lib/supabase/types'
 import { useQueryClient } from '@tanstack/react-query'
@@ -24,7 +24,6 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
   const [questionType, setQuestionType] = useState<QuestionType>('theoretical')
 
   const generateTopicQuestions = useGenerateTopicQuestions(roadmap.id)
-  const clearQuestions = useClearRoadmapQuestions(roadmap.id)
 
   const allTopics = (roadmap.roadmap?.phases ?? []).flatMap(p =>
     p.topics.map(topic => ({ ...topic, phaseName: p.label }))
@@ -36,7 +35,6 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
     setGenSuccess(null)
     setGenProgress(null)
     try {
-      await clearQuestions.mutateAsync()
       let totalGenerated = 0
       for (let i = 0; i < allTopics.length; i++) {
         setGenProgress({ current: i + 1, total: allTopics.length })
@@ -55,7 +53,7 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
     }
   }
 
-  const isGenerating = generateTopicQuestions.isPending || clearQuestions.isPending
+  const isGenerating = generateTopicQuestions.isPending
 
   return (
     <div className="border rounded-xl bg-card overflow-hidden">
