@@ -333,6 +333,8 @@ export const aiService = {
     title: string
     summary: string
     when_to_use: string | null
+    pros: string[]
+    cons: string[]
     code_snippet: string | null
     quick_qa: Array<{ q: string; a: string }>
     tags: string[]
@@ -341,6 +343,8 @@ export const aiService = {
       title: opts.topicName,
       summary: 'AI not configured.',
       when_to_use: null,
+      pros: [],
+      cons: [],
       code_snippet: null,
       quick_qa: [],
       tags: [],
@@ -366,6 +370,8 @@ export const aiService = {
       title: string
       summary: string
       when_to_use: string | null
+      pros: string[]
+      cons: string[]
       code_snippet: string | null
       quick_qa: Array<{ q: string; a: string }>
       tags: string[]
@@ -377,6 +383,8 @@ export const aiService = {
       title: string
       summary: string
       when_to_use: string | null
+      pros: string[]
+      cons: string[]
       quick_qa: Array<{ q: string; a: string }>
       tags: string[]
     }
@@ -385,6 +393,8 @@ export const aiService = {
     title: string
     summary: string
     when_to_use: string | null
+    pros: string[]
+    cons: string[]
     quick_qa: Array<{ q: string; a: string }>
     tags: string[]
   }> {
@@ -392,6 +402,8 @@ export const aiService = {
       title: opts.topic.title,
       summary: opts.topic.summary,
       when_to_use: opts.topic.when_to_use,
+      pros: opts.topic.pros,
+      cons: opts.topic.cons,
       quick_qa: opts.topic.quick_qa,
       tags: opts.topic.tags,
     }
@@ -409,6 +421,8 @@ export const aiService = {
       title: string
       summary: string
       when_to_use: string | null
+      pros: string[]
+      cons: string[]
       quick_qa: Array<{ q: string; a: string }>
       tags: string[]
     }>(res.choices[0].message.content ?? '{}')

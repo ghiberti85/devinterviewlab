@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { Layers, BookMarked, Network, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle, Trash2, BookOpen, Brain } from 'lucide-react'
+import { BookMarked, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle, Trash2, BookOpen } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -12,18 +12,14 @@ import { useSessionStore } from '@/store/session.store'
 import type { SessionType } from '@/lib/supabase/types'
 
 // Flash Topics
-import { useTopics, useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
+import { useTopics, useGenerateTopic, useDeleteTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
-// Concepts
-import { useConcepts, useDeleteConcept, useBulkDeleteConcepts } from '@/features/concepts/hooks/useConcepts'
-import Link from 'next/link'
 // Roadmap questions
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions, useDeleteRoadmapQuestion, useGenerateTopicQuestions, useBulkDeleteRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
-import { useCreateConcept } from '@/features/concepts/hooks/useConcepts'
 
-type Tab = 'topics' | 'flashcards' | 'concepts' | 'questions'
+type Tab = 'topics' | 'flashcards' | 'questions'
 type FlashMode = 'random' | 'spaced'
 
 function FlashcardsTab() {
@@ -152,6 +148,13 @@ function FlashcardsTab() {
   )
 }
 
+function useLongPress(onLongPress: () => void, ms = 500) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function start() { timerRef.current = setTimeout(onLongPress, ms) }
+  function cancel() { if (timerRef.current) clearTimeout(timerRef.current) }
+  return { onTouchStart: start, onTouchEnd: cancel, onTouchMove: cancel }
+}
+
 function TopicsTab() {
   const t = useT()
   const { language } = useSettingsStore()
@@ -208,16 +211,15 @@ function TopicsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <TopicGenerator />
-      </div>
+      <TopicGenerator />
 
       {!isLoading && pairs && pairs.length > 0 && (
         <div className="flex items-center justify-end gap-3 flex-wrap">
           {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
           {selectMode ? (
             <>
-              <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+              {/* Desktop: select all checkbox */}
+              <label className="hidden sm:flex items-center gap-1.5 text-xs cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selected.size === pairs.length}
@@ -230,7 +232,9 @@ function TopicsTab() {
                 disabled={selected.size === 0 || bulkDelete.isPending}
                 className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
               >
-                {bulkDelete.isPending ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</> : t.review.deleteSelected(selected.size)}
+                {bulkDelete.isPending
+                  ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</>
+                  : t.review.deleteSelected(selected.size)}
               </button>
               <button
                 onClick={exitSelectMode}
@@ -250,9 +254,10 @@ function TopicsTab() {
                   ? <><Loader2 size={11} className="animate-spin mr-1" />{t.topics.syncing}</>
                   : t.topics.syncAll}
               </button>
+              {/* Desktop only — on mobile, use long press to enter select mode */}
               <button
                 onClick={() => setSelectMode(true)}
-                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+                className="hidden sm:flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
               >
                 {t.review.selectMode}
               </button>
@@ -275,33 +280,18 @@ function TopicsTab() {
       {!isLoading && pairs && pairs.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pairs.map(pair => (
-            <div key={pair.rootId} className={`relative group ${selectMode ? 'cursor-pointer' : ''}`} onClick={selectMode ? () => toggleSelect(pair.rootId) : undefined}>
-              {selectMode && (
-                <div className="absolute top-2 left-2 z-10">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(pair.rootId)}
-                    onChange={() => toggleSelect(pair.rootId)}
-                    onClick={e => e.stopPropagation()}
-                    className="w-4 h-4"
-                  />
-                </div>
-              )}
-              <TopicCard pair={pair} />
-              {!selectMode && (
-                <button
-                  onClick={() => {
-                    const id = pair.current?.id ?? pair.other?.id
-                    if (id) deleteTopic.mutate({ id })
-                  }}
-                  disabled={deleteTopic.isPending}
-                  title={t.review.deleteTopic}
-                  className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 border opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 hover:border-red-300 transition-all disabled:opacity-40"
-                >
-                  <Trash2 size={12} />
-                </button>
-              )}
-            </div>
+            <TopicCardWithSelect
+              key={pair.rootId}
+              pair={pair}
+              selectMode={selectMode}
+              selected={selected.has(pair.rootId)}
+              onToggle={() => toggleSelect(pair.rootId)}
+              onEnterSelectMode={() => setSelectMode(true)}
+              onDelete={() => {
+                const id = pair.current?.id ?? pair.other?.id
+                if (id) deleteTopic.mutate({ id })
+              }}
+            />
           ))}
         </div>
       )}
@@ -309,226 +299,44 @@ function TopicsTab() {
   )
 }
 
-function ConceptsTab() {
-  const t = useT()
-  const { language } = useSettingsStore()
-  const { data, isLoading } = useConcepts()
-  const deleteConcept = useDeleteConcept()
-  const bulkDelete = useBulkDeleteConcepts()
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-  const [selectMode, setSelectMode] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const allNodes = data?.nodes ?? []
-  const edges = data?.edges ?? []
-
-  // Filter nodes by current language (fall back to showing all if no language field)
-  const nodes = allNodes.filter(n => !n.language || n.language === language)
-
-  // Group child concepts by their root (part_of target)
-  const nodeIds = new Set(nodes.map(n => n.id))
-  const rootIds = new Set(edges.filter(e => e.relation_type === 'part_of' && nodeIds.has(e.target_id)).map(e => e.target_id))
-  const childOf = new Map<string, string>() // childId → parentId
-  edges.filter(e => e.relation_type === 'part_of' && nodeIds.has(e.source_id) && nodeIds.has(e.target_id))
-    .forEach(e => childOf.set(e.source_id, e.target_id))
-
-  // Root nodes = those that are targets of part_of, or have no parent
-  const roots = nodes.filter(n => rootIds.has(n.id) || !childOf.has(n.id))
-  // Children grouped by parent id
-  const childrenByParent = new Map<string, typeof nodes>()
-  nodes.filter(n => childOf.has(n.id)).forEach(n => {
-    const pid = childOf.get(n.id)!
-    childrenByParent.set(pid, [...(childrenByParent.get(pid) ?? []), n])
+function TopicCardWithSelect({
+  pair, selectMode, selected, onToggle, onEnterSelectMode, onDelete
+}: {
+  pair: import('@/lib/supabase/types').TopicPair
+  selectMode: boolean
+  selected: boolean
+  onToggle: () => void
+  onEnterSelectMode: () => void
+  onDelete: () => void
+}) {
+  const longPress = useLongPress(() => {
+    onEnterSelectMode()
+    onToggle()
   })
 
-  function scoreColor(score: number) {
-    if (score >= 70) return 'bg-green-500'
-    if (score >= 40) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
-
-  function toggleExpand(id: string) {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  function toggleSelect(id: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
-
-  function toggleSelectAll() {
-    if (selected.size === roots.length) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(roots.map(r => r.id)))
-    }
-  }
-
-  function exitSelectMode() {
-    setSelectMode(false)
-    setSelected(new Set())
-  }
-
-  async function handleBulkDelete() {
-    const ids = Array.from(selected)
-    if (ids.length === 0) return
-    await bulkDelete.mutateAsync({ ids })
-    exitSelectMode()
-  }
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-sm text-muted-foreground">{t.plan.conceptsDesc}</p>
-        {!isLoading && roots.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {selectMode ? (
-              <>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selected.size === roots.length}
-                    onChange={toggleSelectAll}
-                  />
-                  {t.review.selectAll}
-                </label>
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={selected.size === 0 || bulkDelete.isPending}
-                  className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
-                >
-                  {bulkDelete.isPending ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</> : t.review.deleteSelected(selected.size)}
-                </button>
-                <button
-                  onClick={exitSelectMode}
-                  className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-                >
-                  {t.review.cancelSelect}
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setSelectMode(true)}
-                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-              >
-                {t.review.selectMode}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {isLoading && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="border rounded-xl h-24 animate-pulse bg-muted" />
-          ))}
+    <div
+      className={`relative select-none ${selectMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary rounded-lg' : ''}`}
+      onClick={selectMode ? onToggle : undefined}
+      {...(!selectMode ? longPress : {})}
+    >
+      {selectMode && (
+        <div className="absolute top-2 left-2 z-10">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggle}
+            onClick={e => e.stopPropagation()}
+            className="w-4 h-4"
+          />
         </div>
       )}
-
-      {!isLoading && nodes.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
-          <Network size={40} className="opacity-30" />
-          <p className="text-sm text-center">{t.review.noConceptsYet}</p>
-        </div>
-      )}
-
-      {!isLoading && roots.length > 0 && (
-        <div className="space-y-3">
-          {roots.map(root => {
-            const children = childrenByParent.get(root.id) ?? []
-            const expanded = expandedIds.has(root.id)
-            return (
-              <div
-                key={root.id}
-                className={`border rounded-xl p-4 bg-card space-y-3 ${selectMode ? 'cursor-pointer' : ''}`}
-                onClick={selectMode ? () => toggleSelect(root.id) : undefined}
-              >
-                {/* Root concept — clickable header to expand */}
-                <div className="flex items-start gap-2">
-                  {selectMode && (
-                    <input
-                      type="checkbox"
-                      checked={selected.has(root.id)}
-                      onChange={() => toggleSelect(root.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="w-4 h-4 mt-0.5 shrink-0"
-                    />
-                  )}
-                  <button
-                    onClick={selectMode ? undefined : () => toggleExpand(root.id)}
-                    className="flex-1 flex items-start justify-between gap-3 text-left"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${scoreColor(root.score)}`} />
-                        <span className="font-semibold text-sm">{root.name}</span>
-                        <span className="text-xs tabular-nums text-muted-foreground ml-auto shrink-0">{root.score}/100</span>
-                      </div>
-                      {root.description && !expanded && (
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{root.description}</p>
-                      )}
-                    </div>
-                    {!selectMode && (
-                      <ChevronDown size={14} className={`shrink-0 text-muted-foreground transition-transform mt-0.5 ${expanded ? 'rotate-180' : ''}`} />
-                    )}
-                  </button>
-                  {!selectMode && (
-                    <button
-                      onClick={() => deleteConcept.mutate(root.id)}
-                      disabled={deleteConcept.isPending}
-                      title={t.review.deleteConcept}
-                      className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40 shrink-0"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Expanded description */}
-                {expanded && root.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed">{root.description}</p>
-                )}
-
-                {/* Child concepts (tags) */}
-                {children.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1 border-t">
-                    {children.map(child => (
-                      <span
-                        key={child.id}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border bg-muted/50 group/child"
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${scoreColor(child.score)}`} />
-                        {child.name}
-                        {!selectMode && (
-                          <button
-                            onClick={e => { e.stopPropagation(); deleteConcept.mutate(child.id) }}
-                            disabled={deleteConcept.isPending}
-                            title={t.review.deleteConcept}
-                            className="ml-0.5 opacity-0 group-hover/child:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
-                          >
-                            <Trash2 size={9} />
-                          </button>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
+      <TopicCard pair={pair} />
     </div>
   )
 }
+
+
 
 function QuestionsTab() {
   const t = useT()
@@ -548,18 +356,11 @@ function QuestionsTab() {
   const bulkDelete = useBulkDeleteRoadmapQuestions(currentId ?? '')
   const generateMore = useGenerateTopicQuestions(currentId ?? '')
   const generateTopic = useGenerateTopic()
-  const createConcept = useCreateConcept()
 
-  // Persistent indicators: check existing topics and concepts by topic_name
+  // Track existing topics to avoid duplicate flash topic generation
   const { data: topicPairs } = useTopics(language as string)
-  const { data: conceptData } = useConcepts()
   const existingTopicNames = new Set(
     (topicPairs ?? []).map(p => p.current?.title?.toLowerCase()).filter(Boolean) as string[]
-  )
-  const existingConceptNames = new Set(
-    (conceptData?.nodes ?? [])
-      .filter(n => !n.language || n.language === language)
-      .map(n => n.name.toLowerCase())
   )
 
   const topics = questions
@@ -632,21 +433,6 @@ function QuestionsTab() {
       setTimeout(() => setAction(q.id + '-topic', ''), 2000)
     } catch {
       setAction(q.id + '-topic', '')
-    }
-  }
-
-  async function handleGenerateConcept(q: { id: string; topic_name: string; answer: string }) {
-    setAction(q.id + '-concept', 'loading')
-    try {
-      await createConcept.mutateAsync({
-        name: q.topic_name,
-        description: q.answer.slice(0, 300),
-        language: language as string,
-      })
-      setAction(q.id + '-concept', 'done')
-      setTimeout(() => setAction(q.id + '-concept', ''), 2000)
-    } catch {
-      setAction(q.id + '-concept', '')
     }
   }
 
@@ -767,8 +553,6 @@ function QuestionsTab() {
             const deleting = actionStates[q.id] === 'deleting'
             const topicLoading = actionStates[q.id + '-topic'] === 'loading'
             const topicDone = actionStates[q.id + '-topic'] === 'done'
-            const conceptLoading = actionStates[q.id + '-concept'] === 'loading'
-            const conceptDone = actionStates[q.id + '-concept'] === 'done'
             return (
               <div
                 key={q.id}
@@ -834,21 +618,6 @@ function QuestionsTab() {
                           : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
                       </button>
                     )}
-                    {existingConceptNames.has(q.topic_name.toLowerCase()) ? (
-                      <span className="flex items-center gap-1 text-[10px] text-green-600">
-                        <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleGenerateConcept(q)}
-                        disabled={conceptLoading}
-                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                      >
-                        {conceptLoading
-                          ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                          : <><Brain size={10} />{t.review.generateConceptFromQ}</>}
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
@@ -865,9 +634,8 @@ export default function RevisarPage() {
   const [tab, setTab] = useState<Tab>('questions')
 
   const tabs = [
-    { id: 'questions'  as Tab, icon: HelpCircle,  label: t.review.questionsTab },
-    { id: 'topics'     as Tab, icon: BookMarked,  label: t.review.topicsTab },
-    { id: 'concepts'   as Tab, icon: Network,     label: t.review.conceptsTab },
+    { id: 'questions' as Tab, icon: HelpCircle, label: t.review.questionsTab },
+    { id: 'topics'    as Tab, icon: BookMarked, label: t.review.topicsTab },
   ]
 
   return (
@@ -897,7 +665,6 @@ export default function RevisarPage() {
 
       {tab === 'topics'    && <TopicsTab />}
       {tab === 'questions' && <QuestionsTab />}
-      {tab === 'concepts'  && <ConceptsTab />}
     </div>
   )
 }

@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
         difficulty,
         summary: generated.summary,
         when_to_use: generated.when_to_use,
+        pros: generated.pros ?? [],
+        cons: generated.cons ?? [],
         code_snippet: generated.code_snippet,
         quick_qa: generated.quick_qa,
         tags: generated.tags,
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
     if (error) throw error
 
     // Auto-translate to the other language (background — non-blocking for the response)
-    type TranslatedTopic = { title: string; summary: string; when_to_use: string; quick_qa: { q: string; a: string }[]; tags: string[] }
+    type TranslatedTopic = { title: string; summary: string; when_to_use: string; pros: string[]; cons: string[]; quick_qa: { q: string; a: string }[]; tags: string[] }
     let translatedData: TranslatedTopic | null = null
     try {
       const raw = await aiService.translateTopic({
@@ -85,6 +87,8 @@ export async function POST(req: NextRequest) {
           title: generated.title,
           summary: generated.summary,
           when_to_use: generated.when_to_use ?? '',
+          pros: generated.pros ?? [],
+          cons: generated.cons ?? [],
           quick_qa: generated.quick_qa,
           tags: generated.tags,
         },
@@ -99,6 +103,8 @@ export async function POST(req: NextRequest) {
         difficulty,
         summary: translatedData.summary,
         when_to_use: translatedData.when_to_use,
+        pros: translatedData.pros ?? [],
+        cons: translatedData.cons ?? [],
         code_snippet: generated.code_snippet,
         quick_qa: translatedData.quick_qa,
         tags: translatedData.tags,

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, Code2, Zap, Languages, Loader2 } from 'lucide-react'
+import { Code2, Languages, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TopicPair } from '@/lib/supabase/types'
 import { useTranslateTopic } from '../hooks/useTopics'
@@ -10,11 +10,9 @@ import { useSettingsStore } from '@/store/settings.store'
 export function TopicCard({ pair }: { pair: TopicPair }) {
   const t = useT()
   const { language } = useSettingsStore()
-  const [openQA, setOpenQA] = useState<number | null>(null)
   const [showCode, setShowCode] = useState(false)
   const translateTopic = useTranslateTopic()
 
-  // Show the current-language version; fall back to the other language
   const topic = pair.current ?? pair.other
   if (!topic) return null
 
@@ -33,7 +31,7 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
   }
 
   return (
-    <div className={cn('border rounded-lg p-4 space-y-3 bg-card', isFallback && 'opacity-70')}>
+    <div className={cn('border rounded-lg p-4 space-y-4 bg-card', isFallback && 'opacity-70')}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -46,95 +44,106 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
                 {tag}
               </span>
             ))}
-            {/* Badge showing this is shown in the other language as fallback */}
             {isFallback && (
               <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
                 {topic.language.toUpperCase()}
               </span>
             )}
           </div>
-          <h3 className="font-semibold mt-1 text-sm">{topic.title}</h3>
+          <h3 className="font-semibold mt-1.5 text-sm">{topic.title}</h3>
         </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Translate button: shown when pair is missing one language */}
-          {(!pair.current || !pair.other) && (
-            <button
-              onClick={handleTranslate}
-              disabled={translateTopic.isPending}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-50"
-              title={t.topics.translateTo(isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel)}
-            >
-              {translateTopic.isPending
-                ? <Loader2 size={13} className="animate-spin" />
-                : <Languages size={13} />
-              }
-              <span>{isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel}</span>
-            </button>
-          )}
-
-        </div>
+        {(!pair.current || !pair.other) && (
+          <button
+            onClick={handleTranslate}
+            disabled={translateTopic.isPending}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-50 shrink-0"
+            title={t.topics.translateTo(isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel)}
+          >
+            {translateTopic.isPending
+              ? <Loader2 size={13} className="animate-spin" />
+              : <Languages size={13} />
+            }
+            <span>{isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel}</span>
+          </button>
+        )}
       </div>
 
-      {/* Fallback notice */}
       {isFallback && (
         <p className="text-xs text-yellow-700 dark:text-yellow-400 italic">
           {t.topics.notTranslatedYet}
         </p>
       )}
 
-      {/* Summary */}
-      <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
+      {/* Theory */}
+      <div className="space-y-1">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          {t.topics.theory ?? 'Theory'}
+        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
+      </div>
 
       {/* When to use */}
       {topic.when_to_use && (
-        <div className="text-sm border-l-2 border-primary/30 pl-3 text-muted-foreground">
-          <span className="font-medium text-foreground">{t.topics.whenToUse}:</span>{' '}
-          {topic.when_to_use}
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            {t.topics.whenToUse}
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{topic.when_to_use}</p>
         </div>
       )}
 
-      {/* Code snippet toggle */}
-      {topic.code_snippet && (
-        <div>
-          <button
-            onClick={() => setShowCode(v => !v)}
-            className="flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <Code2 size={12} />
-            {showCode ? t.topics.hideCode : t.topics.showCode}
-          </button>
-          {showCode && (
-            <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto">
-              <code>{topic.code_snippet}</code>
-            </pre>
+      {/* Pros & Cons */}
+      {(topic.pros?.length > 0 || topic.cons?.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          {topic.pros?.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                {t.topics.pros ?? 'Pros'}
+              </p>
+              <ul className="space-y-1">
+                {topic.pros.map((item, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                    <span className="text-green-600 dark:text-green-400 shrink-0 mt-0.5">+</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {topic.cons?.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
+                {t.topics.cons ?? 'Cons'}
+              </p>
+              <ul className="space-y-1">
+                {topic.cons.map((item, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                    <span className="text-red-500 dark:text-red-400 shrink-0 mt-0.5">−</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
 
-      {/* Quick Q&A */}
-      {topic.quick_qa.length > 0 && (
+      {/* Examples (code snippet) */}
+      {topic.code_snippet && (
         <div className="space-y-1">
-          <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <Zap size={12} />
-            {t.topics.quickQA} ({topic.quick_qa.length})
-          </div>
-          {topic.quick_qa.map((item, i) => (
-            <div key={i} className="border rounded overflow-hidden">
-              <button
-                className="w-full text-left text-xs px-3 py-2.5 min-h-[40px] flex items-center justify-between gap-2 hover:bg-muted/50 transition-colors"
-                onClick={() => setOpenQA(openQA === i ? null : i)}
-              >
-                <span className="font-medium">{item.q}</span>
-                <ChevronDown size={12} className={cn('shrink-0 transition-transform', openQA === i && 'rotate-180')} />
-              </button>
-              {openQA === i && (
-                <div className="px-3 py-2 text-xs text-muted-foreground bg-muted/30 border-t leading-relaxed">
-                  {item.a}
-                </div>
-              )}
-            </div>
-          ))}
+          <button
+            onClick={() => setShowCode(v => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+          >
+            <Code2 size={12} />
+            {t.topics.examples ?? t.topics.showCode}
+            <ChevronDown size={11} className={cn('transition-transform', showCode && 'rotate-180')} />
+          </button>
+          {showCode && (
+            <pre className="mt-1 p-3 bg-muted rounded text-xs overflow-x-auto leading-relaxed">
+              <code>{topic.code_snippet}</code>
+            </pre>
+          )}
         </div>
       )}
     </div>

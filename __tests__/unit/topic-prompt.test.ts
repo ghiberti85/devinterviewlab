@@ -20,9 +20,16 @@ describe('getTopicSystemPrompt', () => {
 
   it('includes required JSON schema keys', () => {
     const system = getTopicSystemPrompt()
-    for (const key of ['title', 'summary', 'when_to_use', 'code_snippet', 'quick_qa', 'tags']) {
+    for (const key of ['title', 'summary', 'when_to_use', 'pros', 'cons', 'code_snippet', 'quick_qa', 'tags']) {
       expect(system).toContain(`"${key}"`)
     }
+  })
+
+  it('includes pros and cons guidance', () => {
+    const system = getTopicSystemPrompt()
+    expect(system).toContain('"pros"')
+    expect(system).toContain('"cons"')
+    expect(system).toContain('3-5')
   })
 
   it('specifies exactly 4 Q&A pairs', () => {
@@ -76,6 +83,8 @@ const SAMPLE_TOPIC = {
   title: 'Event Loop',
   summary: 'The Event Loop is the mechanism that allows Node.js to perform non-blocking I/O.',
   when_to_use: 'Use when building async-heavy applications.',
+  pros: ['Non-blocking I/O enables high concurrency', 'Single-threaded model avoids race conditions'],
+  cons: ['CPU-bound tasks block the loop', 'Complex async flows can lead to callback hell'],
   quick_qa: [
     { q: 'What is the call stack?', a: 'A LIFO structure that tracks function execution.' },
   ],
@@ -126,8 +135,14 @@ describe('topicTranslatePrompt', () => {
 
   it('includes required JSON schema keys in system prompt', () => {
     const { system } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
-    for (const key of ['title', 'summary', 'when_to_use', 'quick_qa', 'tags']) {
+    for (const key of ['title', 'summary', 'when_to_use', 'pros', 'cons', 'quick_qa', 'tags']) {
       expect(system).toContain(`"${key}"`)
     }
+  })
+
+  it('includes pros and cons in the user message', () => {
+    const { user } = topicTranslatePrompt({ topic: SAMPLE_TOPIC, targetLanguage: 'pt' })
+    expect(user).toContain('pros')
+    expect(user).toContain('cons')
   })
 })

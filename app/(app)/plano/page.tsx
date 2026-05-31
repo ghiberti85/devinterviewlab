@@ -1,289 +1,213 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useT } from '@/lib/i18n/useT'
-import { Map, BarChart2 } from 'lucide-react'
-
-// Roadmap
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useRoadmaps, useUpdateTopicProgress } from '@/features/roadmaps/hooks/useRoadmaps'
+import { ChevronDown, ChevronUp, Loader2, Plus } from 'lucide-react'
+import { useT } from '@/lib/i18n/useT'
+import { useSettingsStore } from '@/store/settings.store'
+import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useGenerateTopicQuestions, useClearRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
-import { GapAnalysisCard } from '@/features/roadmaps/components/GapAnalysisCard'
-import { RoadmapTimeline } from '@/features/roadmaps/components/RoadmapTimeline'
 import type { StudyRoadmap } from '@/lib/supabase/types'
 import { useQueryClient } from '@tanstack/react-query'
-import { useSettingsStore } from '@/store/settings.store'
 
-// Stats
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
-} from 'recharts'
-import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
-
-// Score Cards
-import { useScoreCards } from '@/features/score-cards/hooks/useScoreCards'
-import { ScoreCardList } from '@/features/score-cards/components/ScoreCardList'
-
-type Tab = 'roadmap' | 'progress'
-
-function RoadmapTab() {
+function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
   const t = useT()
   const router = useRouter()
-  const queryClient = useQueryClient()
-  const { data: roadmaps, isLoading } = useRoadmaps()
-  const [showSetup, setShowSetup] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { language } = useSettingsStore()
+  const [open, setOpen] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
   const [genSuccess, setGenSuccess] = useState<string | null>(null)
   const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null)
 
-  const allRoadmaps = roadmaps ?? []
-  const selected = allRoadmaps.find(r => r.id === selectedId) ?? allRoadmaps[0] ?? null
-  const updateProgress = useUpdateTopicProgress(selected?.id ?? '')
-  const generateTopicQuestions = useGenerateTopicQuestions(selected?.id ?? '')
-  const clearQuestions = useClearRoadmapQuestions(selected?.id ?? '')
+  const generateTopicQuestions = useGenerateTopicQuestions(roadmap.id)
+  const clearQuestions = useClearRoadmapQuestions(roadmap.id)
 
-  function handleCreated(roadmap: StudyRoadmap) {
-    queryClient.setQueryData<StudyRoadmap[]>(['roadmaps'], old => [roadmap, ...(old ?? [])])
-    setSelectedId(roadmap.id)
-    setShowSetup(false)
+  const allTopics = (roadmap.roadmap?.phases ?? []).flatMap(p =>
+    p.topics.map(topic => ({ ...topic, phaseName: p.label }))
+  )
+
+  async function handleGenerate() {
+    if (allTopics.length === 0) return
+    setGenError(null)
+    setGenSuccess(null)
+    setGenProgress(null)
+    try {
+      await clearQuestions.mutateAsync()
+      let totalGenerated = 0
+      for (let i = 0; i < allTopics.length; i++) {
+        setGenProgress({ current: i, total: allTopics.length })
+        const result = await generateTopicQuestions.mutateAsync({
+          topicName: allTopics[i].name,
+          phaseName: allTopics[i].phaseName,
+        })
+        totalGenerated += result.count
+      }
+      setGenProgress(null)
+      setGenSuccess(t.roadmap.questionsGenerated(totalGenerated))
+    } catch {
+      setGenProgress(null)
+      setGenError(t.roadmap.questionsGenerateError)
+    }
   }
 
-  if (isLoading) {
-    return <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="border rounded-xl h-24 animate-pulse bg-muted" />)}</div>
-  }
-
-  if (showSetup || !selected) {
-    return (
-      <div className="space-y-4">
-        {selected && (
-          <button onClick={() => setShowSetup(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← {t.roadmap.backToRoadmap ?? 'Back'}
-          </button>
-        )}
-        <RoadmapSetup onCreated={handleCreated} />
-      </div>
-    )
-  }
+  const isGenerating = generateTopicQuestions.isPending || clearQuestions.isPending
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        {/* Roadmap selector — shown only when there's more than one */}
-        {allRoadmaps.length > 1 ? (
-          <select
-            value={selected.id}
-            onChange={e => setSelectedId(e.target.value)}
-            className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs truncate"
-          >
-            {allRoadmaps.map(r => (
-              <option key={r.id} value={r.id}>
-                {r.job_title ?? t.roadmap.cvOnly} — {new Date(r.created_at).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span className="text-xs text-muted-foreground truncate">
-            {selected.job_title ?? t.roadmap.cvOnly}
-          </span>
-        )}
-        <div className="flex items-center gap-2 shrink-0">
+    <div className="border rounded-xl bg-card overflow-hidden">
+      {/* Card header */}
+      <div className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-semibold text-sm truncate">
+              {roadmap.job_title ?? t.roadmap.cvOnly}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {new Date(roadmap.created_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
+                day: 'numeric', month: 'short', year: 'numeric',
+              })}
+              {' · '}{allTopics.length} {t.roadmap.topicsCount ?? 'topics'}
+            </p>
+          </div>
           <button
-            onClick={async () => {
-              if (!selected) return
-              setGenError(null)
-              setGenSuccess(null)
-              setGenProgress(null)
-              const phases = selected.roadmap?.phases ?? []
-              const allTopics = phases.flatMap(p => p.topics.map(t => ({ topicName: t.name, phaseName: p.label })))
-              if (allTopics.length === 0) return
-              try {
-                await clearQuestions.mutateAsync()
-                let totalGenerated = 0
-                for (let i = 0; i < allTopics.length; i++) {
-                  setGenProgress({ current: i, total: allTopics.length })
-                  // Each call generates EN + PT in the server
-                  const result = await generateTopicQuestions.mutateAsync({
-                    topicName: allTopics[i].topicName,
-                    phaseName: allTopics[i].phaseName,
-                  })
-                  totalGenerated += result.count
-                }
-                setGenProgress(null)
-                setGenSuccess(t.roadmap.questionsGenerated(totalGenerated))
-              } catch {
-                setGenProgress(null)
-                setGenError(t.roadmap.questionsGenerateError)
-              }
-            }}
-            disabled={generateTopicQuestions.isPending || clearQuestions.isPending}
-            className="text-xs text-primary hover:underline disabled:opacity-50"
+            onClick={() => setOpen(v => !v)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
           >
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {open ? (t.roadmap.hideTopics ?? 'Hide') : (t.roadmap.showTopics ?? 'Topics')}
+          </button>
+        </div>
+
+        {/* Generate questions */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating || allTopics.length === 0}
+            className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+          >
+            {isGenerating && <Loader2 size={11} className="animate-spin" />}
             {genProgress
               ? t.roadmap.generatingProgress(genProgress.current, genProgress.total)
               : t.roadmap.generateQuestions}
           </button>
-          <button onClick={() => setShowSetup(true)} className="text-xs text-muted-foreground hover:underline">
-            {t.roadmap.newRoadmap}
+          <button
+            onClick={() => router.push('/revisar')}
+            className="text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
+          >
+            {t.roadmap.practice}
           </button>
         </div>
-      </div>
-      {genProgress && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{t.roadmap.generatingProgress(genProgress.current, genProgress.total)}</span>
-            <span>{Math.round((genProgress.current / genProgress.total) * 100)}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
-      {genError && <p className="text-xs text-red-500">{genError}</p>}
-      {genSuccess && <p className="text-xs text-green-600">{genSuccess}</p>}
-      <GapAnalysisCard
-        gap_analysis={selected.gap_analysis}
-        job_title={selected.job_title}
-      />
-      <RoadmapTimeline
-        phases={selected.roadmap.phases ?? []}
-        progress={(selected as any).progress ?? []}
-        onPractice={topic => router.push(`/simular?topic=${encodeURIComponent(topic)}`)}
-        onIncrementProgress={topic => updateProgress.mutate({ topic_name: topic, increment: 1 })}
-      />
-    </div>
-  )
-}
 
-function ProgressTab() {
-  const t = useT()
-  const { data, isLoading } = useAnalytics()
-  const { data: scoreCards, isLoading: scLoading } = useScoreCards()
-
-  const radarData = data?.topicScores.map(ts => ({
-    topic: ts.category.name,
-    score: ts.score,
-  })) ?? []
-
-  const weakData = data?.weakConcepts.map(w => ({
-    name: w.concept.name,
-    score: Number(w.concept.score),
-  })) ?? []
-
-  if (isLoading) {
-    return <div className="space-y-4">{[...Array(2)].map((_, i) => <div key={i} className="border rounded-xl h-48 animate-pulse bg-muted" />)}</div>
-  }
-
-  return (
-    <div className="space-y-5">
-      {/* Heatmap */}
-      <div className="border rounded-xl p-5 bg-card">
-        <h2 className="font-semibold text-sm mb-4">{t.dashboard.activityTitle}</h2>
-        {data?.heatmap.length ? (
-          <div className="flex flex-wrap gap-1">
-            {data.heatmap.slice(-63).map(({ date, count }) => (
+        {/* Progress bar */}
+        {genProgress && (
+          <div className="space-y-1">
+            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
               <div
-                key={date}
-                title={`${date}: ${count}`}
-                className={`w-3 h-3 rounded-sm ${count === 0 ? 'bg-muted' : count <= 2 ? 'bg-green-200 dark:bg-green-900' : count <= 4 ? 'bg-green-400 dark:bg-green-700' : 'bg-green-600 dark:bg-green-500'}`}
+                className="h-full bg-primary rounded-full transition-all duration-500"
+                style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
               />
-            ))}
+            </div>
           </div>
-        ) : <p className="text-sm text-muted-foreground">{t.dashboard.noActivity}</p>}
-      </div>
-
-      {/* Radar */}
-      {radarData.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card">
-          <h2 className="font-semibold text-sm mb-4">{t.stats.topicScores}</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <RadarChart data={radarData}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="topic" tick={{ fontSize: 11 }} />
-              <Radar dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.25} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Weak concepts */}
-      {weakData.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card">
-          <h2 className="font-semibold text-sm mb-4">{t.dashboard.weakConcepts}</h2>
-          <ResponsiveContainer width="100%" height={Math.max(180, weakData.length * 36)}>
-            <BarChart data={weakData} layout="vertical" margin={{ left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="score" radius={[0, 4, 4, 0]}>
-                {weakData.map((entry, i) => (
-                  <Cell key={i} fill={entry.score < 30 ? '#ef4444' : entry.score < 60 ? '#eab308' : '#22c55e'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Score Cards */}
-      <div className="border rounded-xl p-5 bg-card space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-sm">{t.scoreCard.title}</h2>
-          <Link href="/interview" className="text-xs text-primary hover:underline">{t.scoreCard.generate}</Link>
-        </div>
-        {scLoading && <div className="h-20 animate-pulse bg-muted rounded-lg" />}
-        {!scLoading && (!scoreCards || scoreCards.length === 0) && (
-          <p className="text-sm text-muted-foreground">{t.scoreCard.noCards}</p>
         )}
-        {!scLoading && scoreCards && scoreCards.length > 0 && <ScoreCardList scoreCards={scoreCards} />}
+        {genError && <p className="text-xs text-red-500">{genError}</p>}
+        {genSuccess && <p className="text-xs text-green-600">{genSuccess}</p>}
       </div>
+
+      {/* Topics list */}
+      {open && allTopics.length > 0 && (
+        <div className="border-t bg-muted/20 divide-y">
+          {allTopics.map((topic, i) => (
+            <div key={`${topic.name}-${i}`} className="flex items-center justify-between px-4 py-2.5 gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm truncate">{topic.name}</p>
+                </div>
+              <button
+                onClick={() => router.push('/revisar')}
+                className="text-xs text-primary hover:underline shrink-0"
+              >
+                {t.roadmap.practice}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {open && allTopics.length === 0 && (
+        <div className="border-t px-4 py-6 text-center text-sm text-muted-foreground">
+          {t.roadmap.noTopics ?? 'No topics in this roadmap.'}
+        </div>
+      )}
     </div>
   )
 }
 
 export default function PlanoPage() {
   const t = useT()
-  const [tab, setTab] = useState<Tab>('roadmap')
+  const queryClient = useQueryClient()
+  const { data: roadmaps, isLoading } = useRoadmaps()
+  const [showSetup, setShowSetup] = useState(false)
 
-  const tabs = [
-    { id: 'roadmap'  as Tab, icon: Map,      label: t.nav.roadmap },
-    { id: 'progress' as Tab, icon: BarChart2, label: t.plan.progress },
-  ]
+  function handleCreated(roadmap: StudyRoadmap) {
+    queryClient.setQueryData<StudyRoadmap[]>(['roadmaps'], old => [roadmap, ...(old ?? [])])
+    setShowSetup(false)
+  }
+
+  if (showSetup) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowSetup(false)}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← {t.roadmap.backToRoadmap ?? 'Back'}
+        </button>
+        <RoadmapSetup onCreated={handleCreated} />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">{t.nav.plan}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t.plan.subtitle}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">{t.nav.roadmap}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t.roadmap.subtitle}</p>
+        </div>
+        <button
+          onClick={() => setShowSetup(true)}
+          className="flex items-center gap-1.5 text-sm border px-3 py-2 rounded-md hover:bg-accent transition-colors shrink-0"
+        >
+          <Plus size={14} />
+          {t.roadmap.newRoadmap}
+        </button>
       </div>
 
-      {/* Tab selector */}
-      <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-fit">
-        {tabs.map(({ id, icon: Icon, label }) => (
+      {isLoading && (
+        <div className="space-y-3">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="border rounded-xl h-28 animate-pulse bg-muted" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && (!roadmaps || roadmaps.length === 0) && (
+        <div className="flex flex-col items-center gap-4 py-20 text-muted-foreground">
+          <p className="text-sm">{t.roadmap.noRoadmap}</p>
           <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === id
-                ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => setShowSetup(true)}
+            className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
           >
-            <Icon size={14} />
-            {label}
+            <Plus size={14} />
+            {t.roadmap.newRoadmap}
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {tab === 'roadmap'  && <RoadmapTab />}
-      {tab === 'progress' && <ProgressTab />}
+      {!isLoading && roadmaps && roadmaps.length > 0 && (
+        <div className="space-y-3">
+          {roadmaps.map(r => <RoadmapCard key={r.id} roadmap={r} />)}
+        </div>
+      )}
     </div>
   )
 }
