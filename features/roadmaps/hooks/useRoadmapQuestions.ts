@@ -58,7 +58,7 @@ export function useBulkDeleteRoadmapQuestions(roadmapId: string) {
 export function useGenerateTopicQuestions(roadmapId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { topicName: string; phaseName: string }) => {
+    mutationFn: async (payload: { topicName: string; phaseName: string; questionType?: 'theoretical' | 'live_coding' }) => {
       const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

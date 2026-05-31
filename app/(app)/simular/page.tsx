@@ -179,6 +179,13 @@ function RoadmapPracticeSection() {
 
   // Step: Study (show Q+A, then ready)
   if (step === 'study' && currentQ) {
+    const isLC = currentQ.question_type === 'live_coding'
+    const codeMatch = currentQ.answer.match(/```[\w]*\n?([\s\S]*?)```/)
+    const code = codeMatch ? codeMatch[1].trim() : null
+    const afterCode = codeMatch ? currentQ.answer.slice(currentQ.answer.indexOf(codeMatch[0]) + codeMatch[0].length).trim() : currentQ.answer
+    const explanationMatch = afterCode.match(/\*\*Explanation[:\s]?\*\*\s*([\s\S]*?)(?=\*\*Alternative|$)/i)
+    const alternativesMatch = afterCode.match(/\*\*Alternative approaches[:\s]?\*\*\s*([\s\S]*?)$/i)
+
     return (
       <div className="border rounded-xl p-5 bg-card space-y-4">
         <button onClick={() => setStep('list')} className="text-xs text-muted-foreground hover:text-foreground">
@@ -187,8 +194,33 @@ function RoadmapPracticeSection() {
         <div>
           <p className="text-xs text-primary font-medium mb-1">{t.simulate.studyMode}</p>
           <h2 className="font-semibold text-base mb-3">{currentQ.question}</h2>
-          <div className="bg-muted/40 rounded-lg p-4 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-            {currentQ.answer}
+          <div className="bg-muted/40 rounded-lg p-4 space-y-3">
+            {isLC ? (
+              <>
+                {code && (
+                  <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
+                    {code}
+                  </pre>
+                )}
+                {explanationMatch?.[1] && (
+                  <div className="text-sm text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">{t.roadmap.liveCodingAnswer}: </span>
+                    {explanationMatch[1].trim()}
+                  </div>
+                )}
+                {alternativesMatch?.[1] && (
+                  <div className="text-sm text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">{t.roadmap.alternativeApproaches}: </span>
+                    {alternativesMatch[1].trim()}
+                  </div>
+                )}
+                {!code && !explanationMatch && (
+                  <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{currentQ.answer}</div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{currentQ.answer}</div>
+            )}
           </div>
         </div>
         <button
@@ -203,6 +235,7 @@ function RoadmapPracticeSection() {
 
   // Step: Answer
   if (step === 'answer' && currentQ) {
+    const isLC = currentQ.question_type === 'live_coding'
     return (
       <div className="border rounded-xl p-5 bg-card space-y-4">
         <button onClick={() => setStep('study')} className="text-xs text-muted-foreground hover:text-foreground">
@@ -214,15 +247,26 @@ function RoadmapPracticeSection() {
         </div>
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground">{t.simulate.yourAnswer}</label>
-          <textarea
-            value={answer}
-            onChange={e => setAnswer(e.target.value)}
-            placeholder={t.simulate.typeAnswer}
-            rows={6}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-          />
+          {isLC ? (
+            <textarea
+              value={answer}
+              onChange={e => setAnswer(e.target.value)}
+              placeholder={t.simulate.typeCode ?? '// Write your solution here...'}
+              rows={10}
+              spellCheck={false}
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-muted font-mono focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+            />
+          ) : (
+            <textarea
+              value={answer}
+              onChange={e => setAnswer(e.target.value)}
+              placeholder={t.simulate.typeAnswer}
+              rows={6}
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          )}
           <div className="flex items-stretch gap-2">
-            {micAvailable === false ? (
+            {!isLC && (micAvailable === false ? (
               <p className="text-xs text-muted-foreground self-center">{t.simulate.micNotAvailable}</p>
             ) : (
               <button
@@ -237,7 +281,7 @@ function RoadmapPracticeSection() {
                 {recording ? <Square size={12} /> : <Mic size={12} />}
                 {recording ? t.simulate.micStop : t.simulate.micStart}
               </button>
-            )}
+            ))}
             <button
               onClick={handleSubmitAnswer}
               disabled={loading || !answer.trim()}

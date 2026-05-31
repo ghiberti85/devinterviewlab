@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Loader2, Plus } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Plus, FileText, Code2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
@@ -10,6 +10,8 @@ import { useGenerateTopicQuestions, useClearRoadmapQuestions } from '@/features/
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
 import type { StudyRoadmap } from '@/lib/supabase/types'
 import { useQueryClient } from '@tanstack/react-query'
+
+type QuestionType = 'theoretical' | 'live_coding'
 
 function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
   const t = useT()
@@ -19,6 +21,7 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
   const [genError, setGenError] = useState<string | null>(null)
   const [genSuccess, setGenSuccess] = useState<string | null>(null)
   const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null)
+  const [questionType, setQuestionType] = useState<QuestionType>('theoretical')
 
   const generateTopicQuestions = useGenerateTopicQuestions(roadmap.id)
   const clearQuestions = useClearRoadmapQuestions(roadmap.id)
@@ -36,10 +39,11 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
       await clearQuestions.mutateAsync()
       let totalGenerated = 0
       for (let i = 0; i < allTopics.length; i++) {
-        setGenProgress({ current: i, total: allTopics.length })
+        setGenProgress({ current: i + 1, total: allTopics.length })
         const result = await generateTopicQuestions.mutateAsync({
           topicName: allTopics[i].name,
           phaseName: allTopics[i].phaseName,
+          questionType,
         })
         totalGenerated += result.count
       }
@@ -55,7 +59,6 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
 
   return (
     <div className="border rounded-xl bg-card overflow-hidden">
-      {/* Card header */}
       <div className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -78,7 +81,35 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
           </button>
         </div>
 
-        {/* Generate questions */}
+        {/* Question type selector */}
+        <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-fit">
+          <button
+            onClick={() => setQuestionType('theoretical')}
+            disabled={isGenerating}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
+              questionType === 'theoretical'
+                ? 'bg-background shadow-sm text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <FileText size={11} />
+            {t.roadmap.theoretical ?? 'Theoretical'}
+          </button>
+          <button
+            onClick={() => setQuestionType('live_coding')}
+            disabled={isGenerating}
+            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
+              questionType === 'live_coding'
+                ? 'bg-background shadow-sm text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Code2 size={11} />
+            {t.roadmap.liveCoding ?? 'Live Coding'}
+          </button>
+        </div>
+
+        {/* Generate + practice */}
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handleGenerate}
@@ -98,29 +129,23 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
           </button>
         </div>
 
-        {/* Progress bar */}
         {genProgress && (
-          <div className="space-y-1">
-            <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
-              />
-            </div>
+          <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+            />
           </div>
         )}
         {genError && <p className="text-xs text-red-500">{genError}</p>}
         {genSuccess && <p className="text-xs text-green-600">{genSuccess}</p>}
       </div>
 
-      {/* Topics list */}
       {open && allTopics.length > 0 && (
         <div className="border-t bg-muted/20 divide-y">
           {allTopics.map((topic, i) => (
             <div key={`${topic.name}-${i}`} className="flex items-center justify-between px-4 py-2.5 gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm truncate">{topic.name}</p>
-                </div>
+              <p className="text-sm truncate flex-1">{topic.name}</p>
               <button
                 onClick={() => router.push('/revisar')}
                 className="text-xs text-primary hover:underline shrink-0"

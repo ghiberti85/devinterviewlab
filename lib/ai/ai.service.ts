@@ -472,19 +472,41 @@ export const aiService = {
     phaseName: string
     language?: string
     existingQuestions?: string[]
+    questionType?: 'theoretical' | 'live_coding'
   }): Promise<Array<{ question: string; answer: string }>> {
     if (!hasApiKey()) return []
     const openai = getClient()
-    const { topicName, phaseName, language = 'en', existingQuestions = [] } = opts
+    const { topicName, phaseName, language = 'en', existingQuestions = [], questionType = 'theoretical' } = opts
     const langLabel = language === 'pt' ? 'Portuguese (Brazilian)' : 'English'
-
-    const systemPrompt = `You are a technical interview coach. Generate exactly 5 interview questions with detailed answers. Return only valid JSON, no markdown.`
+    const isLiveCoding = questionType === 'live_coding'
 
     const avoidBlock = existingQuestions.length > 0
       ? `\n\nDo NOT repeat or rephrase these already-existing questions:\n${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
       : ''
 
-    const userPrompt = `Generate exactly 5 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
+    const systemPrompt = isLiveCoding
+      ? `You are a technical coding interview coach. Generate exactly 5 live coding challenges. Return only valid JSON, no markdown.`
+      : `You are a technical interview coach. Generate exactly 5 interview questions with detailed answers. Return only valid JSON, no markdown.`
+
+    const userPrompt = isLiveCoding
+      ? `Generate exactly 5 live coding challenges for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
+
+Return a JSON object with this exact format:
+{
+  "questions": [
+    {
+      "question": "...",
+      "answer": "..."
+    }
+  ]
+}
+
+Requirements:
+- Each "question" must describe a concrete coding problem to implement (function signature, example input/output)
+- Each "answer" must include: 1) complete working code solution (inside a markdown code block), 2) brief explanation (2-3 sentences), 3) alternative approaches section
+- Answer format: \`\`\`language\\n// code here\\n\`\`\`\\n\\n**Explanation:** ...\\n\\n**Alternative approaches:** ...
+- Language: ${langLabel}${avoidBlock}`
+      : `Generate exactly 5 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
 
 Return a JSON object with this exact format:
 {

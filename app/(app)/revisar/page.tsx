@@ -190,8 +190,7 @@ function TopicsTab() {
     if (!pairs) return
     const ids = pairs
       .filter(p => selected.has(p.rootId))
-      .map(p => p.current?.id ?? p.other?.id)
-      .filter((id): id is string => !!id)
+      .flatMap(p => [p.current?.id, p.other?.id].filter((id): id is string => !!id))
     if (ids.length === 0) return
     await bulkDelete.mutateAsync({ ids })
     exitSelectMode()
@@ -262,8 +261,8 @@ function TopicsTab() {
               onToggle={() => toggleSelect(pair.rootId)}
               onEnterSelectMode={() => setSelectMode(true)}
               onDelete={() => {
-                const id = pair.current?.id ?? pair.other?.id
-                if (id) deleteTopic.mutate({ id })
+                const ids = [pair.current?.id, pair.other?.id].filter((id): id is string => !!id)
+                ids.forEach(id => deleteTopic.mutate({ id }))
               }}
             />
           ))}
@@ -310,11 +309,50 @@ function TopicCardWithSelect({
   )
 }
 
+function LiveCodingAnswer({ answer }: { answer: string }) {
+  const t = useT()
+  const codeMatch = answer.match(/```[\w]*\n?([\s\S]*?)```/)
+  const code = codeMatch ? codeMatch[1].trim() : null
+  const afterCode = codeMatch ? answer.slice(answer.indexOf(codeMatch[0]) + codeMatch[0].length).trim() : answer
+
+  const explanationMatch = afterCode.match(/\*\*Explanation[:\s]?\*\*\s*([\s\S]*?)(?=\*\*Alternative|$)/i)
+  const alternativesMatch = afterCode.match(/\*\*Alternative approaches[:\s]?\*\*\s*([\s\S]*?)$/i)
+
+  const explanation = explanationMatch ? explanationMatch[1].trim() : null
+  const alternatives = alternativesMatch ? alternativesMatch[1].trim() : null
+  const fallback = !code && !explanation && !alternatives ? answer : null
+
+  return (
+    <div className="space-y-2">
+      {code && (
+        <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
+          {code}
+        </pre>
+      )}
+      {explanation && (
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          <span className="font-medium text-foreground">{t.roadmap.liveCodingAnswer}: </span>
+          {explanation}
+        </div>
+      )}
+      {alternatives && (
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          <span className="font-medium text-foreground">{t.roadmap.alternativeApproaches}: </span>
+          {alternatives}
+        </div>
+      )}
+      {fallback && (
+        <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{fallback}</div>
+      )}
+    </div>
+  )
+}
+
 function QuestionCard({
   q, open, topicLoading, topicDone, selectMode, selected, topicAlreadyExists,
   onToggleAnswer, onToggleSelect, onEnterSelectMode, onGenerateTopic,
 }: {
-  q: { id: string; topic_name: string; question: string; answer: string; phase_name: string }
+  q: { id: string; topic_name: string; question: string; answer: string; phase_name: string; question_type?: string }
   open: boolean
   topicLoading: boolean
   topicDone: boolean
@@ -328,6 +366,7 @@ function QuestionCard({
 }) {
   const t = useT()
   const longPress = useLongPress(onEnterSelectMode)
+  const isLiveCoding = q.question_type === 'live_coding'
 
   return (
     <div
@@ -346,7 +385,14 @@ function QuestionCard({
           />
         )}
         <div className="flex-1">
-          <p className="text-xs text-muted-foreground mb-1">{q.topic_name}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-xs text-muted-foreground">{q.topic_name}</p>
+            {isLiveCoding && (
+              <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium">
+                {t.roadmap.liveCoding}
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium leading-snug">{q.question}</p>
         </div>
         {!selectMode && (
@@ -359,8 +405,11 @@ function QuestionCard({
         )}
       </div>
       {open && !selectMode && (
-        <div className="text-sm text-muted-foreground bg-muted/40 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
-          {q.answer}
+        <div className="bg-muted/40 rounded-lg p-3">
+          {isLiveCoding
+            ? <LiveCodingAnswer answer={q.answer} />
+            : <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{q.answer}</div>
+          }
         </div>
       )}
       {!selectMode && (

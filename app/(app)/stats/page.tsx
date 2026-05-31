@@ -38,6 +38,8 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
   const langQuestions = (questions ?? []).filter(q => q.language === language)
   const total = langQuestions.length
+  const theoretical = langQuestions.filter(q => q.question_type === 'theoretical').length
+  const liveCoding = langQuestions.filter(q => q.question_type === 'live_coding').length
 
   const byTopic = new Map<string, number>()
   langQuestions.forEach(q => {
@@ -50,8 +52,10 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label={t.stats.questionsGenerated} value={total} icon={BookOpen} />
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard label={t.stats.questionsTotal ?? 'Total'} value={total} icon={BookOpen} />
+        <StatCard label={t.stats.questionsTheoretical ?? 'Theoretical'} value={theoretical} icon={BookOpen} />
+        <StatCard label={t.stats.questionsLiveCoding ?? 'Live Coding'} value={liveCoding} icon={Code2} />
       </div>
 
       {topicData.length > 0 && (
