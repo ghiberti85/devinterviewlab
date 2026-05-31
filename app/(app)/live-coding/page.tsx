@@ -71,11 +71,12 @@ function useIsMobile() {
 
 interface SavedProblemsPanelProps {
   sessions: Array<{ problem_title: string; problem_description: string | null; score: number | null; created_at: string }>
-  lc: { savedProblems: string; noSavedProblems: string; loadProblem: string }
+  lc: { savedProblems: string; noSavedProblems: string; loadProblem: string; noDescription?: string }
   onSelect: (title: string, desc: string) => void
 }
 
 function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps) {
+  const [expanded, setExpanded] = useState<string | null>(null)
   // Deduplicate by title, keep most recent
   const seen = new Set<string>()
   const unique = sessions.filter(s => {
@@ -89,20 +90,36 @@ function SavedProblemsPanel({ sessions, lc, onSelect }: SavedProblemsPanelProps)
   }
 
   return (
-    <div className="space-y-1 max-h-52 overflow-y-auto">
+    <div className="space-y-1 max-h-72 overflow-y-auto">
       {unique.map(s => (
-        <button
-          key={s.problem_title}
-          onClick={() => onSelect(s.problem_title, s.problem_description ?? '')}
-          className="w-full text-left px-3 py-2.5 rounded-md hover:bg-accent transition-colors group flex items-center justify-between gap-2 min-h-[44px]"
-        >
-          <span className="text-sm truncate flex-1">{s.problem_title}</span>
-          {s.score !== null && (
-            <span className={`text-xs font-medium tabular-nums shrink-0 ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-              {s.score}/100
-            </span>
+        <div key={s.problem_title} className="rounded-md border border-transparent hover:border-border transition-colors">
+          <button
+            onClick={() => setExpanded(expanded === s.problem_title ? null : s.problem_title)}
+            className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-2 min-h-[44px]"
+          >
+            <span className="text-sm truncate flex-1">{s.problem_title}</span>
+            {s.score !== null && (
+              <span className={`text-xs font-medium tabular-nums shrink-0 ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {s.score}/100
+              </span>
+            )}
+          </button>
+          {expanded === s.problem_title && (
+            <div className="px-3 pb-3 space-y-2">
+              {s.problem_description ? (
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{s.problem_description}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">{lc.noDescription ?? 'No description saved.'}</p>
+              )}
+              <button
+                onClick={() => onSelect(s.problem_title, s.problem_description ?? '')}
+                className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+              >
+                {lc.loadProblem}
+              </button>
+            </div>
           )}
-        </button>
+        </div>
       ))}
     </div>
   )
