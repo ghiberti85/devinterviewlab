@@ -43,7 +43,7 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
           phaseName: allTopics[i].phaseName,
           questionType,
         })
-        totalGenerated += result.count
+        totalGenerated += result.perLanguage
       }
       setGenProgress(null)
       setGenSuccess(t.roadmap.questionsGenerated(totalGenerated))

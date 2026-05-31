@@ -65,7 +65,7 @@ export function useGenerateTopicQuestions(roadmapId: string) {
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error('Failed to generate questions')
-      return res.json() as Promise<{ count: number }>
+      return res.json() as Promise<{ count: number; perLanguage: number }>
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
   })

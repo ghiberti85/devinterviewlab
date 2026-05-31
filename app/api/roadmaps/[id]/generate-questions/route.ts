@@ -138,7 +138,7 @@ export async function POST(
   ]
 
   if (toInsert.length === 0) {
-    return NextResponse.json({ count: 0 })
+    return NextResponse.json({ count: 0, perLanguage: 0 })
   }
 
   const { error: insertError } = await supabase.from('roadmap_questions').insert(toInsert)
@@ -152,5 +152,5 @@ export async function POST(
     userId: user.id, roadmapId: id, topic: topicName, questionType,
     en: dedupedEn.length, pt: dedupedPt.length,
   })
-  return NextResponse.json({ count: toInsert.length })
+  return NextResponse.json({ count: toInsert.length, perLanguage: dedupedEn.length })
 }
