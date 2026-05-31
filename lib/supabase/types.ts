@@ -219,6 +219,8 @@ export interface Topic {
   when_to_use: string | null
   code_snippet: string | null
   quick_qa: TopicQuickQA[]
+  pros: string[]
+  cons: string[]
   tags: string[]
   language: 'en' | 'pt'
   translated_from: string | null

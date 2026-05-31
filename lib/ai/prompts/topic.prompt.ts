@@ -32,6 +32,11 @@ CRITICAL RULES:
 ✅ 5-20 lines max, well-commented, idiomatic
 ✅ Null if the topic is purely conceptual/architectural
 
+━━━ ABOUT PROS AND CONS ━━━
+✅ "pros": 3-5 bullet strings — concrete advantages, strengths, or ideal use cases
+✅ "cons": 3-5 bullet strings — concrete trade-offs, pitfalls, or anti-patterns
+✅ Keep each item 10-20 words — specific, not generic ("scales horizontally" not "good for scalability")
+
 ━━━ ABOUT QUICK Q&A ━━━
 ✅ Generate exactly 4 Q&A pairs
 ✅ Each question must be interview-style and non-trivial (a junior would struggle)
@@ -46,6 +51,8 @@ Required JSON schema:
   "title": string (canonical name of the concept, clear and specific),
   "summary": string (150-250 words, the core explanation),
   "when_to_use": string (80-150 words, use cases + pitfalls),
+  "pros": string[] (3-5 concrete advantages or strengths),
+  "cons": string[] (3-5 concrete trade-offs or pitfalls),
   "code_snippet": string | null (idiomatic example or null),
   "quick_qa": [
     { "q": string, "a": string }
@@ -59,6 +66,8 @@ interface TopicTranslateOptions {
     title: string
     summary: string
     when_to_use: string | null
+    pros: string[]
+    cons: string[]
     quick_qa: Array<{ q: string; a: string }>
     tags: string[]
   }
@@ -73,7 +82,7 @@ export function topicTranslatePrompt(opts: TopicTranslateOptions): { system: str
 Translate the Flash Topic JSON below into ${targetName}.
 
 RULES:
-- Translate ALL natural language text (title, summary, when_to_use, Q&A questions and answers, tags)
+- Translate ALL natural language text (title, summary, when_to_use, pros, cons, Q&A questions and answers, tags)
 - Keep technical terms in their canonical form (e.g. "Event Loop", "Promise", "closure" — do not invent translations for established terms)
 - Code snippets are NOT included — do not add or modify code
 - Preserve the exact JSON structure and all keys
@@ -84,6 +93,8 @@ Required output schema (same as input):
   "title": string,
   "summary": string,
   "when_to_use": string | null,
+  "pros": string[],
+  "cons": string[],
   "quick_qa": [{ "q": string, "a": string }],
   "tags": string[]
 }`,
@@ -91,6 +102,8 @@ Required output schema (same as input):
       title: opts.topic.title,
       summary: opts.topic.summary,
       when_to_use: opts.topic.when_to_use,
+      pros: opts.topic.pros,
+      cons: opts.topic.cons,
       quick_qa: opts.topic.quick_qa,
       tags: opts.topic.tags,
     }, null, 2)}`,

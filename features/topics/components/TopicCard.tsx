@@ -92,6 +92,42 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
         </div>
       )}
 
+      {/* Pros & Cons */}
+      {(topic.pros?.length > 0 || topic.cons?.length > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          {topic.pros?.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                {t.topics.pros ?? 'Pros'}
+              </p>
+              <ul className="space-y-1">
+                {topic.pros.map((item, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                    <span className="text-green-600 dark:text-green-400 shrink-0 mt-0.5">+</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {topic.cons?.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
+                {t.topics.cons ?? 'Cons'}
+              </p>
+              <ul className="space-y-1">
+                {topic.cons.map((item, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                    <span className="text-red-500 dark:text-red-400 shrink-0 mt-0.5">−</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Examples (code snippet) */}
       {topic.code_snippet && (
         <div className="space-y-1">

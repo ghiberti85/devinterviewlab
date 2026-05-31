@@ -12,6 +12,8 @@ function makeTopic(overrides: Partial<Topic> & { id: string }): Topic {
     when_to_use: null,
     code_snippet: null,
     quick_qa: [],
+    pros: [],
+    cons: [],
     tags: [],
     language: 'en',
     translated_from: null,
