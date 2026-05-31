@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { BookOpen, Code2 } from 'lucide-react'
+import { BookOpen, CheckCircle2, Code2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
+import { useAnalytics } from '@/features/analytics/hooks/useAnalytics'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
-import { useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
   ResponsiveContainer,
@@ -59,7 +59,7 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
 
       {topicData.length > 0 && (
         <div className="border rounded-xl p-4 bg-card overflow-hidden">
-          <h3 className="text-sm font-medium mb-4">{t.stats.roadmapProgress}</h3>
+          <h3 className="text-sm font-medium mb-4">{t.stats.questionsPerTopic ?? 'Questions per topic'}</h3>
           <ResponsiveContainer width="100%" height={Math.max(160, topicData.length * 36)}>
             <BarChart data={topicData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -81,19 +81,24 @@ function RoadmapStats({ roadmapId }: { roadmapId: string }) {
           </ResponsiveContainer>
         </div>
       )}
+
+      {topicData.length === 0 && (
+        <div className="border rounded-xl p-5 bg-card text-center">
+          <p className="text-sm text-muted-foreground">{t.stats.noQuestions ?? 'No questions generated yet.'}</p>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function StatsPage() {
   const t = useT()
+  const { data } = useAnalytics()
   const { data: roadmaps } = useRoadmaps()
-  const { data: codingSessions } = useCodingSessions()
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<string | null>(null)
 
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
-  const totalCodingSessions = codingSessions?.length ?? '—'
 
   return (
     <div className="space-y-6 max-w-2xl w-full min-w-0">
@@ -101,13 +106,12 @@ export default function StatsPage() {
         <h1 className="text-xl font-semibold">{t.stats.title}</h1>
       </div>
 
-      {/* Overall stats */}
+      {/* Practice sessions */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label={t.stats.flashcards} value="—" icon={BookOpen} />
-        <StatCard label={t.stats.codingSessions} value={totalCodingSessions} icon={Code2} />
+        <StatCard label={t.stats.totalSessions} value={data?.totalSessions ?? '—'} icon={CheckCircle2} />
       </div>
 
-      {/* Roadmap stats */}
+      {/* Roadmap question breakdown */}
       {allRoadmaps.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
