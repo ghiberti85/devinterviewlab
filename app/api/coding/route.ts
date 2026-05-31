@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
 
-export async function GET() {
+export async function GET(_request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data, error } = await supabase
     .from('coding_sessions')
-    .select('id, problem_title, language, score, time_spent_sec, created_at')
+    .select('id, problem_title, problem_description, language, score, time_spent_sec, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(20)
@@ -84,4 +84,27 @@ export async function POST(request: Request) {
     await logUsage({ userId: user.id, endpoint: 'coding', status: 'error', durationMs: Date.now() - start })
     return NextResponse.json({ error: sanitizeError(err) }, { status: 500 })
   }
+}
+
+// DELETE /api/coding?title=... — deletes all sessions with that problem title
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const title = request.nextUrl.searchParams.get('title')
+  if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 })
+
+  const { error } = await supabase
+    .from('coding_sessions')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('problem_title', title)
+
+  if (error) {
+    logger.error('Failed to delete coding sessions', error, { userId: user.id })
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
+  }
+
+  return new NextResponse(null, { status: 204 })
 }

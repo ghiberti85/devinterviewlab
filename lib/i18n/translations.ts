@@ -199,6 +199,9 @@ export const translations = {
       saveProblem: 'Save for later',
       problemSaved: 'Saved ✓',
       saving: 'Saving…',
+      deleteHint: 'Hold to delete',
+      confirmDelete: 'Delete this problem?',
+      cancel: 'Cancel',
     },
     scoreCard: {
       title: 'Score Cards',
@@ -602,6 +605,9 @@ export const translations = {
       saveProblem: 'Salvar para depois',
       problemSaved: 'Salvo ✓',
       saving: 'Salvando…',
+      deleteHint: 'Pressione e segure para excluir',
+      confirmDelete: 'Excluir este problema?',
+      cancel: 'Cancelar',
     },
     scoreCard: {
       title: 'Score Cards',
