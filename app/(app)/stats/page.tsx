@@ -13,14 +13,14 @@ import {
 
 function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: React.ElementType }) {
   return (
-    <div className="border rounded-xl p-4 bg-card flex items-center gap-3 min-w-0">
-      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-        <Icon size={16} className="text-primary" />
-      </div>
-      <div className="min-w-0">
+    <div className="border rounded-xl p-3 bg-card flex flex-col gap-2 min-w-0">
+      <div className="flex items-center gap-2">
+        <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+          <Icon size={14} className="text-primary" />
+        </div>
         <div className="text-xl font-bold tabular-nums">{value}</div>
-        <div className="text-xs text-muted-foreground leading-tight">{label}</div>
       </div>
+      <div className="text-xs text-muted-foreground leading-tight">{label}</div>
     </div>
   )
 }
