@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { BookMarked, CheckCircle, RotateCcw, Loader2, ChevronRight, ChevronDown, HelpCircle, Trash2, BookOpen } from 'lucide-react'
+import { BookMarked, CheckCircle, RotateCcw, Loader2, HelpCircle, BookOpen } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -12,12 +12,12 @@ import { useSessionStore } from '@/store/session.store'
 import type { SessionType } from '@/lib/supabase/types'
 
 // Flash Topics
-import { useTopics, useGenerateTopic, useDeleteTopic, useSyncTopics, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
+import { useTopics, useGenerateTopic, useDeleteTopic, useBulkDeleteTopics } from '@/features/topics/hooks/useTopics'
 import { TopicCard } from '@/features/topics/components/TopicCard'
 import { TopicGenerator } from '@/features/topics/components/TopicGenerator'
 // Roadmap questions
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
-import { useRoadmapQuestions, useDeleteRoadmapQuestion, useGenerateTopicQuestions, useBulkDeleteRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
+import { useRoadmapQuestions, useBulkDeleteRoadmapQuestions, useGenerateTopicQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 
 type Tab = 'topics' | 'flashcards' | 'questions'
 type FlashMode = 'random' | 'spaced'
@@ -159,22 +159,10 @@ function TopicsTab() {
   const t = useT()
   const { language } = useSettingsStore()
   const { data: pairs, isLoading } = useTopics(language as string)
-  const syncTopics = useSyncTopics()
   const deleteTopic = useDeleteTopic()
   const bulkDelete = useBulkDeleteTopics()
-  const [syncMsg, setSyncMsg] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-
-  async function handleSync() {
-    setSyncMsg(null)
-    try {
-      const result = await syncTopics.mutateAsync()
-      setSyncMsg(t.topics.syncDone(result.questions_created, result.concepts_created))
-    } catch {
-      setSyncMsg(t.topics.syncError)
-    }
-  }
 
   function toggleSelect(rootId: string) {
     setSelected(prev => {
@@ -215,10 +203,8 @@ function TopicsTab() {
 
       {!isLoading && pairs && pairs.length > 0 && (
         <div className="flex items-center justify-end gap-3 flex-wrap">
-          {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
           {selectMode ? (
             <>
-              {/* Desktop: select all checkbox */}
               <label className="hidden sm:flex items-center gap-1.5 text-xs cursor-pointer">
                 <input
                   type="checkbox"
@@ -244,24 +230,12 @@ function TopicsTab() {
               </button>
             </>
           ) : (
-            <>
-              <button
-                onClick={handleSync}
-                disabled={syncTopics.isPending}
-                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent disabled:opacity-50 transition-colors min-h-[36px]"
-              >
-                {syncTopics.isPending
-                  ? <><Loader2 size={11} className="animate-spin mr-1" />{t.topics.syncing}</>
-                  : t.topics.syncAll}
-              </button>
-              {/* Desktop only — on mobile, use long press to enter select mode */}
-              <button
-                onClick={() => setSelectMode(true)}
-                className="hidden sm:flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-              >
-                {t.review.selectMode}
-              </button>
-            </>
+            <button
+              onClick={() => setSelectMode(true)}
+              className="hidden sm:flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+            >
+              {t.review.selectMode}
+            </button>
           )}
         </div>
       )}
@@ -336,7 +310,81 @@ function TopicCardWithSelect({
   )
 }
 
+function QuestionCard({
+  q, open, topicLoading, topicDone, selectMode, selected, topicAlreadyExists,
+  onToggleAnswer, onToggleSelect, onEnterSelectMode, onGenerateTopic,
+}: {
+  q: { id: string; topic_name: string; question: string; answer: string; phase_name: string }
+  open: boolean
+  topicLoading: boolean
+  topicDone: boolean
+  selectMode: boolean
+  selected: boolean
+  topicAlreadyExists: boolean
+  onToggleAnswer: () => void
+  onToggleSelect: () => void
+  onEnterSelectMode: () => void
+  onGenerateTopic: () => void
+}) {
+  const t = useT()
+  const longPress = useLongPress(onEnterSelectMode)
 
+  return (
+    <div
+      className={`border rounded-xl p-4 bg-card space-y-2 select-none ${selectMode ? 'cursor-pointer' : ''}`}
+      onClick={selectMode ? onToggleSelect : undefined}
+      {...(!selectMode ? longPress : {})}
+    >
+      <div className="flex items-start justify-between gap-2">
+        {selectMode && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            onClick={e => e.stopPropagation()}
+            className="w-4 h-4 mt-1 shrink-0"
+          />
+        )}
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground mb-1">{q.topic_name}</p>
+          <p className="text-sm font-medium leading-snug">{q.question}</p>
+        </div>
+        {!selectMode && (
+          <button
+            onClick={onToggleAnswer}
+            className="text-xs text-primary hover:underline mt-1 shrink-0"
+          >
+            {open ? t.review.hideAnswer : t.review.showAnswer}
+          </button>
+        )}
+      </div>
+      {open && !selectMode && (
+        <div className="text-sm text-muted-foreground bg-muted/40 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
+          {q.answer}
+        </div>
+      )}
+      {!selectMode && (
+        <div className="flex gap-2 pt-1 border-t flex-wrap">
+          {topicAlreadyExists || topicDone ? (
+            <span className="flex items-center gap-1 text-[10px] text-green-600">
+              <CheckCircle size={10} />{t.review.topicAlreadyGenerated}
+            </span>
+          ) : (
+            <button
+              onClick={onGenerateTopic}
+              disabled={topicLoading}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+            >
+              {topicLoading
+                ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingTopic}</>
+                : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function QuestionsTab() {
   const t = useT()
@@ -352,12 +400,10 @@ function QuestionsTab() {
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedId ?? allRoadmaps[0]?.id ?? null
   const { data: questions, isLoading: qLoading } = useRoadmapQuestions(currentId)
-  const deleteQuestion = useDeleteRoadmapQuestion(currentId ?? '')
   const bulkDelete = useBulkDeleteRoadmapQuestions(currentId ?? '')
   const generateMore = useGenerateTopicQuestions(currentId ?? '')
   const generateTopic = useGenerateTopic()
 
-  // Track existing topics to avoid duplicate flash topic generation
   const { data: topicPairs } = useTopics(language as string)
   const existingTopicNames = new Set(
     (topicPairs ?? []).map(p => p.current?.title?.toLowerCase()).filter(Boolean) as string[]
@@ -412,15 +458,6 @@ function QuestionsTab() {
     setActionStates(prev => ({ ...prev, [id]: state }))
   }
 
-  async function handleDelete(questionId: string) {
-    setAction(questionId, 'deleting')
-    try {
-      await deleteQuestion.mutateAsync(questionId)
-    } finally {
-      setAction(questionId, '')
-    }
-  }
-
   async function handleGenerateTopic(q: { id: string; topic_name: string; answer: string }) {
     setAction(q.id + '-topic', 'loading')
     try {
@@ -437,7 +474,6 @@ function QuestionsTab() {
   }
 
   async function handleGenerateMoreForTopic(topicName: string, phaseName: string) {
-    // Server fetches existing questions per language and handles dedup
     await generateMore.mutateAsync({ topicName, phaseName })
   }
 
@@ -470,7 +506,6 @@ function QuestionsTab() {
           ))}
         </select>
 
-        {/* Topic filter */}
         {topics.length > 0 && (
           <select
             value={selectedTopic}
@@ -522,14 +557,7 @@ function QuestionsTab() {
                 {t.review.cancelSelect}
               </button>
             </>
-          ) : (
-            <button
-              onClick={() => setSelectMode(true)}
-              className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-            >
-              {t.review.selectMode}
-            </button>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -548,81 +576,22 @@ function QuestionsTab() {
 
       {!qLoading && filtered.length > 0 && (
         <div className="space-y-3">
-          {filtered.map(q => {
-            const open = expandedIds.has(q.id)
-            const deleting = actionStates[q.id] === 'deleting'
-            const topicLoading = actionStates[q.id + '-topic'] === 'loading'
-            const topicDone = actionStates[q.id + '-topic'] === 'done'
-            return (
-              <div
-                key={q.id}
-                className={`border rounded-xl p-4 bg-card space-y-2 ${selectMode ? 'cursor-pointer' : ''}`}
-                onClick={selectMode ? () => toggleSelect(q.id) : undefined}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  {selectMode && (
-                    <input
-                      type="checkbox"
-                      checked={selected.has(q.id)}
-                      onChange={() => toggleSelect(q.id)}
-                      onClick={e => e.stopPropagation()}
-                      className="w-4 h-4 mt-1 shrink-0"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">{q.phase_name}</span>
-                      <span className="text-[10px] text-muted-foreground">{q.topic_name}</span>
-                    </div>
-                    <p className="text-sm font-medium leading-snug">{q.question}</p>
-                  </div>
-                  {!selectMode && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => toggleAnswer(q.id)}
-                        className="text-xs text-primary hover:underline mt-1"
-                      >
-                        {open ? t.review.hideAnswer : t.review.showAnswer}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(q.id)}
-                        disabled={deleting}
-                        title={t.review.deleteQuestion}
-                        className="p-1 rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors disabled:opacity-40"
-                      >
-                        {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                {open && !selectMode && (
-                  <div className="text-sm text-muted-foreground bg-muted/40 rounded-lg p-3 leading-relaxed whitespace-pre-wrap">
-                    {q.answer}
-                  </div>
-                )}
-                {/* Actions: generate topic / concept */}
-                {!selectMode && (
-                  <div className="flex gap-2 pt-1 border-t flex-wrap">
-                    {existingTopicNames.has(q.topic_name.toLowerCase()) ? (
-                      <span className="flex items-center gap-1 text-[10px] text-green-600">
-                        <CheckCircle size={10} />{t.review.topicAlreadyGenerated}
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleGenerateTopic(q)}
-                        disabled={topicLoading}
-                        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
-                      >
-                        {topicLoading
-                          ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</>
-                          : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {filtered.map(q => (
+            <QuestionCard
+              key={q.id}
+              q={q}
+              open={expandedIds.has(q.id)}
+              topicLoading={actionStates[q.id + '-topic'] === 'loading'}
+              topicDone={actionStates[q.id + '-topic'] === 'done'}
+              selectMode={selectMode}
+              selected={selected.has(q.id)}
+              topicAlreadyExists={existingTopicNames.has(q.topic_name.toLowerCase())}
+              onToggleAnswer={() => toggleAnswer(q.id)}
+              onToggleSelect={() => toggleSelect(q.id)}
+              onEnterSelectMode={() => { setSelectMode(true); toggleSelect(q.id) }}
+              onGenerateTopic={() => handleGenerateTopic(q)}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -645,7 +614,6 @@ export default function RevisarPage() {
         <p className="text-sm text-muted-foreground mt-1">{t.review.subtitle}</p>
       </div>
 
-      {/* Tab selector — full width on mobile so tabs don't overflow */}
       <div className="flex gap-1 bg-muted/50 p-1 rounded-xl w-full sm:w-fit">
         {tabs.map(({ id, icon: Icon, label }) => (
           <button

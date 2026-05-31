@@ -1,11 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { Code2, ChevronRight, Map, Mic, MicOff, Square } from 'lucide-react'
 import Link from 'next/link'
-import { MessageSquare, Code2, ChevronRight, Clock, BookMarked, Map, Mic, MicOff } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
-import { useEvaluations } from '@/features/evaluations/hooks/useEvaluations'
-import { useCodingSessions } from '@/features/live-coding/hooks/useLiveCoding'
 import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useRoadmapQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { useSettingsStore } from '@/store/settings.store'
@@ -35,6 +33,8 @@ function RoadmapPracticeSection() {
   const [loading, setLoading] = useState(false)
   const [micAvailable, setMicAvailable] = useState<boolean | null>(null)
   const [recording, setRecording] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
 
   const allRoadmaps = roadmaps ?? []
   const currentId = selectedRoadmapId ?? allRoadmaps[0]?.id ?? null
@@ -105,7 +105,16 @@ function RoadmapPracticeSection() {
     }
     recognition.onend = () => setRecording(false)
     recognition.start()
+    recognitionRef.current = recognition
     setRecording(true)
+  }
+
+  function stopVoiceInput() {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+    }
+    setRecording(false)
   }
 
   if (allRoadmaps.length === 0) return null
@@ -212,24 +221,27 @@ function RoadmapPracticeSection() {
             rows={6}
             className="w-full border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary resize-none"
           />
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-stretch gap-2">
             {micAvailable === false ? (
-              <p className="text-xs text-muted-foreground">{t.simulate.micNotAvailable}</p>
+              <p className="text-xs text-muted-foreground self-center">{t.simulate.micNotAvailable}</p>
             ) : (
               <button
                 type="button"
-                onClick={startVoiceInput}
-                disabled={recording}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 border rounded-md px-3 py-1.5"
+                onClick={recording ? stopVoiceInput : startVoiceInput}
+                className={`flex items-center gap-1.5 text-xs border rounded-lg px-3 py-2.5 font-medium transition-colors ${
+                  recording
+                    ? 'bg-red-50 border-red-300 text-red-600 hover:bg-red-100 dark:bg-red-950 dark:border-red-700 dark:text-red-400'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`}
               >
-                {recording ? <MicOff size={12} /> : <Mic size={12} />}
+                {recording ? <Square size={12} /> : <Mic size={12} />}
                 {recording ? t.simulate.micStop : t.simulate.micStart}
               </button>
             )}
             <button
               onClick={handleSubmitAnswer}
               disabled={loading || !answer.trim()}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="flex-1 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {loading ? t.simulate.evaluating : t.simulate.submitAnswer}
             </button>
@@ -293,12 +305,6 @@ function RoadmapPracticeSection() {
 
 export default function SimularPage() {
   const t = useT()
-  const { language } = useSettingsStore()
-  const { data: evalPages } = useEvaluations(1)
-  const { data: sessions } = useCodingSessions()
-
-  const recentEvals = evalPages?.data?.slice(0, 3) ?? []
-  const recentSessions = sessions?.slice(0, 3) ?? []
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -310,78 +316,17 @@ export default function SimularPage() {
       {/* Roadmap Practice */}
       <RoadmapPracticeSection />
 
-      {/* Action cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/interview" className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-2.5 rounded-lg bg-primary/10">
-              <MessageSquare size={20} className="text-primary" />
-            </div>
-            <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors mt-1" />
-          </div>
-          <h2 className="font-semibold text-sm mb-1">{t.simulate.interviewTitle}</h2>
-          <p className="text-xs text-muted-foreground leading-relaxed">{t.simulate.interviewDesc}</p>
-        </Link>
-
-        <Link href="/live-coding" className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all">
-          <div className="flex items-start justify-between mb-3">
-            <div className="p-2.5 rounded-lg bg-green-500/10">
-              <Code2 size={20} className="text-green-600 dark:text-green-400" />
-            </div>
-            <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors mt-1" />
+      {/* Live Coding card */}
+      <Link href="/live-coding" className="group border rounded-xl p-5 bg-card hover:border-primary/50 hover:bg-primary/5 transition-all flex items-start justify-between">
+        <div>
+          <div className="p-2.5 rounded-lg bg-green-500/10 inline-flex mb-3">
+            <Code2 size={20} className="text-green-600 dark:text-green-400" />
           </div>
           <h2 className="font-semibold text-sm mb-1">{t.simulate.codingTitle}</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">{t.simulate.codingDesc}</p>
-        </Link>
-      </div>
-
-      {/* Recent interviews */}
-      {recentEvals.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium">{t.simulate.recentInterviews}</h2>
-            <Link href="/history" className="text-xs text-primary hover:underline">{t.simulate.viewAll}</Link>
-          </div>
-          <div className="divide-y">
-            {recentEvals.map((e: { id: string; questions?: { title: string } | null; score: number; created_at: string }) => (
-              <Link key={e.id} href={`/history/${e.id}`} className="flex items-center justify-between min-h-[44px] py-2 hover:bg-accent/50 -mx-2 px-2 rounded-md transition-colors">
-                <span className="text-sm truncate flex-1 text-muted-foreground pr-3">{e.questions?.title ?? '—'}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-xs font-medium tabular-nums ${e.score >= 75 ? 'text-green-600' : e.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                    {Math.round(e.score)}/100
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
-                    <Clock size={10} />
-                    {new Date(e.created_at).toLocaleDateString()}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
         </div>
-      )}
-
-      {/* Recent coding sessions */}
-      {recentSessions.length > 0 && (
-        <div className="border rounded-xl p-5 bg-card space-y-3">
-          <h2 className="text-sm font-medium">{t.simulate.recentCoding}</h2>
-          <div className="divide-y">
-            {recentSessions.map((s: { id: string; problem_title: string; language: string; score: number | null; created_at: string }) => (
-              <div key={s.id} className="flex items-center justify-between min-h-[44px] py-2">
-                <span className="text-sm truncate flex-1 text-muted-foreground pr-3">{s.problem_title}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-muted-foreground hidden sm:block">{s.language}</span>
-                  {s.score !== null && (
-                    <span className={`text-xs font-medium tabular-nums ${s.score >= 75 ? 'text-green-600' : s.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                      {s.score}/100
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        <ChevronRight size={16} className="text-muted-foreground group-hover:text-primary transition-colors mt-1 shrink-0" />
+      </Link>
     </div>
   )
 }
