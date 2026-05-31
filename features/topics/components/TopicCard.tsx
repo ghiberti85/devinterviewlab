@@ -1,11 +1,60 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Code2, Languages, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TopicPair } from '@/lib/supabase/types'
 import { useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
+
+const MAX_VISIBLE_TAGS = 2
+
+function TagsRow({ tags }: { tags: string[] }) {
+  const [popupOpen, setPopupOpen] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const visible = tags.slice(0, MAX_VISIBLE_TAGS)
+  const hidden = tags.slice(MAX_VISIBLE_TAGS)
+
+  useEffect(() => {
+    if (!popupOpen) return
+    function handleClick(e: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        setPopupOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [popupOpen])
+
+  return (
+    <>
+      {visible.map(tag => (
+        <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+          {tag}
+        </span>
+      ))}
+      {hidden.length > 0 && (
+        <div className="relative shrink-0" ref={popupRef}>
+          <button
+            onClick={e => { e.stopPropagation(); setPopupOpen(v => !v) }}
+            className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full hover:bg-muted/80 transition-colors whitespace-nowrap"
+          >
+            +{hidden.length}
+          </button>
+          {popupOpen && (
+            <div className="absolute left-0 top-full mt-1.5 z-50 bg-popover border rounded-lg shadow-lg p-2 flex flex-wrap gap-1.5 min-w-max max-w-[240px]">
+              {hidden.map(tag => (
+                <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
 
 function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -57,11 +106,7 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
             <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap', difficultyColor)}>
               {topic.difficulty}
             </span>
-            {topic.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                {tag}
-              </span>
-            ))}
+            <TagsRow tags={topic.tags} />
             {isFallback && (
               <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full shrink-0">
                 {topic.language.toUpperCase()}
