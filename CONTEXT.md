@@ -160,12 +160,14 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **18 tabelas**.
 - id, user_id (FK profiles), category_id (FK categories, nullable)
 - title (text, max 200), difficulty (check: easy|medium|hard, default medium)
 - summary (text, max 2000), when_to_use (text, max 1000, nullable)
+- pros (text[], default '{}') — vantagens geradas por IA *(adicionado em 2026-05-31)*
+- cons (text[], default '{}') — desvantagens/trade-offs gerados por IA *(adicionado em 2026-05-31)*
 - code_snippet (text, max 3000, nullable), quick_qa (jsonb, array de {q, a})
 - tags (text[]), language (text, check: en|pt, default en)
 - translated_from (uuid, FK topics self-referencing, nullable) — liga traduções ao original
 - created_at
 - Políticas: SELECT/INSERT/DELETE por user_id
-- Migrations: `20260515000006_topics.sql`, `20260515000007_topics_language.sql`
+- Migrations: `20260515000006_topics.sql`, `20260515000007_topics_language.sql`, `20260531000000_topics_pros_cons.sql`
 
 ### Funções PostgreSQL
 - `get_user_daily_usage(user_id, endpoint?)` — retorna contagem de chamadas hoje
@@ -566,7 +568,7 @@ e2e/                            # Playwright E2E
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 | `coding-generate-prompt.test.ts` | 13 | getCodingGenerateSystemPrompt (EN, PT, fallback, no-solution, JSON-only), codingGeneratePrompt (difficulty, topic, generic fallback, coding language, system prompt, todos os níveis) |
 
-**Total: 260 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 262 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
