@@ -310,41 +310,13 @@ function TopicCardWithSelect({
 }
 
 function LiveCodingAnswer({ answer }: { answer: string }) {
-  const t = useT()
   const codeMatch = answer.match(/```[\w]*\n?([\s\S]*?)```/)
-  const code = codeMatch ? codeMatch[1].trim() : null
-  const afterCode = codeMatch ? answer.slice(answer.indexOf(codeMatch[0]) + codeMatch[0].length).trim() : answer
-
-  const explanationMatch = afterCode.match(/\*\*Explanation[:\s]?\*\*\s*([\s\S]*?)(?=\*\*Alternative|$)/i)
-  const alternativesMatch = afterCode.match(/\*\*Alternative approaches[:\s]?\*\*\s*([\s\S]*?)$/i)
-
-  const explanation = explanationMatch ? explanationMatch[1].trim() : null
-  const alternatives = alternativesMatch ? alternativesMatch[1].trim() : null
-  const fallback = !code && !explanation && !alternatives ? answer : null
+  const code = codeMatch ? codeMatch[1].trim() : answer.trim()
 
   return (
-    <div className="space-y-2">
-      {code && (
-        <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
-          {code}
-        </pre>
-      )}
-      {explanation && (
-        <div className="text-sm text-muted-foreground leading-relaxed">
-          <span className="font-medium text-foreground">{t.roadmap.liveCodingAnswer}: </span>
-          {explanation}
-        </div>
-      )}
-      {alternatives && (
-        <div className="text-sm text-muted-foreground leading-relaxed">
-          <span className="font-medium text-foreground">{t.roadmap.alternativeApproaches}: </span>
-          {alternatives}
-        </div>
-      )}
-      {fallback && (
-        <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{fallback}</div>
-      )}
-    </div>
+    <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
+      {code}
+    </pre>
   )
 }
 
@@ -374,7 +346,7 @@ function QuestionCard({
       onClick={selectMode ? onToggleSelect : undefined}
       {...(!selectMode ? longPress : {})}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start gap-2">
         {selectMode && (
           <input
             type="checkbox"
@@ -384,26 +356,30 @@ function QuestionCard({
             className="w-4 h-4 mt-1 shrink-0"
           />
         )}
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-xs text-muted-foreground">{q.topic_name}</p>
-            {isLiveCoding && (
-              <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium">
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden">
+            <p className="text-xs text-muted-foreground truncate shrink-0 max-w-[40%]">{q.topic_name}</p>
+            {isLiveCoding ? (
+              <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap">
                 {t.roadmap.liveCoding}
+              </span>
+            ) : (
+              <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap">
+                {t.roadmap.theoretical}
               </span>
             )}
           </div>
           <p className="text-sm font-medium leading-snug">{q.question}</p>
         </div>
-        {!selectMode && (
-          <button
-            onClick={onToggleAnswer}
-            className="text-xs text-primary hover:underline mt-1 shrink-0"
-          >
-            {open ? t.review.hideAnswer : t.review.showAnswer}
-          </button>
-        )}
       </div>
+      {!selectMode && (
+        <button
+          onClick={onToggleAnswer}
+          className="text-xs text-primary hover:underline"
+        >
+          {open ? t.review.hideAnswer : t.review.showAnswer}
+        </button>
+      )}
       {open && !selectMode && (
         <div className="bg-muted/40 rounded-lg p-3">
           {isLiveCoding
@@ -416,7 +392,7 @@ function QuestionCard({
         <div className="flex gap-2 pt-1 border-t flex-wrap">
           {topicAlreadyExists || topicDone ? (
             <span className="flex items-center gap-1 text-[10px] text-green-600">
-              <CheckCircle size={10} />{t.review.topicAlreadyGenerated}
+              <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
             </span>
           ) : (
             <button
@@ -426,7 +402,7 @@ function QuestionCard({
             >
               {topicLoading
                 ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingTopic}</>
-                : <><BookOpen size={10} />{t.review.generateTopicFromQ}</>}
+                : <><BookOpen size={10} />{t.review.generateConceptFromQ}</>}
             </button>
           )}
         </div>
@@ -653,7 +629,7 @@ export default function RevisarPage() {
 
   const tabs = [
     { id: 'questions' as Tab, icon: HelpCircle, label: t.review.questionsTab },
-    { id: 'topics'    as Tab, icon: BookMarked, label: t.review.topicsTab },
+    { id: 'topics'    as Tab, icon: BookMarked, label: t.review.conceptsTab },
   ]
 
   return (

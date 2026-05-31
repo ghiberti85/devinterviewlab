@@ -7,6 +7,24 @@ import { useTranslateTopic } from '../hooks/useTopics'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 
+function AccordionSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-t pt-3 first:border-t-0 first:pt-0">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center justify-between w-full text-left group"
+      >
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide group-hover:text-foreground transition-colors">
+          {title}
+        </p>
+        <ChevronDown size={13} className={cn('text-muted-foreground transition-transform shrink-0', open && 'rotate-180')} />
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </div>
+  )
+}
+
 export function TopicCard({ pair }: { pair: TopicPair }) {
   const t = useT()
   const { language } = useSettingsStore()
@@ -31,21 +49,21 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
   }
 
   return (
-    <div className={cn('border rounded-lg p-4 space-y-4 bg-card', isFallback && 'opacity-70')}>
+    <div className={cn('border rounded-lg p-4 space-y-3 bg-card', isFallback && 'opacity-70')}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', difficultyColor)}>
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-hidden">
+            <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap', difficultyColor)}>
               {topic.difficulty}
             </span>
             {topic.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+              <span key={tag} className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                 {tag}
               </span>
             ))}
             {isFallback && (
-              <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full shrink-0">
                 {topic.language.toUpperCase()}
               </span>
             )}
@@ -74,73 +92,71 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
         </p>
       )}
 
-      {/* Theory */}
-      <div className="space-y-1">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          {t.topics.theory ?? 'Theory'}
-        </p>
+      {/* Teoria — open by default */}
+      <AccordionSection title={t.topics.theory ?? 'Theory'} defaultOpen>
         <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
-      </div>
+      </AccordionSection>
 
-      {/* When to use */}
+      {/* Quando usar */}
       {topic.when_to_use && (
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {t.topics.whenToUse}
-          </p>
+        <AccordionSection title={t.topics.whenToUse}>
           <p className="text-sm text-muted-foreground leading-relaxed">{topic.when_to_use}</p>
-        </div>
+        </AccordionSection>
       )}
 
-      {/* Pros & Cons */}
+      {/* Prós & Contras */}
       {(topic.pros?.length > 0 || topic.cons?.length > 0) && (
-        <div className="grid grid-cols-2 gap-3">
-          {topic.pros?.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
-                {t.topics.pros ?? 'Pros'}
-              </p>
-              <ul className="space-y-1">
-                {topic.pros.map((item, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                    <span className="text-green-600 dark:text-green-400 shrink-0 mt-0.5">+</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {topic.cons?.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                {t.topics.cons ?? 'Cons'}
-              </p>
-              <ul className="space-y-1">
-                {topic.cons.map((item, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                    <span className="text-red-500 dark:text-red-400 shrink-0 mt-0.5">−</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        <AccordionSection title={`${t.topics.pros ?? 'Pros'} & ${t.topics.cons ?? 'Cons'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {topic.pros?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
+                  {t.topics.pros ?? 'Pros'}
+                </p>
+                <ul className="space-y-1">
+                  {topic.pros.map((item, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                      <span className="text-green-600 dark:text-green-400 shrink-0 mt-0.5">+</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {topic.cons?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
+                  {t.topics.cons ?? 'Cons'}
+                </p>
+                <ul className="space-y-1">
+                  {topic.cons.map((item, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                      <span className="text-red-500 dark:text-red-400 shrink-0 mt-0.5">−</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </AccordionSection>
       )}
 
       {/* Examples (code snippet) */}
       {topic.code_snippet && (
-        <div className="space-y-1">
+        <div className="border-t pt-3">
           <button
             onClick={() => setShowCode(v => !v)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors w-full justify-between"
           >
-            <Code2 size={12} />
-            {t.topics.examples ?? t.topics.showCode}
+            <span className="flex items-center gap-1.5">
+              <Code2 size={12} />
+              {t.topics.examples ?? t.topics.showCode}
+            </span>
             <ChevronDown size={11} className={cn('transition-transform', showCode && 'rotate-180')} />
           </button>
           {showCode && (
-            <pre className="mt-1 p-3 bg-muted rounded text-xs overflow-x-auto leading-relaxed">
+            <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-x-auto leading-relaxed">
               <code>{topic.code_snippet}</code>
             </pre>
           )}

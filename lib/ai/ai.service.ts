@@ -515,29 +515,26 @@ export const aiService = {
       : ''
 
     const systemPrompt = isLiveCoding
-      ? `You are a technical coding interview coach. Generate exactly 3 live coding challenges. Return only valid JSON, no markdown fences.`
+      ? `You are a senior software engineer creating coding interview challenges. Return only valid JSON, no markdown fences.`
       : `You are a technical interview coach. Generate exactly 3 interview questions with detailed answers. Return only valid JSON, no markdown fences.`
 
     const userPrompt = isLiveCoding
-      ? `Generate exactly 3 live coding challenges for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
+      ? `Generate exactly 3 coding interview challenges for the topic "${topicName}" in the context of "${phaseName}".
 
-Return a JSON object with this exact structure (all string values must be on a single line using \\n for line breaks):
+Return a JSON object:
 {
   "questions": [
     {
-      "question": "Implement function X that does Y. Example: input=[1,2,3], output=6",
-      "code_solution": "function solve(arr) {\\n  // code here\\n  return result;\\n}",
-      "explanation": "Brief explanation of the approach in 2-3 sentences.",
-      "alternatives": "Alternative approach 1: ... Alternative approach 2: ..."
+      "question": "Problem statement with function signature, constraints, and 2 input/output examples.",
+      "code_solution": "function solve(input) {\\n  // complete working solution\\n  return result;\\n}"
     }
   ]
 }
 
 Requirements:
-- "question": concrete coding problem with function signature and example I/O
-- "code_solution": complete working solution using \\n for newlines (NOT actual newlines)
-- "explanation": 2-3 sentences explaining the approach
-- "alternatives": brief alternative approaches
+- "question": clear problem statement, function signature, constraints, examples (no solution hints)
+- "code_solution": complete, correct solution using \\n for newlines (NOT actual newline characters)
+- Problems should be non-trivial and require real algorithm/data-structure knowledge
 - Language: ${langLabel}${avoidBlock}`
       : `Generate exactly 3 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
 
@@ -567,13 +564,11 @@ Requirements:
     })
 
     const raw = safeParseJSON<{
-      questions: Array<{ question: string; answer?: string; code_solution?: string; explanation?: string; alternatives?: string }>
+      questions: Array<{ question: string; answer?: string; code_solution?: string }>
     }>(res.choices[0].message.content ?? '{}')
     return (raw.questions ?? []).map(q => ({
       question: q.question,
-      answer: q.answer ?? (q.code_solution
-        ? `\`\`\`\n${q.code_solution}\n\`\`\`\n\n**Explanation:** ${q.explanation ?? ''}\n\n**Alternative approaches:** ${q.alternatives ?? ''}`
-        : ''),
+      answer: q.answer ?? (q.code_solution ? `\`\`\`\n${q.code_solution}\n\`\`\`` : ''),
     }))
   },
 

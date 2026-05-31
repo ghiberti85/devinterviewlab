@@ -181,10 +181,7 @@ function RoadmapPracticeSection() {
   if (step === 'study' && currentQ) {
     const isLC = currentQ.question_type === 'live_coding'
     const codeMatch = currentQ.answer.match(/```[\w]*\n?([\s\S]*?)```/)
-    const code = codeMatch ? codeMatch[1].trim() : null
-    const afterCode = codeMatch ? currentQ.answer.slice(currentQ.answer.indexOf(codeMatch[0]) + codeMatch[0].length).trim() : currentQ.answer
-    const explanationMatch = afterCode.match(/\*\*Explanation[:\s]?\*\*\s*([\s\S]*?)(?=\*\*Alternative|$)/i)
-    const alternativesMatch = afterCode.match(/\*\*Alternative approaches[:\s]?\*\*\s*([\s\S]*?)$/i)
+    const code = codeMatch ? codeMatch[1].trim() : currentQ.answer.trim()
 
     return (
       <div className="border rounded-xl p-5 bg-card space-y-4">
@@ -196,28 +193,9 @@ function RoadmapPracticeSection() {
           <h2 className="font-semibold text-base mb-3">{currentQ.question}</h2>
           <div className="bg-muted/40 rounded-lg p-4 space-y-3">
             {isLC ? (
-              <>
-                {code && (
-                  <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
-                    {code}
-                  </pre>
-                )}
-                {explanationMatch?.[1] && (
-                  <div className="text-sm text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">{t.roadmap.liveCodingAnswer}: </span>
-                    {explanationMatch[1].trim()}
-                  </div>
-                )}
-                {alternativesMatch?.[1] && (
-                  <div className="text-sm text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">{t.roadmap.alternativeApproaches}: </span>
-                    {alternativesMatch[1].trim()}
-                  </div>
-                )}
-                {!code && !explanationMatch && (
-                  <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{currentQ.answer}</div>
-                )}
-              </>
+              <pre className="bg-muted rounded-lg p-3 text-xs font-mono overflow-x-auto leading-relaxed whitespace-pre">
+                {code}
+              </pre>
             ) : (
               <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{currentQ.answer}</div>
             )}
