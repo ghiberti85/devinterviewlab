@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
 import { BookMarked, CheckCircle, RotateCcw, Loader2, HelpCircle, BookOpen } from 'lucide-react'
@@ -435,12 +436,12 @@ function QuestionCard({
   )
 }
 
-function QuestionsTab() {
+function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
   const t = useT()
   const { language } = useSettingsStore()
   const { data: roadmaps, isLoading: roadmapsLoading } = useRoadmaps()
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedTopic, setSelectedTopic] = useState<string>('all')
+  const [selectedTopic, setSelectedTopic] = useState<string>(initialTopic ?? 'all')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [actionStates, setActionStates] = useState<Record<string, string>>({})
   const [selectMode, setSelectMode] = useState(false)
@@ -649,7 +650,10 @@ function QuestionsTab() {
 
 export default function RevisarPage() {
   const t = useT()
-  const [tab, setTab] = useState<Tab>('questions')
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab | null) ?? 'questions'
+  const initialTopic = searchParams.get('topic') ?? undefined
+  const [tab, setTab] = useState<Tab>(initialTab)
 
   const tabs = [
     { id: 'questions' as Tab, icon: HelpCircle, label: t.review.questionsTab },
@@ -681,7 +685,7 @@ export default function RevisarPage() {
       </div>
 
       {tab === 'topics'    && <TopicsTab />}
-      {tab === 'questions' && <QuestionsTab />}
+      {tab === 'questions' && <QuestionsTab initialTopic={initialTopic} />}
     </div>
   )
 }

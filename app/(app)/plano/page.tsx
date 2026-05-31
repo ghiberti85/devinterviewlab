@@ -82,11 +82,11 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
         </div>
 
         {/* Question type selector */}
-        <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-fit">
+        <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-full">
           <button
             onClick={() => setQuestionType('theoretical')}
             disabled={isGenerating}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
               questionType === 'theoretical'
                 ? 'bg-background shadow-sm text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
@@ -98,7 +98,7 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
           <button
             onClick={() => setQuestionType('live_coding')}
             disabled={isGenerating}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors ${
               questionType === 'live_coding'
                 ? 'bg-background shadow-sm text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
@@ -110,11 +110,11 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
         </div>
 
         {/* Generate + practice */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 w-full">
           <button
             onClick={handleGenerate}
             disabled={isGenerating || allTopics.length === 0}
-            className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            className="flex-1 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
           >
             {isGenerating && <Loader2 size={11} className="animate-spin" />}
             {genProgress
@@ -122,8 +122,8 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
               : t.roadmap.generateQuestions}
           </button>
           <button
-            onClick={() => router.push('/revisar')}
-            className="text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
+            onClick={() => router.push('/revisar?tab=questions')}
+            className="flex-1 text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors text-center"
           >
             {t.roadmap.practice}
           </button>
@@ -147,7 +147,7 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
             <div key={`${topic.name}-${i}`} className="flex items-center justify-between px-4 py-2.5 gap-3">
               <p className="text-sm truncate flex-1">{topic.name}</p>
               <button
-                onClick={() => router.push('/revisar')}
+                onClick={() => router.push(`/revisar?tab=questions&topic=${encodeURIComponent(topic.name)}`)}
                 className="text-xs text-primary hover:underline shrink-0"
               >
                 {t.roadmap.practice}
