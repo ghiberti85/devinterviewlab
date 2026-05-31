@@ -54,9 +54,39 @@ function cachedSystemPrompt(key: string, factory: () => string): string {
 
 const PROMPT_VERSION = 'v2.0'
 
+function fixJsonNewlines(text: string): string {
+  let result = ''
+  let inString = false
+  let i = 0
+  while (i < text.length) {
+    const ch = text[i]
+    if (ch === '\\' && inString) {
+      result += ch + (text[i + 1] ?? '')
+      i += 2
+      continue
+    }
+    if (ch === '"') {
+      inString = !inString
+      result += ch
+    } else if (inString && ch === '\n') {
+      result += '\\n'
+    } else if (inString && ch === '\r') {
+      result += '\\r'
+    } else {
+      result += ch
+    }
+    i++
+  }
+  return result
+}
+
 function safeParseJSON<T>(text: string): T {
   const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  return JSON.parse(clean) as T
+  try {
+    return JSON.parse(clean) as T
+  } catch {
+    return JSON.parse(fixJsonNewlines(clean)) as T
+  }
 }
 
 const noKeyEvaluation = (question: Question, userAnswer: string) => ({
