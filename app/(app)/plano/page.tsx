@@ -69,7 +69,6 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
               {new Date(roadmap.created_at).toLocaleDateString(language === 'pt' ? 'pt-BR' : 'en-US', {
                 day: 'numeric', month: 'short', year: 'numeric',
               })}
-              {' · '}{allTopics.length} {t.roadmap.topicsCount ?? 'topics'}
             </p>
           </div>
           <button

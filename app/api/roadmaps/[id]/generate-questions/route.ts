@@ -110,16 +110,15 @@ export async function POST(
 
   let questionOrder = orderData?.[0]?.question_order != null ? orderData[0].question_order + 1 : 0
 
-  const [enPairs, ptPairs] = await Promise.all([
-    aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'en', existingQuestions: existingEn, questionType }).catch(err => {
-      logger.error('Failed to generate EN questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
-      return []
-    }),
-    aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'pt', existingQuestions: existingPt, questionType }).catch(err => {
-      logger.error('Failed to generate PT questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
-      return []
-    }),
-  ])
+  // Generate sequentially (not parallel) to stay within Vercel 10s timeout
+  const enPairs = await aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'en', existingQuestions: existingEn, questionType }).catch(err => {
+    logger.error('Failed to generate EN questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
+    return []
+  })
+  const ptPairs = await aiService.generateRoadmapQuestions({ topicName, phaseName, language: 'pt', existingQuestions: existingPt, questionType }).catch(err => {
+    logger.error('Failed to generate PT questions', err as Error, { userId: user.id, roadmapId: id, topic: topicName })
+    return []
+  })
 
   const enTexts = new Set(existingEn.map(q => q.toLowerCase()))
   const ptTexts = new Set(existingPt.map(q => q.toLowerCase()))
