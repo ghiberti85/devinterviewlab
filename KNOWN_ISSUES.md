@@ -76,8 +76,14 @@ No free tier do Groq. Sintoma: resposta 429 da rota de IA. O `checkRateLimit()` 
 ### Respostas não-JSON do modelo
 O modelo às vezes retorna markdown com ```json``` em volta do JSON. A função `safeParseJSON()` em `ai.service.ts` já trata isso — não remover o `replace(/```json\n?/g, '')`.
 
+### Newlines literais em `code_solution` de Live Coding
+O modelo às vezes emite newlines literais (`\n` real) dentro de strings JSON no campo `code_solution`, quebrando o `JSON.parse`. A função `fixJsonNewlines()` em `ai.service.ts` trata esse caso — é o fallback de `safeParseJSON`. Não remover nem simplificar.
+
 ### `existingQuestions` no prompt de geração de roadmap
 Ao gerar "mais questões" para um tópico que já tem questões, passar `existingQuestions: string[]` para o `aiService.generateRoadmapQuestions()`. Sem isso, o modelo repete questões já existentes.
+
+### Geração de questões: EN então PT (sequencial, não paralela)
+`Promise.all([gerarEN, gerarPT])` excede o timeout de 10s do Vercel Hobby em roadmaps com muitos tópicos. A geração é feita sequencialmente: aguarda EN, depois PT. Não paralelizar sem antes resolver o timeout (upgrade Vercel ou streaming).
 
 ---
 

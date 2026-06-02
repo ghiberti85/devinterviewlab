@@ -182,3 +182,42 @@ if (existing) {
 ```
 
 **Não "simplificar" para `.upsert()`** — vai quebrar silenciosamente em casos com índice parcial.
+
+---
+
+## ADR-011 — Geração de questões: sequencial EN→PT, nunca paralela
+
+**Status:** Ativo  
+**Data:** 2026-06
+
+**Contexto:** `Promise.all([gerarEN, gerarPT])` para todos os tópicos de um roadmap excede o timeout de 10s do Vercel Hobby. Cada chamada ao Groq leva ~2-4s.
+
+**Decisão:** Gerar EN primeiro (await), depois PT (await). Retornar `{ count: total, perLanguage: en.length }`.
+
+**Não reverter porque:** Paralelo voltaria a timeout em roadmaps com 5+ tópicos.
+
+---
+
+## ADR-012 — safeParseJSON com fallback fixJsonNewlines
+
+**Status:** Ativo  
+**Data:** 2026-06
+
+**Contexto:** O modelo Groq/llama às vezes emite newlines literais dentro de strings JSON no campo `code_solution` de questões de live coding. Isso quebra o `JSON.parse` padrão, resultando em silenciosa perda de questões (catch retorna `[]`).
+
+**Decisão:** `safeParseJSON` tenta `JSON.parse` primeiro. Se falhar, chama `fixJsonNewlines` (parser caractere-a-caractere que escapa `\n` e `\r` dentro de strings JSON) e tenta novamente.
+
+**Não simplificar:** O fallback é necessário especificamente para `code_solution`. Remover causa perda silenciosa de questões de live coding.
+
+---
+
+## ADR-013 — URL params para pré-selecionar aba e tópico em /revisar
+
+**Status:** Ativo  
+**Data:** 2026-06
+
+**Contexto:** O botão "Practice" de cada tópico no Plano deve abrir a aba Questões no Revisar já filtrada pelo tópico específico.
+
+**Decisão:** Usar query params `?tab=questions&topic=<nome>` na URL. O componente `RevisarPage` lê via `useSearchParams()` e passa `initialTopic` para `QuestionsTab`. O estado é inicializado uma vez, sem sync contínuo com a URL.
+
+**Alternativas descartadas:** `router.push` + estado global (Zustand) criaria acoplamento desnecessário entre páginas. URL params são a forma idiomática em Next.js App Router para estado de navegação.

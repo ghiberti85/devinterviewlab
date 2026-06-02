@@ -287,19 +287,29 @@ Limite global do Groq free: **6k tokens/min · 500k tokens/dia**.
 - `topicName`: string
 - `phaseName`: string (ex: "30 dias")
 - `language`: `'en' | 'pt'`
-- `count`: número de questões (padrão 5)
 - `existingQuestions?`: `string[]` — questões já geradas para evitar repetição
+- `questionType?`: `'theoretical' | 'live_coding'` (default: `'theoretical'`)
 
-**Output JSON:**
+**Output JSON (teórica):**
 ```json
-[
-  { "question": "string", "answer": "string" }
-]
+{ "questions": [{ "question": "string", "answer": "string" }] }
 ```
+
+**Output JSON (live coding):**
+```json
+{ "questions": [{ "question": "string", "code_solution": "string" }] }
+```
+`code_solution` deve usar `\\n` para newlines — **não** newlines literais (o modelo às vezes viola isso; `fixJsonNewlines` resolve).
+
+**Dois modos de prompt:**
+- **Teórico:** system = interview coach; exige 3 Q&A, respostas 150-300 palavras, JSON com `question` + `answer`
+- **Live Coding:** system = senior software engineer; exige 3 desafios com enunciado (assinatura, constraints, exemplos), JSON com `question` + `code_solution`; **nunca hints de solução no enunciado**
 
 **Restrição crítica:** Quando `existingQuestions` é passado, o prompt adiciona um bloco "Do NOT repeat or rephrase these questions". Sem isso, o modelo repetiria questões ao regerar. Não remover essa lógica de `existingQuestions`.
 
-**Chamada por tópico:** Esta rota é chamada uma vez por tópico (não para o roadmap inteiro). Ver ADR-002.
+**Geração sequencial:** Chamada 2x por tópico (EN, depois PT) em sequência — não paralela (timeout 10s Vercel). Ver ADR-011.
+
+**Parsing:** `safeParseJSON` com fallback `fixJsonNewlines` para tratar newlines literais em `code_solution`. Ver ADR-012.
 
 ---
 

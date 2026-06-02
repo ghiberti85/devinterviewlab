@@ -147,10 +147,12 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **18 tabelas**.
 **roadmap_questions** — questões de entrevista geradas por IA para cada tópico do roadmap *(adicionada em 2026-05-30)*
 - id (uuid, PK), roadmap_id (uuid, FK study_roadmaps ON DELETE CASCADE), user_id (uuid, FK auth.users ON DELETE CASCADE)
 - phase_name (text), topic_name (text), question (text), answer (text)
+- question_type (text, check: theoretical|live_coding, default 'theoretical') *(adicionado em 2026-05-31)*
+- language (text, check: en|pt, default 'en') *(adicionado em 2026-05-31)*
 - question_order (int, default 0), created_at
 - Políticas: SELECT/INSERT/DELETE por user_id
 - Índices: idx_roadmap_questions_roadmap_id, idx_roadmap_questions_user_id
-- Migration: `supabase/migrations/20260529000000_roadmap_questions.sql`
+- Migration: `supabase/migrations/20260529000000_roadmap_questions.sql`, `20260531000001_roadmap_questions_type.sql`
 
 **user_documents** — (atualizada em 2026-05-15)
 - extracted_text (text, nullable) — texto extraído do PDF para uso no roadmap sem re-processar
@@ -314,6 +316,8 @@ supabase/
     20260515000006_topics.sql
     20260515000007_topics_language.sql
     20260529000000_roadmap_questions.sql
+    20260531000000_topics_pros_cons.sql
+    20260531000001_roadmap_questions_type.sql
 
 e2e/                            # Playwright E2E
   fixtures.ts
@@ -391,17 +395,24 @@ e2e/                            # Playwright E2E
 - Timeline visual com barras de progresso por fase
 - Rate limit: 5 roadmaps/dia
 
-### Questões de Entrevista por Roadmap *(adicionado em 2026-05-30)*
+### Questões de Entrevista por Roadmap *(atualizado em 2026-06-02)*
 - **Aba Revisar → Questões** é a primeira aba (padrão ao abrir `/revisar`)
-- Geração por tópico com barra de progresso real: o cliente orquestra uma chamada por tópico, exibindo `X/Y tópicos (Z%)`
-- IA recebe lista de questões já existentes para evitar repetições (`existingQuestions` no prompt)
-- Delete individual de questão via botão lixeira no card
-- Delete em lote via `DELETE /api/roadmaps/[id]/generate-questions` (limpa tudo antes de regerar)
-- Botão "Gerar tópico" em cada questão → cria Flash Topic a partir do `topic_name`
-- Botão "Adicionar conceito" em cada questão → cria Concept com `description = answer.slice(0, 300)`
-- Filtro por tópico + botão "Gerar mais" para o tópico selecionado (com `existingQuestions` para deduplicar)
-- Delete de tópicos Flash (hover no card) e conceitos (raiz e filhos) na aba Revisar
-- API: `GET/DELETE /api/roadmaps/[id]/generate-questions` · `POST /api/roadmaps/[id]/generate-questions` (corpo: `{ topicName, phaseName, language, existingQuestions? }`) · `DELETE /api/roadmaps/[id]/questions/[questionId]`
+- **Tipo de questão**: seletor Teórica / Live Coding (full-width no card do Plano) controla o tipo gerado
+  - Teórica: `{ question, answer }` — texto detalhado 150-300 palavras
+  - Live Coding: `{ question, code_solution }` — enunciado com assinatura + constraints + exemplos; código completo sem hints
+- **Geração sequencial** EN depois PT (evita timeout Vercel 10s) — sem `Promise.all`
+- **Deduplicação**: API verifica questões existentes por tópico antes de inserir (sem limpar o banco)
+- **Progresso real**: barra + percentual calculado a partir do índice do tópico atual
+- **Parsing robusto**: `safeParseJSON` com fallback `fixJsonNewlines` (escapa newlines literais em strings JSON gerados pela IA)
+- **Contagem por idioma**: API retorna `{ count, perLanguage }` — UI usa `perLanguage` para mostrar total correto
+- **Links diretos**: botão Practice de cada tópico navega para `/revisar?tab=questions&topic=<nome>` — aba Questões abre pré-filtrada
+- **Botão Practice global**: navega para `/revisar?tab=questions`
+- **Aba Revisar**: lê params `tab` e `topic` via `useSearchParams` para pré-selecionar estado inicial
+- Delete individual via botão lixeira; delete em lote com seleção múltipla
+- Botão "Adicionar conceito" em cada questão → cria Flash Topic a partir do `topic_name`
+- Filtro por tópico + botão "Gerar mais" para o tópico selecionado
+- **QuestionCard**: texto da questão em largura total; tags Teórica / Live Coding na mesma linha; toggle resposta abaixo
+- API: `POST /api/roadmaps/[id]/generate-questions` (corpo: `{ topicName, phaseName, language, existingQuestions?, questionType }`) retorna `{ count, perLanguage }`
 - Segurança: todas as rotas têm `getUser()` + `checkRateLimit()` + `sanitizeError()`
 
 ### Nova Navegação por Hubs *(refatoração)*
@@ -447,9 +458,13 @@ e2e/                            # Playwright E2E
 - **Salvar para depois**: botão visível antes do timer iniciar → chama `useSaveProblem()` → POST `/api/coding/save-problem` (salva stub com código vazio, score null)
 - Prompt em `coding-generate.prompt.ts`: exige exemplos, constraints, nunca revela solução
 
-### Flash Topics *(novo)*
-- Aba **Topics** em `/revisar` — biblioteca de referências técnicas rápidas geradas por IA
-- Cada tópico: resumo 150-250 palavras + "quando usar/evitar" (texto completo, sem truncamento) + snippet de código + 4 Q&A de entrevista
+### Flash Topics / Conceitos *(atualizado em 2026-06-02)*
+- Aba **Conceitos** em `/revisar` (renomeada de "Tópicos" — "Tópicos" ficou reservado para o Plano/Roadmap)
+- Cada tópico: resumo 150-250 palavras + "quando usar/evitar" + prós & contras + snippet de código + 4 Q&A de entrevista
+- **TopicCard com acordeons**: seções Teoria (aberta por padrão) / Quando usar / Prós & Contras — colapsáveis individualmente
+- **Prós & Contras**: grid `sm:grid-cols-2` (coluna única no mobile, duas colunas no desktop)
+- **Tags com truncamento**: máximo 2 tags visíveis + botão `+N` abre popup com as restantes (fecha ao clicar fora)
+- **Cada tópico**: resumo 150-250 palavras + "quando usar/evitar" (texto completo, sem truncamento) + snippet de código + 4 Q&A de entrevista
 - **Tradução persistida**: botão "Traduzir → EN/PT" no card gera versão no outro idioma via IA e salva no banco
   — ao trocar idioma no app a lista mostra automaticamente a versão já traduzida, sem nova chamada à IA
 - **Modelo de pares**: API retorna todos os tópicos (ambos idiomas); `groupIntoPairs()` agrupa por `rootId = translated_from ?? id`
@@ -567,8 +582,9 @@ e2e/                            # Playwright E2E
 | `topic-pairs.test.ts` | 10 | groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão |
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 | `coding-generate-prompt.test.ts` | 13 | getCodingGenerateSystemPrompt (EN, PT, fallback, no-solution, JSON-only), codingGeneratePrompt (difficulty, topic, generic fallback, coding language, system prompt, todos os níveis) |
+| `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines (newlines em strings, escapes existentes, multiline, edge cases), safeParseJSON (markdown fences, fallback, invalid), prompts teórico e live coding (EN/PT, avoidBlock, schema keys) |
 
-**Total: 262 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 290 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
