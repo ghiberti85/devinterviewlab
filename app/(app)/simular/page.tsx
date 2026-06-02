@@ -33,7 +33,6 @@ function RoadmapPracticeSection() {
   const [loading, setLoading] = useState(false)
   const [micAvailable, setMicAvailable] = useState<boolean | null>(null)
   const [recording, setRecording] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null)
 
   const allRoadmaps = roadmaps ?? []
@@ -82,23 +81,18 @@ function RoadmapPracticeSection() {
 
   function startVoiceInput() {
     if (typeof window === 'undefined') return
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognitionAPI = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionAPI) {
       setMicAvailable(false)
       return
     }
     setMicAvailable(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recognition = new SpeechRecognitionAPI() as any
     recognition.lang = language === 'pt' ? 'pt-BR' : 'en-US'
     recognition.continuous = true
     recognition.interimResults = false
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transcript = Array.from(event.results as any[])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((r: any) => r[0].transcript as string)
         .join(' ')
       setAnswer(prev => prev ? prev + ' ' + transcript : transcript)
