@@ -40,7 +40,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 | Estado cliente | Zustand — `useSessionStore` (timer), `useSettingsStore` (idioma/tema) |
 | UI | Tailwind CSS + Radix UI — componentes em `components/` |
 | Monitoramento | Sentry (tunnel via `/monitoring`) |
-| Testes | Vitest (`__tests__/unit/`) — **262 testes, zero falhas toleradas** |
+| Testes | Vitest (`__tests__/unit/`) — **290 testes, zero falhas toleradas** |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) — bloqueia merge se CI falhar |
 
 ---
@@ -54,7 +54,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 
 ### A cada alteração de código — obrigatório antes do commit
 ```bash
-npm test              # 262 testes devem passar — zero falhas toleradas
+npm test              # 290 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
 npm run lint          # zero warnings
 ```
@@ -218,7 +218,7 @@ describe('nomeDaFuncao', () => {
 4. Edge cases: input vazio, campos opcionais ausentes
 5. Sem vazamento de dados entre chamadas
 
-### Contagem atual: **262 testes** — atualizar este número a cada PR
+### Contagem atual: **290 testes** — atualizar este número a cada PR
 
 ---
 
