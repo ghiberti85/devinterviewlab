@@ -3,11 +3,16 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pt: 'Brazilian Portuguese (Português do Brasil)',
 }
 
+interface ExistingTopic {
+  title: string
+  summarySnippet: string
+}
+
 interface TopicPromptOptions {
   topicName: string
   difficulty?: 'easy' | 'medium' | 'hard'
   language?: string
-  existingTopics?: string[]
+  existingTopics?: ExistingTopic[]
 }
 
 export function getTopicSystemPrompt(language = 'en'): string {
@@ -113,8 +118,22 @@ Required output schema (same as input):
 
 export function topicAnalysisPrompt(opts: TopicPromptOptions): { system: string; user: string } {
   const existingBlock = opts.existingTopics?.length
-    ? `\n\nTopics already in the user's library (avoid significant content overlap with these):\n${opts.existingTopics.map(t => `- ${t}`).join('\n')}\n\nYour topic MUST cover distinct ground — focus on what makes "${opts.topicName}" unique, not what it shares with the above.`
+    ? `
+
+━━━ EXISTING TOPICS — AVOID REPEATING THIS CONTENT ━━━
+The user already has these topics in their library. Their summaries are shown below.
+Your summary for "${opts.topicName}" MUST NOT repeat the same sentences, explanations, or angles already covered.
+
+${opts.existingTopics.map(t => `• ${t.title}\n  "${t.summarySnippet}…"`).join('\n\n')}
+
+━━━ DIFFERENTIATION RULES ━━━
+✅ Identify the ONE thing that makes "${opts.topicName}" fundamentally different from the topics above
+✅ Lead the summary with that differentiator — make it immediately clear why this is its own concept
+✅ If two topics share a mechanism (e.g. both involve network routing), explain how "${opts.topicName}" uses it DIFFERENTLY
+❌ Do NOT open with generic definitions that would apply equally to any of the existing topics
+❌ Do NOT copy phrases, sentence structures, or metaphors from the snippets above`
     : ''
+
   return {
     system: getTopicSystemPrompt(opts.language),
     user: `Generate a Flash Topic for: "${opts.topicName}"

@@ -53,16 +53,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existing, { status: 200 })
     }
 
-    // Fetch existing topic titles to help the AI avoid redundant content
+    // Fetch existing topic titles + summaries to help the AI avoid redundant content
     const { data: existingTopicsRows } = await supabase
       .from('topics')
-      .select('title')
+      .select('title, summary')
       .eq('user_id', user.id)
       .eq('language', language)
-    const existingTopics = (existingTopicsRows ?? []).map((r: { title: string }) => r.title)
+    const existingTopics = (existingTopicsRows ?? []).map((r: { title: string; summary: string }) => ({
+      title: r.title,
+      // Send first 80 words of the summary so the AI knows what ground is already covered
+      summarySnippet: r.summary?.split(' ').slice(0, 80).join(' ') ?? '',
+    }))
 
     // Generate in the requested language
-    const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language, existingTopics })
+    const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language, existingTopics: existingTopics as { title: string; summarySnippet: string }[] })
 
     const { data, error } = await supabase
       .from('topics')
