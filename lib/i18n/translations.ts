@@ -280,6 +280,10 @@ export const translations = {
       generateConceptFromQ: 'Add concept',
       topicAlreadyGenerated: 'Topic generated',
       conceptAlreadyAdded: 'Concept added',
+      deleteRoadmap: 'Delete roadmap',
+      deleteRoadmapConfirm: 'Delete this roadmap and all its questions and concepts? This cannot be undone.',
+      deletingRoadmap: 'Deleting…',
+      deleteRoadmapError: 'Failed to delete roadmap. Try again.',
     },
     documents: {
       cv: 'CV / Resume',
@@ -781,6 +785,10 @@ export const translations = {
       generateConceptFromQ: 'Adicionar conceito',
       topicAlreadyGenerated: 'Tópico gerado',
       conceptAlreadyAdded: 'Conceito adicionado',
+      deleteRoadmap: 'Excluir roadmap',
+      deleteRoadmapConfirm: 'Excluir este roadmap e todas as suas questões e conceitos? Esta ação não pode ser desfeita.',
+      deletingRoadmap: 'Excluindo…',
+      deleteRoadmapError: 'Falha ao excluir o roadmap. Tente novamente.',
     },
     documents: {
       cv: 'CV / Currículo',

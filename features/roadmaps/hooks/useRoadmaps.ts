@@ -50,6 +50,24 @@ export function useCreateRoadmap() {
   })
 }
 
+export function useDeleteRoadmap() {
+  const queryClient = useQueryClient()
+  return useMutation<void, Error, { id: string }>({
+    mutationFn: async ({ id }) => {
+      const res = await fetch(`/api/roadmaps/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error ?? 'Failed to delete roadmap')
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roadmaps'] })
+      queryClient.invalidateQueries({ queryKey: ['topics'] })
+      queryClient.invalidateQueries({ queryKey: ['roadmap-questions'] })
+    },
+  })
+}
+
 export function useUpdateTopicProgress(roadmapId: string) {
   const queryClient = useQueryClient()
   return useMutation<RoadmapTopicProgress, Error, { topic_name: string; increment?: number }>({

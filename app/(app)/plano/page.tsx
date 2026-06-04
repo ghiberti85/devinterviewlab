@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Loader2, Plus, FileText, Code2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Plus, FileText, Code2, Trash2 } from 'lucide-react'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { useRoadmaps } from '@/features/roadmaps/hooks/useRoadmaps'
+import { useRoadmaps, useDeleteRoadmap } from '@/features/roadmaps/hooks/useRoadmaps'
 import { useGenerateTopicQuestions } from '@/features/roadmaps/hooks/useRoadmapQuestions'
 import { RoadmapSetup } from '@/features/roadmaps/components/RoadmapSetup'
 import type { StudyRoadmap } from '@/lib/supabase/types'
@@ -22,6 +22,9 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
   const [genSuccess, setGenSuccess] = useState<string | null>(null)
   const [genProgress, setGenProgress] = useState<{ current: number; total: number } | null>(null)
   const [questionType, setQuestionType] = useState<QuestionType>('theoretical')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const deleteRoadmap = useDeleteRoadmap()
 
   const generateTopicQuestions = useGenerateTopicQuestions(roadmap.id)
 
@@ -55,6 +58,16 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
 
   const isGenerating = generateTopicQuestions.isPending
 
+  async function handleDelete() {
+    setDeleteError(null)
+    try {
+      await deleteRoadmap.mutateAsync({ id: roadmap.id })
+    } catch {
+      setDeleteError(t.roadmap.deleteRoadmapError)
+      setConfirmDelete(false)
+    }
+  }
+
   return (
     <div className="border rounded-xl bg-card overflow-hidden">
       <div className="p-4 space-y-3">
@@ -69,14 +82,47 @@ function RoadmapCard({ roadmap }: { roadmap: StudyRoadmap }) {
               })}
             </p>
           </div>
-          <button
-            onClick={() => setOpen(v => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-          >
-            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {open ? (t.roadmap.hideTopics ?? 'Hide') : (t.roadmap.showTopics ?? 'Topics')}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50 dark:hover:bg-red-950"
+              title={t.roadmap.deleteRoadmap}
+            >
+              <Trash2 size={13} />
+            </button>
+            <button
+              onClick={() => setOpen(v => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {open ? (t.roadmap.hideTopics ?? 'Hide') : (t.roadmap.showTopics ?? 'Topics')}
+            </button>
+          </div>
         </div>
+
+        {/* Delete confirmation */}
+        {confirmDelete && (
+          <div className="border border-red-200 dark:border-red-800 rounded-lg p-3 bg-red-50 dark:bg-red-950/30 space-y-2">
+            <p className="text-xs text-red-700 dark:text-red-400">{t.roadmap.deleteRoadmapConfirm}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleteRoadmap.isPending}
+                className="flex items-center gap-1 text-xs bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                {deleteRoadmap.isPending ? <><Loader2 size={11} className="animate-spin" />{t.roadmap.deletingRoadmap}</> : t.roadmap.deleteRoadmap}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleteRoadmap.isPending}
+                className="text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
+              >
+                {t.common.cancel}
+              </button>
+            </div>
+          </div>
+        )}
+        {deleteError && <p className="text-xs text-red-500">{deleteError}</p>}
 
         {/* Question type selector */}
         <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-full">
