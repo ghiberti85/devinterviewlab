@@ -340,7 +340,7 @@ function LiveCodingAnswer({ answer }: { answer: string }) {
 }
 
 function QuestionCard({
-  q, open, topicLoading, topicDone, selectMode, selected, topicAlreadyExists,
+  q, open, topicLoading, topicDone, selectMode, selected,
   onToggleAnswer, onToggleSelect, onEnterSelectMode, onGenerateTopic,
 }: {
   q: { id: string; topic_name: string; question: string; answer: string; phase_name: string; question_type?: string }
@@ -349,7 +349,6 @@ function QuestionCard({
   topicDone: boolean
   selectMode: boolean
   selected: boolean
-  topicAlreadyExists: boolean
   onToggleAnswer: () => void
   onToggleSelect: () => void
   onEnterSelectMode: () => void
@@ -409,7 +408,7 @@ function QuestionCard({
       )}
       {!selectMode && (
         <div className="flex gap-2 pt-1 border-t flex-wrap">
-          {topicAlreadyExists || topicDone ? (
+          {topicDone ? (
             <span className="flex items-center gap-1 text-[10px] text-green-600">
               <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
             </span>
@@ -518,11 +517,6 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
   const bulkDelete = useBulkDeleteRoadmapQuestions(currentId ?? '')
   const generateMore = useGenerateTopicQuestions(currentId ?? '')
   const generateTopic = useGenerateTopic()
-
-  const { data: topicPairs } = useTopics(language as string)
-  const existingTopicNames = new Set(
-    (topicPairs ?? []).map(p => p.current?.title?.toLowerCase()).filter(Boolean) as string[]
-  )
 
   const topics = questions
     ? Array.from(new Set(questions.map(q => q.topic_name)))
@@ -691,7 +685,6 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
               topicDone={actionStates[q.id + '-topic'] === 'done'}
               selectMode={selectMode}
               selected={selected.has(q.id)}
-              topicAlreadyExists={existingTopicNames.has(q.topic_name.toLowerCase())}
               onToggleAnswer={() => toggleAnswer(q.id)}
               onToggleSelect={() => toggleSelect(q.id)}
               onEnterSelectMode={() => { setSelectMode(true); toggleSelect(q.id) }}
