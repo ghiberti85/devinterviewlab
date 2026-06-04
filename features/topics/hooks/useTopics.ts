@@ -95,22 +95,6 @@ export function useTranslateTopic() {
   })
 }
 
-export function useSyncTopics() {
-  const qc = useQueryClient()
-  return useMutation<{ questions_created: number; concepts_created: number }, Error>({
-    mutationFn: async () => {
-      const res = await fetch('/api/topics/sync', { method: 'POST' })
-      if (!res.ok) throw new Error('Sync failed')
-      return res.json()
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['questions'] })
-      qc.invalidateQueries({ queryKey: ['practice'] })
-      qc.invalidateQueries({ queryKey: ['concepts'] })
-    },
-  })
-}
-
 export function useDeleteTopic() {
   const qc = useQueryClient()
   return useMutation<void, Error, { id: string }>({

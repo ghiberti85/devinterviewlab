@@ -15,28 +15,6 @@ export function useRoadmapQuestions(roadmapId: string | null) {
   })
 }
 
-export function useDeleteRoadmapQuestion(roadmapId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (questionId: string) => {
-      const res = await fetch(`/api/roadmaps/${roadmapId}/questions/${questionId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete question')
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
-  })
-}
-
-export function useClearRoadmapQuestions(roadmapId: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/roadmaps/${roadmapId}/generate-questions`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to clear questions')
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['roadmap-questions', roadmapId] }),
-  })
-}
-
 export function useBulkDeleteRoadmapQuestions(roadmapId: string) {
   const qc = useQueryClient()
   return useMutation<{ deleted: number }, Error, { ids: string[] }>({

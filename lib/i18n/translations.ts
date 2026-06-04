@@ -278,7 +278,7 @@ export const translations = {
       generateTopicFromQ: 'Generate topic',
       generatingTopic: 'Generating topic…',
       generateConceptFromQ: 'Add concept',
-      topicAlreadyGenerated: 'Topic generated',
+
       conceptAlreadyAdded: 'Concept added',
       deleteRoadmap: 'Delete roadmap',
       deleteRoadmapConfirm: 'Delete this roadmap and all its questions and concepts? This cannot be undone.',
@@ -393,7 +393,7 @@ export const translations = {
       deleteConcept: 'Delete concept',
       generateTopicFromQ: 'Generate topic',
       generateConceptFromQ: 'Add concept',
-      topicAlreadyGenerated: 'Topic generated',
+
       conceptAlreadyAdded: 'Concept added',
       selectMode: 'Select',
       cancelSelect: 'Cancel',
@@ -711,7 +711,7 @@ export const translations = {
       deleteConcept: 'Excluir conceito',
       generateTopicFromQ: 'Gerar tópico',
       generateConceptFromQ: 'Adicionar conceito',
-      topicAlreadyGenerated: 'Tópico gerado',
+
       conceptAlreadyAdded: 'Conceito adicionado',
       selectMode: 'Selecionar',
       cancelSelect: 'Cancelar',
@@ -783,7 +783,7 @@ export const translations = {
       generateTopicFromQ: 'Gerar tópico',
       generatingTopic: 'Gerando tópico…',
       generateConceptFromQ: 'Adicionar conceito',
-      topicAlreadyGenerated: 'Tópico gerado',
+
       conceptAlreadyAdded: 'Conceito adicionado',
       deleteRoadmap: 'Excluir roadmap',
       deleteRoadmapConfirm: 'Excluir este roadmap e todas as suas questões e conceitos? Esta ação não pode ser desfeita.',

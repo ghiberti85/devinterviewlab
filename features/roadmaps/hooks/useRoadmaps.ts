@@ -16,19 +16,6 @@ export function useRoadmaps() {
   })
 }
 
-export function useRoadmap(id: string) {
-  return useQuery<StudyRoadmap>({
-    queryKey: ['roadmap', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/roadmaps/${id}`)
-      if (!res.ok) throw new Error('Roadmap not found')
-      return res.json()
-    },
-    enabled: !!id,
-    staleTime: 2 * 60 * 1000,
-  })
-}
-
 export function useCreateRoadmap() {
   const queryClient = useQueryClient()
   return useMutation<StudyRoadmap, Error, { job_description?: string; cv_text?: string; language?: string }>({
