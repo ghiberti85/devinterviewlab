@@ -323,7 +323,7 @@ export default function SimularPage() {
   const t = useT()
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl w-full min-w-0 overflow-x-hidden">
       <div>
         <h1 className="text-xl font-semibold">{t.nav.simulate}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t.simulate.subtitle}</p>

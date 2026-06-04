@@ -637,7 +637,7 @@ export default function RevisarPage() {
   ]
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 w-full min-w-0 overflow-x-hidden">
       <div>
         <h1 className="text-xl font-semibold">{t.nav.review}</h1>
         <p className="text-sm text-muted-foreground mt-1">{t.review.subtitle}</p>
