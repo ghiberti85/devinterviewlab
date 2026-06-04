@@ -69,7 +69,7 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
         </p>
         <ChevronDown size={13} className={cn('text-muted-foreground transition-transform shrink-0', open && 'rotate-180')} />
       </button>
-      {open && <div className="mt-2">{children}</div>}
+      {open && <div className="mt-2 min-w-0 overflow-hidden">{children}</div>}
     </div>
   )
 }
@@ -98,7 +98,7 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
   }
 
   return (
-    <div className={cn('border rounded-lg p-4 space-y-3 bg-card', isFallback && 'opacity-70')}>
+    <div className={cn('border rounded-lg p-4 space-y-3 bg-card min-w-0 w-full', isFallback && 'opacity-70')}>
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -139,13 +139,13 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
 
       {/* Teoria — open by default */}
       <AccordionSection title={t.topics.theory ?? 'Theory'} defaultOpen>
-        <p className="text-sm text-muted-foreground leading-relaxed">{topic.summary}</p>
+        <p className="text-sm text-muted-foreground leading-relaxed break-words">{topic.summary}</p>
       </AccordionSection>
 
       {/* Quando usar */}
       {topic.when_to_use && (
-        <AccordionSection title={t.topics.whenToUse}>
-          <p className="text-sm text-muted-foreground leading-relaxed">{topic.when_to_use}</p>
+        <AccordionSection title={t.topics.whenToUse} defaultOpen>
+          <p className="text-sm text-muted-foreground leading-relaxed break-words">{topic.when_to_use}</p>
         </AccordionSection>
       )}
 

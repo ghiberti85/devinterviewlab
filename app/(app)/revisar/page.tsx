@@ -290,7 +290,7 @@ function TopicCardWithSelect({
 
   return (
     <div
-      className={`relative select-none ${selectMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary rounded-lg' : ''}`}
+      className={`relative select-none min-w-0 ${selectMode ? 'cursor-pointer' : ''} ${selected ? 'ring-2 ring-primary rounded-lg' : ''}`}
       onClick={selectMode ? onToggle : undefined}
       {...(!selectMode ? longPress : {})}
     >
