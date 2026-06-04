@@ -120,18 +120,10 @@ export function topicAnalysisPrompt(opts: TopicPromptOptions): { system: string;
   const existingBlock = opts.existingTopics?.length
     ? `
 
-━━━ EXISTING TOPICS — AVOID REPEATING THIS CONTENT ━━━
-The user already has these topics in their library. Their summaries are shown below.
-Your summary for "${opts.topicName}" MUST NOT repeat the same sentences, explanations, or angles already covered.
+EXISTING TOPICS (do NOT repeat their angles or phrases):
+${opts.existingTopics.map(t => `• ${t.title}: "${t.summarySnippet}…"`).join('\n')}
 
-${opts.existingTopics.map(t => `• ${t.title}\n  "${t.summarySnippet}…"`).join('\n\n')}
-
-━━━ DIFFERENTIATION RULES ━━━
-✅ Identify the ONE thing that makes "${opts.topicName}" fundamentally different from the topics above
-✅ Lead the summary with that differentiator — make it immediately clear why this is its own concept
-✅ If two topics share a mechanism (e.g. both involve network routing), explain how "${opts.topicName}" uses it DIFFERENTLY
-❌ Do NOT open with generic definitions that would apply equally to any of the existing topics
-❌ Do NOT copy phrases, sentence structures, or metaphors from the snippets above`
+For "${opts.topicName}": lead with its unique differentiator, not definitions shared with the above.`
     : ''
 
   return {

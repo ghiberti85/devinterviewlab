@@ -54,16 +54,21 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch existing topic titles + summaries to help the AI avoid redundant content
+    // Limit to 12 most recent to avoid exceeding token budget
     const { data: existingTopicsRows } = await supabase
       .from('topics')
       .select('title, summary')
       .eq('user_id', user.id)
       .eq('language', language)
-    const existingTopics = (existingTopicsRows ?? []).map((r: { title: string; summary: string }) => ({
-      title: r.title,
-      // Send first 80 words of the summary so the AI knows what ground is already covered
-      summarySnippet: r.summary?.split(' ').slice(0, 80).join(' ') ?? '',
-    }))
+      .order('created_at', { ascending: false })
+      .limit(12)
+    const existingTopics = (existingTopicsRows ?? [])
+      .filter((r: { title: string; summary: string }) => r.summary)
+      .map((r: { title: string; summary: string }) => ({
+        title: r.title,
+        // 40 words is enough context without blowing the token budget
+        summarySnippet: r.summary.split(' ').slice(0, 40).join(' '),
+      }))
 
     // Generate in the requested language
     const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language, existingTopics: existingTopics as { title: string; summarySnippet: string }[] })
