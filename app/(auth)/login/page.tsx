@@ -66,6 +66,16 @@ export default async function LoginPage({
             <Link href="/register" className="text-primary hover:underline">Criar conta</Link>
           </p>
         </div>
+
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground mb-2">Quer explorar antes de criar uma conta?</p>
+          <Link
+            href="/demo"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary border border-primary/30 px-4 py-2 rounded-md hover:bg-primary/5 transition-colors"
+          >
+            ✦ Ver modo demo
+          </Link>
+        </div>
       </div>
     </div>
   )
