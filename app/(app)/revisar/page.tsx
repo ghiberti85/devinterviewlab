@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useT } from '@/lib/i18n/useT'
 import { useSettingsStore } from '@/store/settings.store'
-import { BookMarked, CheckCircle, RotateCcw, Loader2, HelpCircle, BookOpen } from 'lucide-react'
+import { BookMarked, CheckCircle, RotateCcw, Loader2, HelpCircle, BookOpen, FileText, Code2, Sparkles } from 'lucide-react'
 
 // Flashcard practice
 import { usePracticeQuestions, useSubmitSession } from '@/features/practice/hooks/usePractice'
@@ -160,10 +160,12 @@ function TopicsTab() {
   const t = useT()
   const { language } = useSettingsStore()
   const { data: pairs, isLoading } = useTopics(language as string)
+  const { data: roadmaps } = useRoadmaps()
   const deleteTopic = useDeleteTopic()
   const bulkDelete = useBulkDeleteTopics()
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [filterRoadmapId, setFilterRoadmapId] = useState<string>('all')
 
   function toggleSelect(rootId: string) {
     setSelected(prev => {
@@ -174,11 +176,10 @@ function TopicsTab() {
   }
 
   function toggleSelectAll() {
-    if (!pairs) return
-    if (selected.size === pairs.length) {
+    if (selected.size === filteredPairs.length) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(pairs.map(p => p.rootId)))
+      setSelected(new Set(filteredPairs.map(p => p.rootId)))
     }
   }
 
@@ -188,8 +189,7 @@ function TopicsTab() {
   }
 
   async function handleBulkDelete() {
-    if (!pairs) return
-    const ids = pairs
+    const ids = filteredPairs
       .filter(p => selected.has(p.rootId))
       .flatMap(p => [p.current?.id, p.other?.id].filter((id): id is string => !!id))
     if (ids.length === 0) return
@@ -197,18 +197,47 @@ function TopicsTab() {
     exitSelectMode()
   }
 
+  const allRoadmapsForFilter = roadmaps ?? []
+  const selectedRoadmapTopicNames: Set<string> = filterRoadmapId === 'all'
+    ? new Set()
+    : new Set(
+        (allRoadmapsForFilter.find(r => r.id === filterRoadmapId)?.roadmap?.phases ?? [])
+          .flatMap(p => p.topics.map(tp => tp.name.toLowerCase()))
+      )
+
+  const filteredPairs = filterRoadmapId === 'all'
+    ? (pairs ?? [])
+    : (pairs ?? []).filter(p => {
+        const title = (p.current?.title ?? p.other?.title ?? '').toLowerCase()
+        return selectedRoadmapTopicNames.has(title)
+      })
+
   return (
     <div className="space-y-4">
+      {allRoadmapsForFilter.length > 0 && (
+        <select
+          value={filterRoadmapId}
+          onChange={e => setFilterRoadmapId(e.target.value)}
+          className="w-full sm:w-auto text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="all">{t.review.allRoadmaps}</option>
+          {allRoadmapsForFilter.map(r => (
+            <option key={r.id} value={r.id}>
+              {r.job_title ?? t.roadmap.cvOnly} — {new Date(r.created_at).toLocaleDateString()}
+            </option>
+          ))}
+        </select>
+      )}
       <TopicGenerator />
 
-      {!isLoading && pairs && pairs.length > 0 && (
+      {!isLoading && filteredPairs.length > 0 && (
         <div className="flex items-center justify-end gap-3 flex-wrap">
           {selectMode ? (
             <>
               <label className="hidden sm:flex items-center gap-1.5 text-xs cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={selected.size === pairs.length}
+                  checked={selected.size === filteredPairs.length}
                   onChange={toggleSelectAll}
                 />
                 {t.review.selectAll}
@@ -245,15 +274,15 @@ function TopicsTab() {
           <Loader2 className="animate-spin text-muted-foreground" size={24} />
         </div>
       )}
-      {!isLoading && (!pairs || pairs.length === 0) && (
+      {!isLoading && filteredPairs.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
           <BookMarked size={40} className="opacity-30" />
           <p className="text-sm">{t.topics.empty}</p>
         </div>
       )}
-      {!isLoading && pairs && pairs.length > 0 && (
+      {!isLoading && filteredPairs.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {pairs.map(pair => (
+          {filteredPairs.map(pair => (
             <TopicCardWithSelect
               key={pair.rootId}
               pair={pair}
@@ -412,6 +441,77 @@ function QuestionCard({
   )
 }
 
+function GenerateQuestionsPanel({ roadmapId, topics }: { roadmapId: string | null; topics: string[] }) {
+  const t = useT()
+  const generateMore = useGenerateTopicQuestions(roadmapId ?? '')
+  const [topicName, setTopicName] = useState('')
+  const [questionType, setQuestionType] = useState<'theoretical' | 'live_coding'>('theoretical')
+  const [success, setSuccess] = useState('')
+
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!topicName.trim() || !roadmapId || generateMore.isPending) return
+    setSuccess('')
+    try {
+      const result = await generateMore.mutateAsync({ topicName: topicName.trim(), phaseName: '', questionType })
+      setSuccess(t.roadmap.questionsGenerated(result.perLanguage))
+      setTopicName('')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch {
+      // error shown via generateMore.isError
+    }
+  }
+
+  if (!roadmapId) return null
+
+  return (
+    <div className="border rounded-xl p-4 bg-card space-y-3">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.roadmap.generateQuestions}</p>
+      <form onSubmit={handleGenerate} className="flex flex-col sm:flex-row gap-2">
+        <input
+          list="topics-datalist"
+          value={topicName}
+          onChange={e => setTopicName(e.target.value)}
+          placeholder={t.review.topicPlaceholder}
+          disabled={generateMore.isPending}
+          className="w-full sm:flex-1 border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <datalist id="topics-datalist">
+          {topics.map(tp => <option key={tp} value={tp} />)}
+        </datalist>
+        <div className="flex gap-1 p-0.5 bg-muted rounded-lg w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setQuestionType('theoretical')}
+            disabled={generateMore.isPending}
+            className={`flex flex-1 sm:flex-none items-center justify-center gap-1 text-xs px-3 py-1.5 rounded-md transition-colors ${questionType === 'theoretical' ? 'bg-background shadow-sm text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <FileText size={11} />{t.roadmap.theoretical}
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuestionType('live_coding')}
+            disabled={generateMore.isPending}
+            className={`flex flex-1 sm:flex-none items-center justify-center gap-1 text-xs px-3 py-1.5 rounded-md transition-colors ${questionType === 'live_coding' ? 'bg-background shadow-sm text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <Code2 size={11} />{t.roadmap.liveCoding}
+          </button>
+        </div>
+        <button
+          type="submit"
+          disabled={!topicName.trim() || generateMore.isPending}
+          className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+        >
+          {generateMore.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          {generateMore.isPending ? t.roadmap.generatingQuestions : t.review.generateFor}
+        </button>
+      </form>
+      {success && <p className="text-xs text-green-600">{success}</p>}
+      {generateMore.isError && <p className="text-xs text-destructive">{t.roadmap.questionsGenerateError}</p>}
+    </div>
+  )
+}
+
 function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
   const t = useT()
   const { language } = useSettingsStore()
@@ -518,12 +618,12 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Roadmap selector */}
+      {/* Roadmap + topic selectors */}
       <div className="flex flex-col sm:flex-row gap-2">
         <select
           value={currentId ?? ''}
           onChange={e => { setSelectedId(e.target.value); setSelectedTopic('all') }}
-          className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs"
+          className="w-full sm:flex-1 text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
         >
           {allRoadmaps.map(r => (
             <option key={r.id} value={r.id}>
@@ -536,7 +636,7 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
           <select
             value={selectedTopic}
             onChange={e => setSelectedTopic(e.target.value)}
-            className="text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary flex-1 max-w-xs"
+            className="w-full sm:flex-1 text-xs border rounded-md px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="all">{t.review.allTopics}</option>
             {topics.map(tp => <option key={tp} value={tp}>{tp}</option>)}
@@ -544,21 +644,12 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
         )}
       </div>
 
+      {/* Generate questions panel */}
+      <GenerateQuestionsPanel roadmapId={currentId} topics={topics} />
+
       {/* Bulk select controls */}
       {!qLoading && filtered.length > 0 && (
         <div className="flex items-center justify-end gap-2 flex-wrap">
-          {selectedTopic !== 'all' && (
-            <button
-              onClick={() => {
-                const phaseName = filtered[0]?.phase_name ?? ''
-                handleGenerateMoreForTopic(selectedTopic, phaseName)
-              }}
-              disabled={generateMore.isPending}
-              className="text-xs text-primary hover:underline disabled:opacity-50 flex items-center gap-1 mr-auto"
-            >
-              {generateMore.isPending ? <><Loader2 size={10} className="animate-spin" />{t.roadmap.generatingQuestions}</> : t.roadmap.generateQuestions}
-            </button>
-          )}
           {selectMode ? (
             <>
               <label className="flex items-center gap-1.5 text-xs cursor-pointer">

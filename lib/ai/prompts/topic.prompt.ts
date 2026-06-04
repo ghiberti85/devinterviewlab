@@ -7,6 +7,7 @@ interface TopicPromptOptions {
   topicName: string
   difficulty?: 'easy' | 'medium' | 'hard'
   language?: string
+  existingTopics?: string[]
 }
 
 export function getTopicSystemPrompt(language = 'en'): string {
@@ -111,10 +112,13 @@ Required output schema (same as input):
 }
 
 export function topicAnalysisPrompt(opts: TopicPromptOptions): { system: string; user: string } {
+  const existingBlock = opts.existingTopics?.length
+    ? `\n\nTopics already in the user's library (avoid significant content overlap with these):\n${opts.existingTopics.map(t => `- ${t}`).join('\n')}\n\nYour topic MUST cover distinct ground — focus on what makes "${opts.topicName}" unique, not what it shares with the above.`
+    : ''
   return {
     system: getTopicSystemPrompt(opts.language),
     user: `Generate a Flash Topic for: "${opts.topicName}"
 Difficulty level: ${opts.difficulty ?? 'medium'}
-Make it specific, practical, and interview-focused. Cover depth appropriate for a senior engineer.`,
+Make it specific, practical, and interview-focused. Cover depth appropriate for a senior engineer.${existingBlock}`,
   }
 }

@@ -396,6 +396,9 @@ export const translations = {
       selectAll: 'Select all',
       deleteSelected: (n: number) => `Delete ${n} selected`,
       bulkDeleting: 'Deleting…',
+      allRoadmaps: 'All roadmaps',
+      topicPlaceholder: 'Topic name…',
+      generateFor: 'Generate',
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -711,6 +714,9 @@ export const translations = {
       selectAll: 'Selecionar todos',
       deleteSelected: (n: number) => `Excluir ${n} selecionado${n !== 1 ? 's' : ''}`,
       bulkDeleting: 'Excluindo…',
+      allRoadmaps: 'Todos os roadmaps',
+      topicPlaceholder: 'Nome do tópico…',
+      generateFor: 'Gerar',
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',

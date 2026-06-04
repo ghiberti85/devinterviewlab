@@ -22,18 +22,18 @@ export function TopicGenerator() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 flex-wrap">
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
       <input
         value={topicName}
         onChange={e => setTopicName(e.target.value)}
         placeholder={t.topics.placeholder}
-        className="flex-1 min-w-48 border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+        className="w-full sm:flex-1 border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
         disabled={generate.isPending}
       />
       <select
         value={difficulty}
         onChange={e => setDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
-        className="border rounded-md px-3 py-2 text-sm bg-background"
+        className="w-full sm:w-auto border rounded-md px-3 py-2 text-sm bg-background"
         disabled={generate.isPending}
       >
         <option value="easy">{t.topics.easy}</option>
@@ -43,7 +43,7 @@ export function TopicGenerator() {
       <button
         type="submit"
         disabled={!topicName.trim() || generate.isPending}
-        className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
+        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
       >
         {generate.isPending ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
         {generate.isPending ? t.topics.generating : t.topics.generate}
