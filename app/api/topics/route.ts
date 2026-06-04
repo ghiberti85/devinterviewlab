@@ -53,25 +53,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(existing, { status: 200 })
     }
 
-    // Fetch existing topic titles + summaries to help the AI avoid redundant content
-    // Limit to 12 most recent to avoid exceeding token budget
-    const { data: existingTopicsRows } = await supabase
+    // Fetch all existing titles + summaries of the 8 most recent for anti-repetition context
+    const { data: allTitlesRows } = await supabase
+      .from('topics')
+      .select('title, created_at')
+      .eq('user_id', user.id)
+      .eq('language', language)
+      .order('created_at', { ascending: false })
+    const { data: recentWithSummary } = await supabase
       .from('topics')
       .select('title, summary')
       .eq('user_id', user.id)
       .eq('language', language)
+      .not('summary', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(12)
-    const existingTopics = (existingTopicsRows ?? [])
-      .filter((r: { title: string; summary: string }) => r.summary)
-      .map((r: { title: string; summary: string }) => ({
-        title: r.title,
-        // 40 words is enough context without blowing the token budget
-        summarySnippet: r.summary.split(' ').slice(0, 40).join(' '),
-      }))
+      .limit(8)
+    const allTitles = (allTitlesRows ?? []).map((r: { title: string }) => r.title)
+    const existingTopics = (recentWithSummary ?? []).map((r: { title: string; summary: string }) => ({
+      title: r.title,
+      summarySnippet: r.summary.split(' ').slice(0, 40).join(' '),
+    }))
 
     // Generate in the requested language
-    const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language, existingTopics: existingTopics as { title: string; summarySnippet: string }[] })
+    const generated = await aiService.generateTopic({ topicName: topicName.trim(), difficulty, language, allExistingTitles: allTitles, existingTopics })
 
     const { data, error } = await supabase
       .from('topics')

@@ -12,6 +12,7 @@ interface TopicPromptOptions {
   topicName: string
   difficulty?: 'easy' | 'medium' | 'hard'
   language?: string
+  allExistingTitles?: string[]
   existingTopics?: ExistingTopic[]
 }
 
@@ -117,14 +118,13 @@ Required output schema (same as input):
 }
 
 export function topicAnalysisPrompt(opts: TopicPromptOptions): { system: string; user: string } {
-  const existingBlock = opts.existingTopics?.length
-    ? `
-
-EXISTING TOPICS (do NOT repeat their angles or phrases):
-${opts.existingTopics.map(t => `• ${t.title}: "${t.summarySnippet}…"`).join('\n')}
-
-For "${opts.topicName}": lead with its unique differentiator, not definitions shared with the above.`
+  const titlesBlock = opts.allExistingTitles?.length
+    ? `\nTopics already in the library (do NOT duplicate): ${opts.allExistingTitles.join(', ')}.`
     : ''
+  const snippetsBlock = opts.existingTopics?.length
+    ? `\nRecent topics with their summaries (avoid these angles):\n${opts.existingTopics.map(t => `• ${t.title}: "${t.summarySnippet}…"`).join('\n')}\nFor "${opts.topicName}": open with its unique differentiator, not shared definitions.`
+    : ''
+  const existingBlock = titlesBlock + snippetsBlock
 
   return {
     system: getTopicSystemPrompt(opts.language),

@@ -359,6 +359,7 @@ export const aiService = {
     topicName: string
     difficulty?: 'easy' | 'medium' | 'hard'
     language?: string
+    allExistingTitles?: string[]
     existingTopics?: { title: string; summarySnippet: string }[]
   }): Promise<{
     title: string
