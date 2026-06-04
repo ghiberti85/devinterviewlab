@@ -166,6 +166,7 @@ function TopicsTab() {
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [filterRoadmapId, setFilterRoadmapId] = useState<string>('all')
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false)
 
   function toggleSelect(rootId: string) {
     setSelected(prev => {
@@ -231,40 +232,82 @@ function TopicsTab() {
       <TopicGenerator />
 
       {!isLoading && filteredPairs.length > 0 && (
-        <div className="flex items-center justify-end gap-3 flex-wrap">
-          {selectMode ? (
-            <>
-              <label className="hidden sm:flex items-center gap-1.5 text-xs cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selected.size === filteredPairs.length}
-                  onChange={toggleSelectAll}
-                />
-                {t.review.selectAll}
-              </label>
-              <button
-                onClick={handleBulkDelete}
-                disabled={selected.size === 0 || bulkDelete.isPending}
-                className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
-              >
-                {bulkDelete.isPending
-                  ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</>
-                  : t.review.deleteSelected(selected.size)}
-              </button>
-              <button
-                onClick={exitSelectMode}
-                className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-              >
-                {t.review.cancelSelect}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => setSelectMode(true)}
-              className="hidden sm:flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
-            >
-              {t.review.selectMode}
-            </button>
+        <div className="space-y-2">
+          <div className="flex items-center justify-end gap-2 flex-wrap">
+            {selectMode ? (
+              <>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === filteredPairs.length}
+                    onChange={toggleSelectAll}
+                  />
+                  {t.review.selectAll}
+                </label>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={selected.size === 0 || bulkDelete.isPending}
+                  className="flex items-center gap-1.5 text-xs bg-red-500 text-white px-3 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]"
+                >
+                  {bulkDelete.isPending
+                    ? <><Loader2 size={11} className="animate-spin mr-1" />{t.review.bulkDeleting}</>
+                    : t.review.deleteSelected(selected.size)}
+                </button>
+                <button
+                  onClick={exitSelectMode}
+                  className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+                >
+                  {t.review.cancelSelect}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setConfirmDeleteAll(true); setSelectMode(false) }}
+                  className="flex items-center gap-1.5 text-xs border border-red-200 text-red-500 px-3 py-2 rounded-md hover:bg-red-50 dark:hover:bg-red-950 transition-colors min-h-[36px]"
+                >
+                  {t.review.deleteAll}
+                </button>
+                <button
+                  onClick={() => { setSelectMode(true); setConfirmDeleteAll(false) }}
+                  className="flex items-center gap-1.5 text-xs border px-3 py-2 rounded-md hover:bg-accent transition-colors min-h-[36px]"
+                >
+                  {t.review.selectMode}
+                </button>
+              </>
+            )}
+          </div>
+
+          {confirmDeleteAll && (
+            <div className="border border-red-200 dark:border-red-800 rounded-lg p-3 bg-red-50 dark:bg-red-950/30 space-y-2">
+              <p className="text-xs text-red-700 dark:text-red-400">
+                {t.review.deleteAllConfirm(filteredPairs.length)}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    const ids = filteredPairs.flatMap(p =>
+                      [p.current?.id, p.other?.id].filter((id): id is string => !!id)
+                    )
+                    await bulkDelete.mutateAsync({ ids })
+                    setConfirmDeleteAll(false)
+                  }}
+                  disabled={bulkDelete.isPending}
+                  className="flex items-center gap-1 text-xs bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 disabled:opacity-50 transition-colors"
+                >
+                  {bulkDelete.isPending
+                    ? <><Loader2 size={11} className="animate-spin" />{t.review.bulkDeleting}</>
+                    : t.review.deleteAll}
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteAll(false)}
+                  disabled={bulkDelete.isPending}
+                  className="text-xs border px-3 py-1.5 rounded-md hover:bg-accent transition-colors"
+                >
+                  {t.common.cancel}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

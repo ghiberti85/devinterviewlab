@@ -403,6 +403,8 @@ export const translations = {
       allRoadmaps: 'All roadmaps',
       topicPlaceholder: 'Topic name…',
       generateFor: 'Generate',
+      deleteAll: 'Delete all',
+      deleteAllConfirm: (n: number) => `Delete all ${n} concept${n !== 1 ? 's' : ''}? This cannot be undone.`,
     },
     plan: {
       subtitle: 'Your study plan, progress and concept map.',
@@ -721,6 +723,8 @@ export const translations = {
       allRoadmaps: 'Todos os roadmaps',
       topicPlaceholder: 'Nome do tópico…',
       generateFor: 'Gerar',
+      deleteAll: 'Apagar todos',
+      deleteAllConfirm: (n: number) => `Apagar ${n} conceito${n !== 1 ? 's' : ''}? Esta ação não pode ser desfeita.`,
     },
     plan: {
       subtitle: 'Seu plano de estudos, progresso e mapa de conceitos.',
