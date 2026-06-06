@@ -33,6 +33,26 @@ export const generateFromContextPrompt = (opts: GenerateFromContextOptions) => {
       ? `Distribua as ${count} perguntas assim: ${Math.ceil(count * 0.3)} fáceis (conceitos fundamentais), ${Math.ceil(count * 0.4)} médias (aplicação prática), ${count - Math.ceil(count * 0.3) - Math.ceil(count * 0.4)} difíceis (arquitetura, trade-offs, liderança). Cada pergunta DEVE ter seu próprio campo "difficulty".`
       : `Todas as perguntas devem ser de dificuldade "${difficulty}".`
 
+  // Angle taxonomy for personalized questions — one per question, cycling
+  const ANGLES_TECH = [
+    'CONCEITUAL — mecanismo interno, "como X realmente funciona por baixo dos panos?"',
+    'PRÁTICO/CENÁRIO — situação real de produção ligada ao perfil do candidato',
+    'TRADE-OFF/DESIGN — "quando você escolheria X em vez de Y? Quais as implicações arquiteturais?"',
+    'DEBUG/INCIDENTE — "algo quebrou em produção, descreva o diagnóstico e a correção"',
+    'EVOLUÇÃO/MIGRAÇÃO — "você precisa mudar X sem quebrar Y, qual sua estratégia?"',
+  ]
+  const ANGLES_BEHAVIORAL = [
+    'LIDERANÇA — decisão técnica difícil, como engajou a equipe e comunicou para stakeholders',
+    'CONFLITO TÉCNICO — discordância de abordagem com colega sênior, como foi resolvido',
+    'FALHA/APRENDIZADO — projeto que não saiu como esperado e o que você mudou depois',
+    'ENTREGA SOB PRESSÃO — como manteve qualidade com prazo curto ou recursos limitados',
+    'CRESCIMENTO DE EQUIPE — como mentorou alguém ou elevou o nível técnico do time',
+  ]
+  const angles = isBehavioral ? ANGLES_BEHAVIORAL : ANGLES_TECH
+  const angleAssignments = Array.from({ length: count }, (_, i) =>
+    `  Q${i + 1}: ${angles[i % angles.length]}`
+  ).join('\n')
+
   const questionType = isBehavioral
     ? 'perguntas comportamentais usando o framework STAR (Situação, Tarefa, Ação, Resultado)'
     : `perguntas técnicas${categoryName ? ` focadas em ${categoryName}` : ''} para entrevista de nível sênior/tech lead`
@@ -40,13 +60,20 @@ export const generateFromContextPrompt = (opts: GenerateFromContextOptions) => {
   return {
     system: `Você é um DIRETOR DE ENGENHARIA com 20+ anos de experiência entrevistando candidatos para posições de Engenheiro Sênior e Tech Lead em empresas tier-1 (FAANG, unicórnios, grandes empresas de tecnologia).
 
-Sua tarefa: gerar ${count} ${questionType} ALTAMENTE PERSONALIZADAS baseadas no currículo e descrição da vaga fornecidos.
+Sua tarefa: gerar ${count} ${questionType} ALTAMENTE PERSONALIZADAS e DIVERSAS baseadas no currículo e descrição da vaga fornecidos.
+
+━━━ ÂNGULOS OBRIGATÓRIOS — cada questão DEVE usar o ângulo atribuído ━━━
+${angleAssignments}
+
+Cada pergunta deve explorar uma FACETA DISTINTA do perfil. Nenhuma pergunta pode usar o mesmo ângulo ou o mesmo padrão de formulação que outra.
 
 REGRAS CRÍTICAS — VIOLAÇÃO DESSAS REGRAS INVALIDA O RESULTADO:
 
 ━━━ SOBRE AS PERGUNTAS ━━━
 ❌ NUNCA escreva títulos de tópicos como pergunta (ex: "Event Loop", "React Hooks", "TypeScript")
 ❌ NUNCA faça perguntas genéricas que qualquer dev poderia responder sem ler o currículo
+❌ NUNCA use clichês de prazo: "em 30 dias", "em 2 semanas", "seu time tem N dias para entregar"
+❌ NUNCA comece duas perguntas com o mesmo verbo ("Explique...", "Explique...", "Descreva...", "Descreva...")
 ✅ SEMPRE formule uma pergunta COMPLETA e ESPECÍFICA em forma de interrogação
 ✅ SEMPRE referencie tecnologias, empresas, projetos ou situações ESPECÍFICAS do currículo/vaga
 ✅ SEMPRE inclua contexto na pergunta que a torne única para este candidato
@@ -54,7 +81,7 @@ REGRAS CRÍTICAS — VIOLAÇÃO DESSAS REGRAS INVALIDA O RESULTADO:
 EXEMPLOS DE PERGUNTAS RUINS (NUNCA FAÇA ISSO):
 - "Event Loop" ← título de tópico, não uma pergunta
 - "Como funciona o React?" ← genérica demais, não relacionada ao perfil
-- "Explique TypeScript" ← não é uma pergunta específica
+- "Você tem 30 dias para implementar X" ← clichê de prazo, framing preguiçoso
 
 EXEMPLOS DE PERGUNTAS BOAS:
 - "Você trabalhou com Next.js em múltiplos projetos. Como você decide entre renderização SSR, SSG e ISR em um projeto de alta escala? Pode dar um exemplo real de uma decisão que tomou e o impacto que teve?"
@@ -73,7 +100,7 @@ EXEMPLOS DE PERGUNTAS BOAS:
 
 ESTRUTURA DA RESPOSTA IDEAL (siga esta ordem):
 1. Conceito/princípio fundamental (2-3 frases) — "O princípio por trás disso é..."
-2. Como você aplicaria no contexto do candidato (3-5 frases) — "Dado meu histórico com X, eu abordaria assim..."  
+2. Como você aplicaria no contexto do candidato (3-5 frases) — "Dado meu histórico com X, eu abordaria assim..."
 3. Trade-offs e quando NÃO usar (2-3 frases) — "A principal desvantagem é... Por isso eu NÃO faria isso quando..."
 4. Exemplo concreto ou situação real (3-5 frases) — "Um caso real seria... O resultado esperado é..."
 5. O que diferencia a resposta sênior (1-2 frases) — "O que muitos esquecem de mencionar é..."
