@@ -207,19 +207,21 @@ function LiveCodingAnswer({ answer }: { answer: string }) {
 }
 
 function QuestionCard({
-  q, open, topicLoading, topicDone, selectMode, selected,
-  onToggleAnswer, onToggleSelect, onEnterSelectMode, onGenerateTopic,
+  q, open, topicLoading, topicDone, topicError, selectMode, selected,
+  onToggleAnswer, onToggleSelect, onEnterSelectMode, onGenerateTopic, onViewConcept,
 }: {
   q: { id: string; topic_name: string; question: string; answer: string; phase_name: string; question_type?: string }
   open: boolean
   topicLoading: boolean
   topicDone: boolean
+  topicError: boolean
   selectMode: boolean
   selected: boolean
   onToggleAnswer: () => void
   onToggleSelect: () => void
   onEnterSelectMode: () => void
   onGenerateTopic: () => void
+  onViewConcept: () => void
 }) {
   const t = useT()
   const longPress = useLongPress(onEnterSelectMode)
@@ -274,11 +276,21 @@ function QuestionCard({
         </div>
       )}
       {!selectMode && (
-        <div className="flex gap-2 pt-1 border-t flex-wrap">
+        <div className="flex items-center gap-3 pt-1 border-t flex-wrap">
           {topicDone ? (
-            <span className="flex items-center gap-1 text-[10px] text-green-600">
-              <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
-            </span>
+            <>
+              <span className="flex items-center gap-1 text-[10px] text-green-600">
+                <CheckCircle size={10} />{t.review.conceptAlreadyAdded}
+              </span>
+              <button
+                onClick={onViewConcept}
+                className="text-[10px] text-primary hover:underline"
+              >
+                {t.review.conceptsTab} →
+              </button>
+            </>
+          ) : topicError ? (
+            <span className="text-[10px] text-destructive">{t.topics.syncError}</span>
           ) : (
             <button
               onClick={onGenerateTopic}
@@ -367,7 +379,7 @@ function GenerateQuestionsPanel({ roadmapId, topics }: { roadmapId: string | nul
   )
 }
 
-function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
+function QuestionsTab({ initialTopic, onSwitchToTopics }: { initialTopic?: string; onSwitchToTopics: () => void }) {
   const t = useT()
   const { language } = useSettingsStore()
   const { data: roadmaps, isLoading: roadmapsLoading } = useRoadmaps()
@@ -442,9 +454,10 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
         language: language as string,
       })
       setAction(q.id + '-topic', 'done')
-      setTimeout(() => setAction(q.id + '-topic', ''), 2000)
+      setTimeout(() => setAction(q.id + '-topic', ''), 4000)
     } catch {
-      setAction(q.id + '-topic', '')
+      setAction(q.id + '-topic', 'error')
+      setTimeout(() => setAction(q.id + '-topic', ''), 4000)
     }
   }
 
@@ -545,12 +558,14 @@ function QuestionsTab({ initialTopic }: { initialTopic?: string }) {
               open={expandedIds.has(q.id)}
               topicLoading={actionStates[q.id + '-topic'] === 'loading'}
               topicDone={actionStates[q.id + '-topic'] === 'done'}
+              topicError={actionStates[q.id + '-topic'] === 'error'}
               selectMode={selectMode}
               selected={selected.has(q.id)}
               onToggleAnswer={() => toggleAnswer(q.id)}
               onToggleSelect={() => toggleSelect(q.id)}
               onEnterSelectMode={() => { setSelectMode(true); toggleSelect(q.id) }}
               onGenerateTopic={() => handleGenerateTopic(q)}
+              onViewConcept={onSwitchToTopics}
             />
           ))}
         </div>
@@ -596,7 +611,7 @@ export default function RevisarPage() {
       </div>
 
       {tab === 'topics'    && <TopicsTab />}
-      {tab === 'questions' && <QuestionsTab initialTopic={initialTopic} />}
+      {tab === 'questions' && <QuestionsTab initialTopic={initialTopic} onSwitchToTopics={() => setTab('topics')} />}
     </div>
   )
 }
