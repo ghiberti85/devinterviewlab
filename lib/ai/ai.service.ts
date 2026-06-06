@@ -513,15 +513,25 @@ export const aiService = {
     const isLiveCoding = questionType === 'live_coding'
 
     const avoidBlock = existingQuestions.length > 0
-      ? `\n\nDo NOT repeat or rephrase these already-existing questions:\n${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+      ? `\n\nALREADY EXISTING — do NOT repeat, rephrase, or reuse the same angle as any of these:\n${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
       : ''
 
     const systemPrompt = isLiveCoding
-      ? `You are a senior software engineer creating coding interview challenges. Return only valid JSON, no markdown fences.`
-      : `You are a technical interview coach. Generate exactly 3 interview questions with detailed answers. Return only valid JSON, no markdown fences.`
+      ? `You are a senior software engineer creating diverse coding interview challenges. Return only valid JSON, no markdown fences.`
+      : `You are a technical interview coach generating diverse, non-repetitive interview questions. Return only valid JSON, no markdown fences.`
 
     const userPrompt = isLiveCoding
-      ? `Generate exactly 3 coding interview challenges for the topic "${topicName}" in the context of "${phaseName}".
+      ? `Generate exactly 3 coding interview challenges for the topic "${topicName}" (context: "${phaseName}").
+
+Each challenge must use a DIFFERENT problem category:
+1. Data structure manipulation (arrays, trees, graphs, hash maps)
+2. Algorithm design (sorting, search, dynamic programming, greedy)
+3. Real-world system simulation (parsing, rate limiting, caching, scheduling)
+
+BANNED PATTERNS — never use these:
+❌ "implement X in 30 days / N weeks"
+❌ Trivially simple problems a junior could solve in 2 minutes
+❌ Two problems with the same data structure or algorithmic family
 
 Return a JSON object:
 {
@@ -533,14 +543,26 @@ Return a JSON object:
   ]
 }
 
-Requirements:
 - "question": clear problem statement, function signature, constraints, examples (no solution hints)
-- "code_solution": complete, correct solution using \\n for newlines (NOT actual newline characters)
-- Problems should be non-trivial and require real algorithm/data-structure knowledge
+- "code_solution": complete, correct solution using \\n for newlines (NOT actual newlines)
 - Language: ${langLabel}${avoidBlock}`
-      : `Generate exactly 3 interview questions with detailed answers for the topic "${topicName}" in the context of "${phaseName}" for a software engineering interview.
+      : `Generate exactly 3 interview questions for the topic "${topicName}" (context: "${phaseName}").
 
-Return a JSON object with this exact format:
+Each question MUST use a DIFFERENT angle — assign one angle per question:
+• CONCEPTUAL — "How does X work internally? What are the underlying mechanisms?"
+• PRACTICAL/SCENARIO — "Your production system is doing Y. How do you handle Z?"
+• TRADE-OFF/DESIGN — "When would you choose X over Y? What are the architectural implications?"
+
+If generating more than one batch, rotate through angles so no two batches repeat the same pattern.
+
+BANNED PHRASES AND PATTERNS — never use these:
+❌ "in 30 days", "in 2 weeks", "within the next month", "your team has N days"
+❌ "implement X from scratch" as the sole framing (too generic)
+❌ Two questions starting with the same verb ("Explain...", "Explain...", "Explain...")
+❌ Restating the topic name as the question ("What is ${topicName}?")
+❌ Questions a junior could answer in one sentence
+
+Return a JSON object:
 {
   "questions": [
     {
@@ -550,10 +572,7 @@ Return a JSON object with this exact format:
   ]
 }
 
-Requirements:
-- Questions must be realistic interview questions
-- Answers must be detailed (150-300 words each), demonstrating mastery
-- Cover different aspects of the topic
+- Answers must be 150-300 words, demonstrating senior-level mastery with trade-offs
 - Language: ${langLabel}${avoidBlock}`
 
     const res = await openai.chat.completions.create({
