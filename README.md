@@ -43,8 +43,6 @@ DevInterviewLab é uma plataforma full-stack de estudos para entrevistas técnic
 ### Revisão
 - **Questões por roadmap** — aba padrão com filtro por tópico, geração de conceitos a partir de questões, delete em lote
 - **Flash Topics (Conceitos)** — referências técnicas rápidas com resumo, quando usar, prós & contras (accordion), Q&A integrado e tradução EN↔PT persistida
-- **Flashcards SM-2** — repetição espaçada com Easiness Factor adaptativo
-
 ### Simulação
 - **AI Interview Coach** — avaliação por dimensão (correção, completude, clareza, profundidade) com réplica e tréplica
 - **Live Coding Simulator** — 7 linguagens, timer configurável, Pair Programmer socrático com dicas on-demand, idle detection
@@ -54,6 +52,8 @@ DevInterviewLab é uma plataforma full-stack de estudos para entrevistas técnic
 - Gráfico de barras de questões por tópico — responsivo, sem scroll lateral
 
 ### Experiência
+- **Modo Demo** — [`/demo`](https://devinterviewlab.vercel.app/demo) rota pública com dados mockados e 4 abas interativas, acessível pelo link na tela de login
+- **Questões diversas** — taxonomia de 5 ângulos (Conceitual, Prático, Trade-off, Debug, Evolução) + frases banidas evitam repetição entre gerações
 - **PWA** — instalável, bottom tab bar mobile, safe-area iOS
 - **i18n** — EN e PT-BR completos, sincronizado com banco de dados
 - **Tema** — claro/escuro
@@ -66,7 +66,8 @@ DevInterviewLab é uma plataforma full-stack de estudos para entrevistas técnic
 app/
   (app)/          # rotas protegidas (layout com auth)
     plano/        # roadmap + geração de questões
-    revisar/      # questões, conceitos, flashcards
+    revisar/      # questões por roadmap + Flash Topics (conceitos)
+    demo/         # rota pública com dados mockados (sem auth)
     simular/      # interview coach + live coding
     stats/        # métricas e gráficos
   api/            # route handlers (Next.js App Router)

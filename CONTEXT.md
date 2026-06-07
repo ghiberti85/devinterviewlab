@@ -187,8 +187,8 @@ app/
     layout.tsx        # Sidebar (desktop 4 itens) + BottomNav (mobile 4 tabs) + MobileTopBar (back button + SettingsDrawer)
     dashboard/        # "Hoje" — DailyLoopWidget + stats cards + heatmap + atalhos
     simular/          # Hub: cards Entrevista + Live Coding + tópicos para praticar + 5 sessões recentes
-    revisar/          # Tabs integradas: Topics | Flashcards (SM-2 + Skip) | Concepts (expansíveis + link grafo)
-    plano/            # Tabs: Roadmap (CV-only ou CV+JD, multi-roadmap selector) | Progresso (heatmap+radar+score cards)
+    revisar/          # Tabs integradas: Questions (roadmap questions + gerar) | Topics (Flash Topics, grid, seleção por long-press)
+    plano/            # Roadmap: CV-only ou CV+JD, múltiplos roadmaps, geração de questões por tipo, delete com cascade
     questions/[id]/
     interview/        # mantida (acessível via URL direta)
     generate/
@@ -213,13 +213,12 @@ app/
     coding/hint/      # POST dica socrática (Node Runtime, 20/dia)
     coding/generate/  # POST gerar problema com IA (dificuldade + tópico + linguagem)
     coding/save-problem/ # POST salvar stub de problema (title+desc, código vazio, score null)
-    topics/sync/      # POST sincronizar tópicos existentes → cria questões + conceitos faltantes
+    topics/bulk-delete/ # POST apagar múltiplos tópicos
     evaluations/      # GET paginada + GET [id] detalhe
     score-cards/      # GET lista + POST gerar com IA + GET/DELETE [id]
     roadmaps/         # GET lista + POST ndjson stream + GET/DELETE [id]
     roadmaps/[id]/progress/         # PATCH incrementar progresso de tópico
     roadmaps/[id]/generate-questions/ # GET lista questões · DELETE limpa todas · POST gera por tópico (append, sem delete)
-    roadmaps/[id]/questions/[questionId]/ # DELETE questão individual
     topics/           # GET todos os tópicos do usuário (ambos idiomas) + POST gerar
     topics/[id]/      # GET + DELETE
     topics/[id]/translate/  # POST traduzir e persistir (Node Runtime, 50/dia, idempotente)
@@ -257,11 +256,11 @@ features/
     hooks/                      # useScoreCards, useCreateScoreCard, useDeleteScoreCard
   roadmaps/
     components/                 # RoadmapSetup, GapAnalysisCard, RoadmapTimeline
-    hooks/                      # useRoadmaps, useRoadmap, useCreateRoadmap, useUpdateTopicProgress
-                                # useRoadmapQuestions, useDeleteRoadmapQuestion, useClearRoadmapQuestions, useGenerateTopicQuestions
+    hooks/                      # useRoadmaps, useCreateRoadmap, useDeleteRoadmap, useUpdateTopicProgress
+                                # useRoadmapQuestions, useBulkDeleteRoadmapQuestions, useGenerateTopicQuestions
   topics/
-    components/                 # TopicCard (tradução persistida, texto completo em summary/when_to_use), TopicGenerator
-    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useSyncTopics, useSaveProblem
+    components/                 # TopicCard (tradução persistida, texto completo, tags com +N popup), TopicGenerator
+    hooks/                      # useTopics(language), useGenerateTopic, useTranslateTopic, useDeleteTopic, useBulkDeleteTopics
   documents/hooks/              # useDocuments, useSavedCV, useUploadDocument, useDeleteDocument, formatFileSize
   concepts/hooks/               # useConcepts, useCreateConcept, useCreateRelation, useDeleteConcept
   analytics/
@@ -418,11 +417,13 @@ e2e/                            # Playwright E2E
 ### Nova Navegação por Hubs *(refatoração)*
 - Navegação reduzida de 12 itens para 4 — agrupamento por **intenção do usuário**, não por feature
 - Ordem: **Hoje · Plano · Revisar · Simular** (em BottomNav e NavLinks)
-- **`/simular`** — hub com: cards Entrevista + Live Coding · lista de tópicos para praticar (link direto para `/interview?search=`) · 5 sessões/entrevistas recentes
-- **`/revisar`** — tabs: **Topics** (gerador + sync + grid + link "Gerar questões →") | **Flashcards** (SM-2 completo + botão Skip/Pular) | **Concepts** (cards expansíveis + link "Abrir grafo" → /concept-graph)
-- **`/plano`** — tabs: Roadmap (CV-only aceito, JD opcional; dropdown para alternar entre múltiplos roadmaps) | Progresso (heatmap + radar + Score Cards)
+- **`/simular`** — hub com: cards Entrevista + Live Coding · lista de tópicos para praticar · 5 sessões/entrevistas recentes
+- **`/demo`** — rota **pública** (sem auth), dados mockados, 4 abas interativas (Plan, Review, Simulate, Stats), layout responsivo desktop/mobile, CTA "Sign up free"
+- **`/revisar`** — tabs: **Questions** (seletor de roadmap + tópico, gerador de questões inline, cards com resposta expansível, gerar conceito → Flash Topics) | **Topics/Flash Topics** (gerador, grid 3 colunas, long-press → select mode → bulk delete, filtro por roadmap)
+- **`/plano`** — lista de roadmaps (múltiplos), gap analysis com score, fases + tópicos colapsáveis, seletor de tipo de questão, botão delete com cascade (roadmap_questions + roadmap_topic_progress + Flash Topics relacionados)
 - **`MobileTopBar`** — top bar mobile com botão voltar (ChevronLeft) nas sub-páginas; hubs mostram logo + ícone ⚙ que abre SettingsDrawer (ThemeToggle, LanguageSelector, Logout)
 - **Simplificação**: 4 páginas standalone removidas — `/practice`, `/stats`, `/topics`, `/roadmap`; funcionalidades integradas nas abas dos hubs correspondentes
+- **`/login`** — exibe link "Ver modo demo" abaixo do card de login
 
 ### Simplificação de Navegação *(refatoração)*
 - **4 páginas standalone removidas**: `/practice`, `/stats`, `/topics`, `/roadmap`
@@ -446,10 +447,7 @@ e2e/                            # Playwright E2E
   2. Um `Concept` para o título do tópico (description = summary)
   3. Um `Concept` por tag, com relação `part_of` → nó raiz do tópico
   - Deduplicação por nome (consulta existentes antes de inserir); falha não bloqueia o tópico
-- **Sync de tópicos existentes** (POST `/api/topics/sync`): retroativamente processa todos os tópicos do usuário sem duplicar registros
-  - Hook `useSyncTopics()` + botão "Sync to Practice & Concepts" na aba Topics
-  - Retorna `{ questions_created, concepts_created }` com feedback na UI
-- **Aba Concepts em `/revisar`**: exibe cards dos conceitos agrupados (raiz + tags filhas como pills), score colorido, link para grafo interativo
+- **Aba Topics em `/revisar`**: grid 3 colunas de TopicCards (teoria + quando usar + prós/contras + Q&A + código); long-press ativa select mode para bulk delete; filtro por roadmap via dropdown
 
 ### Geração de Problemas de Live Coding com IA
 - Seletor de fonte redesenhado: 3 botões destacados (IA / Salvos / Custom) — botão ativo tem destaque visual
@@ -613,15 +611,20 @@ Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx
 
 ## O Que Está Pendente
 
-### Features Implementadas Recentemente (2026-05-15)
+### Features Implementadas Recentemente (2026-06-07)
+- **Modo Demo** (`/demo`) — rota pública com dados mockados, 4 abas interativas (Plan, Review, Simulate, Stats), layout desktop 2-colunas, CTA de cadastro; link visível na tela de login
+- **Anti-repetição em geração de questões** — taxonomia de 5 ângulos obrigatórios (Conceitual, Prático/Cenário, Trade-off, Debug, Evolução) + frases banidas ("em 30 dias", "seu time tem N dias"); aplicado em `generate.prompt.ts`, `generate-from-context.prompt.ts` e `ai.service.ts` (generateRoadmapQuestions)
+- **Feedback de geração de conceito** — após gerar conceito de uma questão, mostra link "Flash Topics →" que troca de aba automaticamente; exibe erro visível se falhar
+- **Delete de roadmap com cascade** — apaga roadmap_questions, roadmap_topic_progress e Flash Topics relacionados (match por título); confirmação inline no card
+- **Bulk delete de questões e conceitos** — long-press ativa select mode; selecionar todos, apagar selecionados, cancelar
+- **Filtro de roadmap nas abas Questões e Conceitos** — dropdown seleciona roadmap; conceitos filtrados por match de título com tópicos do roadmap
+- **Geração de questões inline em Revisar** — painel com input de tópico (datalist autocomplete), seletor de tipo (Theoretical/Live Coding) e botão gerar
 - **Histórico de Avaliações** (`/history`) — lista paginada com score, questão, data e badge de dificuldade
 - **Replay de Entrevista** (`/history/[id]`) — resposta + transcrição de voz lado a lado + feedback completo da IA
-- **F8 — Pair Programmer IA no Live Coding** — dicas socráticas on-demand + idle detection 60s, métricas de processo, HintPanel colapsável
+- **F8 — Pair Programmer IA no Live Coding** — dicas socráticas on-demand + idle detection 60s, métricas de processo
 - **F2 — Score Card Visual** (`/score-cards`) — radar chart, top forças/lacunas, histórico, export PDF
-- **F3 — Análise CV + Roadmap** (`/roadmap`) — gap analysis, roadmap 30/60/90 dias via streaming, progresso manual por tópico
-- **Flash Topics** (aba em `/revisar`) — referências rápidas com Q&A integrado, tradução persistida EN↔PT
-- **PWA + Mobile App** — bottom tab bar, bottom sheet, manifest, ícones, safe-area iOS
-- **Simplificação de navegação** — 4 páginas removidas, features integradas em tabs dos hubs; SettingsDrawer no mobile; Skip em flashcards; concepts expansíveis; múltiplos roadmaps
+- **Flash Topics** (aba em `/revisar`) — referências rápidas com Q&A integrado, tradução persistida EN↔PT, tags com popup +N
+- **PWA + Mobile App** — bottom tab bar, manifest, ícones, safe-area iOS
 
 ### Features Planejadas
 1. **Migrar `/api/ai/generate` para Edge Runtime** — extração já isolada em `/api/documents/extract-text`; passar texto pré-extraído resolve timeout 10s Vercel Hobby

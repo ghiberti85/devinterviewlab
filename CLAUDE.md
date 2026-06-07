@@ -220,6 +220,11 @@ describe('nomeDaFuncao', () => {
 
 ### Contagem atual: **290 testes** — atualizar este número a cada PR
 
+### Prompts de IA — regras de diversidade (não remover)
+- `generate.prompt.ts` e `generate-from-context.prompt.ts`: taxonomia de 5 ângulos obrigatórios por questão; frases banidas: "em 30 dias", "em N semanas", "seu time tem N dias"
+- `ai.service.ts` → `generateRoadmapQuestions`: mesmos ângulos + 3 categorias de problema para live coding
+- Nunca simplificar esses prompts sem manter as restrições de diversidade
+
 ---
 
 ## Arquitetura de features
