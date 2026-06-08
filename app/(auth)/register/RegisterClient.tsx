@@ -12,36 +12,46 @@ export function RegisterClient({ error }: RegisterClientProps) {
   const [lang, setLang] = useState<'en' | 'pt'>('en')
   const t = translations[lang].auth
 
+  const langToggle = (
+    <div className="flex items-center gap-1 bg-muted rounded-full p-1 text-xs font-medium">
+      <button
+        onClick={() => setLang('en')}
+        className={`px-3 py-1 rounded-full transition-colors ${
+          lang === 'en'
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+        aria-pressed={lang === 'en'}
+      >
+        EN
+      </button>
+      <button
+        onClick={() => setLang('pt')}
+        className={`px-3 py-1 rounded-full transition-colors ${
+          lang === 'pt'
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+        aria-pressed={lang === 'pt'}
+      >
+        PT-BR
+      </button>
+    </div>
+  )
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+
+      {/* Mobile: fixed top-right */}
+      <div className="fixed top-4 right-4 sm:hidden z-50">
+        {langToggle}
+      </div>
+
       <div className="w-full max-w-sm space-y-6">
 
-        {/* Language toggle */}
-        <div className="flex justify-end">
-          <div className="flex items-center gap-1 bg-muted rounded-full p-1 text-xs font-medium">
-            <button
-              onClick={() => setLang('en')}
-              className={`px-3 py-1 rounded-full transition-colors ${
-                lang === 'en'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-pressed={lang === 'en'}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLang('pt')}
-              className={`px-3 py-1 rounded-full transition-colors ${
-                lang === 'pt'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              aria-pressed={lang === 'pt'}
-            >
-              PT-BR
-            </button>
-          </div>
+        {/* Desktop: centered above title */}
+        <div className="hidden sm:flex justify-center">
+          {langToggle}
         </div>
 
         {/* Header */}
