@@ -157,6 +157,10 @@ export const translations = {
       email: 'Email', password: 'Password', submit: 'Sign in',
       createSubmit: 'Create account',
       noAccount: 'No account?', haveAccount: 'Have an account?',
+      minLength: 'Minimum 8 characters',
+      demoPrompt: 'Want to explore before creating an account?',
+      demoLink: 'View demo mode',
+      langSwitch: 'PT-BR',
     },
     liveCoding: {
       title: 'Live Coding Simulator',
@@ -570,6 +574,10 @@ export const translations = {
       email: 'E-mail', password: 'Senha', submit: 'Entrar',
       createSubmit: 'Criar conta',
       noAccount: 'Sem conta?', haveAccount: 'Já tem uma conta?',
+      minLength: 'Mínimo 8 caracteres',
+      demoPrompt: 'Quer explorar antes de criar uma conta?',
+      demoLink: 'Ver modo demo',
+      langSwitch: 'EN',
     },
     liveCoding: {
       title: 'Simulador de Código ao Vivo',
