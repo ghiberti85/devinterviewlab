@@ -1,205 +1,209 @@
 # DevInterviewLab
 
-> Plataforma pessoal de prática para entrevistas técnicas alimentada por IA — geração de questões, simulação de entrevistas, live coding, flashcards e roadmap de estudo personalizados.
+> Personal AI-powered technical interview practice platform — question generation, interview simulation, live coding, flashcards, and personalized study roadmaps.
 
 **Live:** [devinterviewlab.vercel.app](https://devinterviewlab.vercel.app)  
 **CI:** ![Tests](https://img.shields.io/badge/tests-290%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
 
 ---
 
-## O que é
+## What is it
 
-DevInterviewLab é uma plataforma full-stack de estudos para entrevistas técnicas que usa IA para criar um ciclo completo de prática: gerar questões por roadmap personalizado, simular entrevistas com feedback detalhado, praticar live coding com pair programmer socrático, revisar conceitos com flashcards por repetição espaçada e acompanhar a evolução com métricas visuais.
+DevInterviewLab is a full-stack study platform for technical interviews that uses AI to create a complete practice cycle: generate questions from a personalized roadmap, simulate interviews with detailed feedback, practice live coding with a Socratic pair programmer, review concepts with spaced-repetition flashcards, and track progress with visual metrics.
 
 ---
 
-## Stack
+## Tech Stack
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |---|---|
 | Framework | Next.js 15 (App Router, Server + Client Components) |
-| Linguagem | TypeScript — zero erros, sem `ignoreBuildErrors` |
+| Language | TypeScript — zero errors, no `ignoreBuildErrors` |
 | Auth + DB | Supabase (PostgreSQL + RLS + Auth) |
-| IA | Groq `llama-3.3-70b-versatile` via OpenAI-compatible API |
-| Estado servidor | React Query (@tanstack/react-query) |
-| Estado cliente | Zustand |
+| AI | Groq `llama-3.3-70b-versatile` via OpenAI-compatible API |
+| Server state | React Query (@tanstack/react-query) |
+| Client state | Zustand |
 | UI | Tailwind CSS + Radix UI + Lucide React |
+| Theming | next-themes (dark / light mode) |
 | Editor | Monaco Editor (desktop) / textarea fallback (mobile) |
-| Gráficos | Recharts |
-| Grafos | React Flow |
-| Monitoramento | Sentry (tunnel via `/monitoring`) |
-| Testes | Vitest — 290 testes unitários |
-| CI/CD | GitHub Actions + Vercel (deploy automático ao merge na `main`) |
+| Charts | Recharts |
+| PDF | html2canvas + jsPDF (score-card export) |
+| Document parsing | pdf-parse (CV upload → text extraction) |
+| Monitoring | Sentry (tunnel via `/monitoring`) |
+| Testing | Vitest — 290 unit tests |
+| Git hooks | Husky (pre-commit checks) |
+| CI/CD | GitHub Actions + Vercel (auto-deploy on merge to `main`) |
 
 ---
 
-## Funcionalidades
+## Features
 
-### Plano de Estudos
-- **Roadmap personalizado** — upload de CV + descrição da vaga gera análise de gap e roadmap 30/60/90 dias
-- **Geração de questões por tópico** — Q&A teóricas e live coding geradas por IA para cada tópico do roadmap, em EN e PT, sem repetição ao regerar
-- **Links diretos** — botão "Practice" de cada tópico abre a aba Questões já filtrada pelo tópico
+### Study Plan
+- **Personalized roadmap** — CV upload + job description generates a gap analysis and 30/60/90-day roadmap
+- **Topic-based question generation** — AI-generated theoretical Q&A and live coding questions per roadmap topic, in EN and PT, without repetition on regeneration
+- **Direct links** — "Practice" button on each topic opens the Questions tab pre-filtered by topic
 
-### Revisão
-- **Questões por roadmap** — aba padrão com filtro por tópico, geração de conceitos a partir de questões, delete em lote
-- **Flash Topics (Conceitos)** — referências técnicas rápidas com resumo, quando usar, prós & contras (accordion), Q&A integrado e tradução EN↔PT persistida
-### Simulação
-- **AI Interview Coach** — avaliação por dimensão (correção, completude, clareza, profundidade) com réplica e tréplica
-- **Live Coding Simulator** — 7 linguagens, timer configurável, Pair Programmer socrático com dicas on-demand, idle detection
+### Review
+- **Roadmap questions** — default tab with topic filter, concept generation from questions, bulk delete
+- **Flash Topics (Concepts)** — quick technical references with summary, when to use, pros & cons (accordion), integrated Q&A, and persistent EN↔PT translation
 
-### Estatísticas
-- Cards de questões por tipo (Total / Teórica / Live Coding) por roadmap
-- Gráfico de barras de questões por tópico — responsivo, sem scroll lateral
+### Simulation
+- **AI Interview Coach** — dimension-based evaluation (correctness, completeness, clarity, depth) with follow-up and rebuttal
+- **Live Coding Simulator** — 7 languages, configurable timer, Socratic pair programmer with on-demand hints, idle detection
 
-### Experiência
-- **Modo Demo** — [`/demo`](https://devinterviewlab.vercel.app/demo) rota pública com dados mockados e 4 abas interativas, acessível pelo link na tela de login
-- **Questões diversas** — taxonomia de 5 ângulos (Conceitual, Prático, Trade-off, Debug, Evolução) + frases banidas evitam repetição entre gerações
-- **PWA** — instalável, bottom tab bar mobile, safe-area iOS
-- **i18n** — EN e PT-BR completos, sincronizado com banco de dados
-- **Tema** — claro/escuro
+### Statistics
+- Question cards by type (Total / Theoretical / Live Coding) per roadmap
+- Bar chart of questions by topic — responsive, no horizontal scroll
+
+### Experience
+- **Demo Mode** — [`/demo`](https://devinterviewlab.vercel.app/demo) public route with mocked data and 4 interactive tabs, accessible from the login screen
+- **Diverse questions** — 5-angle taxonomy (Conceptual, Practical, Trade-off, Debug, Evolution) + banned phrases prevent repetition across generations
+- **PWA** — installable, mobile bottom tab bar, iOS safe-area support
+- **i18n** — full EN and PT-BR, synced with database
+- **Theming** — light / dark mode
 
 ---
 
-## Arquitetura
+## Architecture
 
 ```
 app/
-  (app)/          # rotas protegidas (layout com auth)
-    plano/        # roadmap + geração de questões
-    revisar/      # questões por roadmap + Flash Topics (conceitos)
-    demo/         # rota pública com dados mockados (sem auth)
+  (app)/          # protected routes (auth layout)
+    plano/        # roadmap + question generation
+    revisar/      # roadmap questions + Flash Topics (concepts)
+    demo/         # public route with mocked data (no auth)
     simular/      # interview coach + live coding
-    stats/        # métricas e gráficos
+    stats/        # metrics and charts
   api/            # route handlers (Next.js App Router)
-features/         # lógica de domínio (hooks React Query + componentes)
+features/         # domain logic (React Query hooks + components)
 lib/
   ai/             # ai.service.ts + prompts/
   i18n/           # translations.ts + useT()
   supabase/       # client server/browser + types
   api/            # rate-limit, brute-force, logger
 store/            # zustand stores
-__tests__/unit/   # 290 testes Vitest
+__tests__/unit/   # 290 Vitest unit tests
 ```
 
 ---
 
-## Segurança
+## Security
 
-Toda rota de API segue o checklist:
+Every API route follows this checklist:
 
-| Item | Implementação |
+| Item | Implementation |
 |---|---|
-| Autenticação | `supabase.auth.getUser()` → 401 se não autenticado |
-| Rate limiting | `checkRateLimit('endpoint')` antes de qualquer IA |
-| Erros sanitizados | `sanitizeError()` — sem stack traces ao client |
-| RLS | Todas as 18 tabelas com policies USING + WITH CHECK |
-| Uploads | `validateFileBuffer()` — magic bytes + MIME + tamanho |
-| Brute force | 10 tentativas / 15 min por IP |
-| CSRF | Validação de Origin em todos os POSTs |
+| Authentication | `supabase.auth.getUser()` → 401 if unauthenticated |
+| Rate limiting | `checkRateLimit('endpoint')` before any AI call |
+| Sanitized errors | `sanitizeError()` — no stack traces sent to client |
+| RLS | All 18 tables with USING + WITH CHECK policies |
+| Uploads | `validateFileBuffer()` — magic bytes + MIME + size |
+| Brute force | 10 attempts / 15 min per IP |
+| CSRF | Origin validation on all POSTs |
 | Security headers | CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
 
 ---
 
-## Testes
+## Tests
 
 ```bash
-npm test                # 290 testes unitários (Vitest)
-npm run test:coverage   # com relatório de cobertura
+npm test                # 290 unit tests (Vitest)
+npm run test:coverage   # with coverage report
 ```
 
-| Arquivo de teste | Testes | Cobertura |
+| Test file | Tests | Coverage |
 |---|---|---|
-| `brute-force.test.ts` | 14 | Bloqueio por IP, janela deslizante, reset |
-| `rate-limit.test.ts` | 13 | checkRateLimit por endpoint |
-| `file-validation.test.ts` | 10 | Magic bytes, MIME, tamanho |
-| `spaced-repetition.test.ts` | 25 | SM-2 completo: EF, intervalos, reset |
+| `brute-force.test.ts` | 14 | IP blocking, sliding window, reset |
+| `rate-limit.test.ts` | 13 | checkRateLimit per endpoint |
+| `file-validation.test.ts` | 10 | Magic bytes, MIME, size |
+| `spaced-repetition.test.ts` | 25 | Full SM-2: EF, intervals, reset |
 | `prompts.test.ts` | 63 | Evaluate, behavioral, followup — EN/PT, schema |
 | `generate-prompts.test.ts` | 32 | Generate, coding-hint, cn() |
 | `stream.test.ts` | 9 | ndjsonStream + readNdjsonStream |
-| `interview-payload.test.ts` | 5 | Serialização com transcript |
+| `interview-payload.test.ts` | 5 | Serialization with transcript |
 | `score-card-utils.test.ts` | 6 | aggregateRadar, averageScore |
-| `roadmap-prompt.test.ts` | 6 | Idioma, truncagem, schema JSON |
+| `roadmap-prompt.test.ts` | 6 | Language, truncation, JSON schema |
 | `topic-prompt.test.ts` | 23 | getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt |
-| `topic-pairs.test.ts` | 10 | groupIntoPairs — pares, fallback, ordenação |
+| `topic-pairs.test.ts` | 10 | groupIntoPairs — pairs, fallback, ordering |
 | `score-card-prompt.test.ts` | 11 | EN/PT, JSON-only, strengths/gaps |
-| `coding-generate-prompt.test.ts` | 13 | Dificuldade, tópico, linguagem, fallbacks |
-| `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines, safeParseJSON, prompts teórico e live coding |
+| `coding-generate-prompt.test.ts` | 13 | Difficulty, topic, language, fallbacks |
+| `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines, safeParseJSON, theoretical and live coding prompts |
 
-**Cobertura:** Statements 97% · Branches 90% · Functions 100% · Lines 98%
+**Coverage:** Statements 97% · Branches 90% · Functions 100% · Lines 98%
 
 ---
 
-## Como rodar localmente
+## Running locally
 
 ```bash
 npm install
 cp .env.example .env.local
-# preencher variáveis abaixo
+# fill in the variables below
 npm run dev
 ```
 
-### Variáveis de ambiente
+### Environment variables
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://idgpscsnbgszhwvhtedy.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key do Supabase dashboard>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from Supabase dashboard>
 
 # Groq (free tier) — https://console.groq.com
 OPENAI_API_KEY=gsk_...
 OPENAI_BASE_URL=https://api.groq.com/openai/v1
 OPENAI_MODEL=llama-3.3-70b-versatile
 
-SENTRY_DSN=<opcional>
-NEXT_PUBLIC_SENTRY_DSN=<opcional>
+SENTRY_DSN=<optional>
+NEXT_PUBLIC_SENTRY_DSN=<optional>
 ```
 
-### Migrations Supabase
+### Supabase Migrations
 
 ```bash
-# Aplicar em ordem crescente
-supabase db push   # ou aplicar manualmente via Supabase dashboard
+# Apply in ascending order
+supabase db push   # or apply manually via the Supabase dashboard
 ```
 
 ---
 
-## Comandos
+## Commands
 
 ```bash
-npm run dev        # servidor de desenvolvimento (localhost:3000)
-npm run build      # build de produção (deve passar sem erros)
+npm run dev        # development server (localhost:3000)
+npm run build      # production build (must pass cleanly)
 npm run lint       # ESLint
-npx tsc --noEmit   # TypeScript — zero erros obrigatório
-npm test           # 290 testes unitários
+npx tsc --noEmit   # TypeScript — zero errors required
+npm test           # 290 unit tests
 ```
 
 ---
 
 ## CI/CD
 
-Todo push e PR executa automaticamente:
+Every push and PR automatically runs:
 
-1. `npx tsc --noEmit` — zero erros TypeScript
-2. `npm run lint` — zero warnings ESLint
-3. `npm test` — todos os testes devem passar
-4. `npm run build` — build de produção limpo
+1. `npx tsc --noEmit` — zero TypeScript errors
+2. `npm run lint` — zero ESLint warnings
+3. `npm test` — all tests must pass
+4. `npm run build` — clean production build
 
-**Merge bloqueado se qualquer check falhar.**  
-Merge na `main` → deploy automático no Vercel.
+**Merge is blocked if any check fails.**  
+Merge to `main` → automatic deploy on Vercel.
 
 ---
 
-## Contribuindo
+## Contributing
 
 ```bash
-git checkout -b feat/nome-da-feature
-# desenvolver...
-npx tsc --noEmit && npm test   # ou /check no Claude Code
-git push origin feat/nome-da-feature
-# abrir Pull Request → CI roda automaticamente
+git checkout -b feat/feature-name
+# develop...
+npx tsc --noEmit && npm test   # or /check in Claude Code
+git push origin feat/feature-name
+# open Pull Request → CI runs automatically
 ```
 
 ---
 
-## Autor
+## Author
 
 **Fernando Ghiberti** — [github.com/ghiberti85](https://github.com/ghiberti85)
