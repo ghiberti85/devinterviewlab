@@ -85,8 +85,8 @@ export function ScoreCardList({ scoreCards }: Props) {
               <div className="flex items-center gap-2">
                 <ExportPdfButton />
                 <Dialog.Close asChild>
-                  <button className="p-1.5 rounded-md hover:bg-accent transition-colors">
-                    <X size={16} />
+                  <button className="p-1.5 rounded-md hover:bg-accent transition-colors" aria-label="Close">
+                    <X size={16} aria-hidden="true" />
                   </button>
                 </Dialog.Close>
               </div>

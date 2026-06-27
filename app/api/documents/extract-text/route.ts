@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { validateFileBuffer } from '@/lib/file-validation'
 
-// Node.js runtime required for pdf-parse
-// This route is intentionally kept minimal and fast (< 3s on typical CVs)
-// to stay within Vercel Hobby's 10s limit.
+// pdf-parse depends on Node.js fs — must NOT be edge runtime
+export const runtime = 'nodejs'
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
