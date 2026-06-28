@@ -1,5 +1,6 @@
 'use client'
 
+import { useTransition } from 'react'
 import { useSettingsStore, type Language } from '@/store/settings.store'
 import { Languages } from 'lucide-react'
 
@@ -17,9 +18,10 @@ async function syncLanguageToProfile(language: Language) {
 
 export function LanguageSelector() {
   const { language, setLanguage } = useSettingsStore()
+  const [, startTransition] = useTransition()
 
   function handleChange(lang: Language) {
-    setLanguage(lang)
+    startTransition(() => setLanguage(lang))
     syncLanguageToProfile(lang)
   }
 

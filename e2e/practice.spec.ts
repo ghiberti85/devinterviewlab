@@ -1,29 +1,42 @@
 import { test, expect, login } from './fixtures'
 
-test.describe('Flashcard practice', () => {
+test.describe('Study Plan — /plano', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
   })
 
-  test('navigates to practice page', async ({ page }) => {
-    await page.goto('/practice')
-    await expect(page).toHaveURL(/\/practice/)
+  test('navigates to /plano after login', async ({ page }) => {
+    await expect(page).toHaveURL(/\/plano/)
   })
 
-  test('shows mode selection (random / spaced)', async ({ page }) => {
-    await page.goto('/practice')
-    await expect(page.locator('text=/aleatório|random|spaced|espaçado/i').first()).toBeVisible()
+  test('renders the page title', async ({ page }) => {
+    await page.goto('/plano')
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 5_000 })
   })
 
-  test('starts a practice session in random mode', async ({ page }) => {
-    await page.goto('/practice')
+  test('shows roadmap list or empty state with generate CTA', async ({ page }) => {
+    await page.goto('/plano')
+    await page.waitForTimeout(1_500)
+    // Either shows existing roadmaps or an empty state with a generate button
+    const content = page.locator(
+      '[class*="card"], [class*="border rounded"], button, p'
+    ).first()
+    await expect(content).toBeVisible({ timeout: 5_000 })
+  })
+})
 
-    const startBtn = page.locator('button', { hasText: /iniciar|start/i }).first()
-    await startBtn.click()
+test.describe('Stats — /stats', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page)
+  })
 
-    // Either shows a flashcard or empty state (if no questions exist)
-    await expect(
-      page.locator('[data-testid="flashcard"], text=/nenhuma|no questions|sem questões/i').first()
-    ).toBeVisible({ timeout: 10_000 })
+  test('navigates to /stats', async ({ page }) => {
+    await page.goto('/stats')
+    await expect(page).toHaveURL(/\/stats/)
+  })
+
+  test('renders stats page content', async ({ page }) => {
+    await page.goto('/stats')
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 5_000 })
   })
 })

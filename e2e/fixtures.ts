@@ -9,7 +9,8 @@ export async function login(page: Page) {
   await page.fill('input[name="email"]', TEST_EMAIL)
   await page.fill('input[name="password"]', TEST_PASSWORD)
   await page.click('button[type="submit"]')
-  await page.waitForURL('**/dashboard', { timeout: 10_000 })
+  // After login the app redirects to /plano (the study plan dashboard)
+  await page.waitForURL('**/plano', { timeout: 10_000 })
 }
 
 export { test, expect }
