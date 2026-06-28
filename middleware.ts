@@ -1,6 +1,25 @@
 import { createServerClient, CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// unsafe-eval is scoped to /live-coding only — Monaco Editor requires it.
+// All other routes get a strict CSP without eval.
+function buildCSP(pathname: string): string {
+  const monacoPage = pathname === "/live-coding";
+  return [
+    "default-src 'self'",
+    monacoPage
+      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net"
+      : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self'",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.groq.com https://generativelanguage.googleapis.com https://cdn.jsdelivr.net",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
 const ALLOWED_ORIGINS = ["https://devinterviewlab.vercel.app"];
 
 function isAllowedOrigin(origin: string | null, host: string | null): boolean {
@@ -100,6 +119,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  supabaseResponse.headers.set("Content-Security-Policy", buildCSP(pathname));
   return supabaseResponse;
 }
 
