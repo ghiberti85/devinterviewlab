@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { RotateCcw, ChevronRight } from 'lucide-react'
 import { DifficultyBadge } from '@/components/DifficultyBadge'
 import { useT } from '@/lib/i18n/useT'
@@ -15,7 +15,7 @@ interface Props {
   isSubmitting?: boolean
 }
 
-export function Flashcard({ question, index, total, onRate, onSkip, isSubmitting }: Props) {
+export const Flashcard = memo(function Flashcard({ question, index, total, onRate, onSkip, isSubmitting }: Props) {
   const [flipped, setFlipped] = useState(false)
   const t = useT()
 
@@ -130,4 +130,4 @@ export function Flashcard({ question, index, total, onRate, onSkip, isSubmitting
       )}
     </div>
   )
-}
+})

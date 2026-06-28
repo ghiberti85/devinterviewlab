@@ -2,11 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import {
-  checkBruteForce,
-  recordFailedAttempt,
-  resetAttempts,
-  getClientIP,
-} from "@/lib/api/brute-force";
+  checkBruteForcePersistent as checkBruteForce,
+  recordFailedAttemptPersistent as recordFailedAttempt,
+  resetAttemptsPersistent as resetAttempts,
+} from "@/lib/api/brute-force-persistent";
+import { getClientIP } from "@/lib/api/brute-force";
 
 // Generic error messages — never reveal if email exists (anti-enumeration)
 const GENERIC_AUTH_ERROR = "E-mail ou senha inválidos.";
@@ -43,7 +43,7 @@ export async function POST(
     const ip = getClientIP(request);
 
     // Brute force check
-    const bf = checkBruteForce(ip);
+    const bf = await checkBruteForce(ip);
     if (!bf.allowed) {
       const mins = Math.ceil((bf.retryAfterSec ?? 900) / 60);
       return NextResponse.redirect(
@@ -62,7 +62,7 @@ export async function POST(
     const redirect = formData.get("redirect") as string | null;
 
     if (!email || !password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       return NextResponse.redirect(
         new URL(
           `/login?error=${encodeURIComponent(GENERIC_AUTH_ERROR)}`,
@@ -77,7 +77,7 @@ export async function POST(
     });
 
     if (error || !data.user) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       logger.info("Sign-in failed", {
         domain: email.split("@")[1],
         reason: error?.message,
@@ -90,7 +90,7 @@ export async function POST(
       );
     }
 
-    resetAttempts(ip);
+    await resetAttempts(ip);
     logger.info("Sign-in success", { userId: data.user.id });
     const dest = redirect && redirect.startsWith("/") ? redirect : "/plano";
     return NextResponse.redirect(new URL(dest, request.url));

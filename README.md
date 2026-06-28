@@ -3,7 +3,7 @@
 > Personal AI-powered technical interview practice platform — question generation, interview simulation, live coding, flashcards, and personalized study roadmaps.
 
 **Live:** [devinterviewlab.vercel.app](https://devinterviewlab.vercel.app)  
-**CI:** ![Tests](https://img.shields.io/badge/tests-290%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
+**CI:** ![Tests](https://img.shields.io/badge/tests-306%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
 
 ---
 
@@ -30,7 +30,7 @@ DevInterviewLab is a full-stack study platform for technical interviews that use
 | PDF | html2canvas + jsPDF (score-card export) |
 | Document parsing | pdf-parse (CV upload → text extraction) |
 | Monitoring | Sentry (tunnel via `/monitoring`) |
-| Testing | Vitest — 290 unit tests |
+| Testing | Vitest — 306 unit tests |
 | Git hooks | Husky (pre-commit checks) |
 | CI/CD | GitHub Actions + Vercel (auto-deploy on merge to `main`) |
 

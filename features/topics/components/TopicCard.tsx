@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect } from 'react'
 import { Code2, Languages, Loader2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TopicPair } from '@/lib/supabase/types'
@@ -74,7 +74,7 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
   )
 }
 
-export function TopicCard({ pair }: { pair: TopicPair }) {
+export const TopicCard = memo(function TopicCard({ pair }: { pair: TopicPair }) {
   const t = useT()
   const { language } = useSettingsStore()
   const [showCode, setShowCode] = useState(false)
@@ -209,4 +209,4 @@ export function TopicCard({ pair }: { pair: TopicPair }) {
       )}
     </div>
   )
-}
+})

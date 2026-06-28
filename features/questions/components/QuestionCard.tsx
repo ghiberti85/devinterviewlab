@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import Link from 'next/link'
 import { Trash2, Edit, Brain } from 'lucide-react'
 import { DifficultyBadge } from '@/components/DifficultyBadge'
@@ -26,7 +27,7 @@ interface Props {
   onToggleSelect?: (id: string) => void
 }
 
-export function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: Props) {
+export const QuestionCard = memo(function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: Props) {
   const del = useDeleteQuestion()
   const { language } = useSettingsStore()
 
@@ -122,4 +123,4 @@ export function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: P
       </div>
     </div>
   )
-}
+})
