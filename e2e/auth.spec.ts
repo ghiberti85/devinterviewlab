@@ -1,8 +1,13 @@
 import { test, expect, login, TEST_EMAIL } from './fixtures'
 
 test.describe('Auth flow', () => {
-  test('redirects unauthenticated users to login', async ({ page }) => {
-    await page.goto('/dashboard')
+  test('redirects unauthenticated users to /login', async ({ page }) => {
+    await page.goto('/plano')
+    await expect(page).toHaveURL(/\/login/)
+  })
+
+  test('protected route /revisar redirects to login', async ({ page }) => {
+    await page.goto('/revisar')
     await expect(page).toHaveURL(/\/login/)
   })
 
@@ -18,20 +23,28 @@ test.describe('Auth flow', () => {
     await page.fill('input[name="email"]', 'invalid@example.com')
     await page.fill('input[name="password"]', 'wrongpassword')
     await page.click('button[type="submit"]')
-    // Stays on login with error message
     await expect(page).toHaveURL(/\/login/)
-    await expect(page.locator('[data-testid="auth-error"], .text-destructive, [class*="error"]')).toBeVisible({ timeout: 5_000 })
+    // Error is shown as a query param ?error= rendered by the page
+    await expect(page.locator('[class*="destructive"], [class*="error"], .text-red')).toBeVisible({ timeout: 5_000 })
   })
 
-  test('logs in with valid credentials and lands on dashboard', async ({ page }) => {
+  test('logs in with valid credentials and lands on /plano', async ({ page }) => {
     await login(page)
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page).toHaveURL(/\/plano/)
     await expect(page.locator('h1, h2').first()).toBeVisible()
   })
 
   test('persists session across page reload', async ({ page }) => {
     await login(page)
     await page.reload()
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page).toHaveURL(/\/plano/)
+  })
+
+  test('sign out redirects to /login', async ({ page }) => {
+    await login(page)
+    // Trigger signout via the API route (form POST)
+    await page.goto('/api/auth/signout', { waitUntil: 'commit' })
+    await page.waitForURL('**/login', { timeout: 5_000 })
+    await expect(page).toHaveURL(/\/login/)
   })
 })

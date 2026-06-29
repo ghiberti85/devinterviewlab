@@ -218,7 +218,7 @@ describe('nomeDaFuncao', () => {
 4. Edge cases: input vazio, campos opcionais ausentes
 5. Sem vazamento de dados entre chamadas
 
-### Contagem atual: **290 testes** — atualizar este número a cada PR
+### Contagem atual: **306 testes** — atualizar este número a cada PR
 
 ### Prompts de IA — regras de diversidade (não remover)
 - `generate.prompt.ts` e `generate-from-context.prompt.ts`: taxonomia de 5 ângulos obrigatórios por questão; frases banidas: "em 30 dias", "em N semanas", "seu time tem N dias"

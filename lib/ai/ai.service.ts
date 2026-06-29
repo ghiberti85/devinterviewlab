@@ -54,6 +54,31 @@ function cachedSystemPrompt(key: string, factory: () => string): string {
 
 const PROMPT_VERSION = 'v2.0'
 
+// Retry on transient Groq/OpenAI errors (429, 5xx) with exponential backoff.
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err
+      const status = (err as { status?: number }).status
+      if (attempt < maxRetries && status != null && (status === 429 || status >= 500)) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)))
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastError
+}
+
+// Typed shorthand for chat completions with built-in retry
+type ChatParams = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
+function chatCreate(params: ChatParams) {
+  return withRetry(() => getClient().chat.completions.create(params))
+}
+
 function fixJsonNewlines(text: string): string {
   let result = ''
   let inString = false
@@ -117,7 +142,7 @@ export const aiService = {
       ? behavioralPrompt(question, userAnswer, language)
       : evaluatePrompt(question, userAnswer, language)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: MODEL,
       response_format: { type: 'json_object' },
       messages: [
@@ -160,7 +185,7 @@ export const aiService = {
     const systemPrompt = cachedSystemPrompt(`followup:${language}`, () => getFollowupSystemPrompt(language))
     const prompt = followupPrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -185,7 +210,7 @@ export const aiService = {
     const systemPrompt = cachedSystemPrompt(`treplica:${language}`, () => getTreplicaSystemPrompt(language))
     const prompt = treplicaEvaluatePrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -204,7 +229,7 @@ export const aiService = {
     const openai = getClient()
     const MODEL = getModel()
     const prompt = generatePrompt(topic, difficulty, count)
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: MODEL,
       response_format: { type: 'json_object' },
       messages: [
@@ -240,7 +265,7 @@ export const aiService = {
     const systemPrompt = cachedSystemPrompt(`code-evaluate:${language}`, () => getCodeEvaluateSystemPrompt(language))
     const prompt = codeEvaluatePrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -279,7 +304,7 @@ export const aiService = {
     const openai = getClient()
     // generateFromContext system prompt varies by many params — not memoized
     const prompt = generateFromContextPrompt(opts)
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -310,7 +335,7 @@ export const aiService = {
     )
     const prompt = codingHintPrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       max_tokens: 200,
@@ -339,7 +364,7 @@ export const aiService = {
     )
     const prompt = codingGeneratePrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       max_tokens: 800,
@@ -389,7 +414,7 @@ export const aiService = {
       () => getTopicSystemPrompt(language)
     )
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -441,7 +466,7 @@ export const aiService = {
     }
     const openai = getClient()
     const { system, user } = topicTranslatePrompt(opts)
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -474,7 +499,7 @@ export const aiService = {
     )
     const prompt = scoreCardPrompt(evaluations, language)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       max_tokens: 300,
@@ -575,7 +600,7 @@ Return a JSON object:
 - Answers must be 150-300 words, demonstrating senior-level mastery with trade-offs
 - Language: ${langLabel}${avoidBlock}`
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [
@@ -622,7 +647,7 @@ Return a JSON object:
     )
     const prompt = roadmapAnalysisPrompt(opts)
 
-    const res = await openai.chat.completions.create({
+    const res = await chatCreate({
       model: getModel(),
       response_format: { type: 'json_object' },
       messages: [

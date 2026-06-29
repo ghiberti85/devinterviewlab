@@ -10,15 +10,24 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
 
 interface SettingsStore {
   language: Language
+  _hasHydrated: boolean
   setLanguage: (lang: Language) => void
+  setHasHydrated: (value: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
       language: 'pt',
+      _hasHydrated: false,
       setLanguage: (language) => set({ language }),
+      setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),
-    { name: 'devinterviewlab-settings' }
+    {
+      name: 'devinterviewlab-settings',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
+    }
   )
 )

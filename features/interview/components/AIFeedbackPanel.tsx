@@ -60,7 +60,7 @@ export function AIFeedbackPanel({ evaluation, title }: Props) {
   const starLabels = t.interview.starLabels;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" aria-live="polite" aria-atomic="true">
       {title && (
         <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
           {title}

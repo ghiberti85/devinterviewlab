@@ -3,7 +3,7 @@
 > Personal AI-powered technical interview practice platform — question generation, interview simulation, live coding, flashcards, and personalized study roadmaps.
 
 **Live:** [devinterviewlab.vercel.app](https://devinterviewlab.vercel.app)  
-**CI:** ![Tests](https://img.shields.io/badge/tests-290%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
+**CI:** ![Tests](https://img.shields.io/badge/tests-306%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
 
 ---
 
@@ -30,7 +30,7 @@ DevInterviewLab is a full-stack study platform for technical interviews that use
 | PDF | html2canvas + jsPDF (score-card export) |
 | Document parsing | pdf-parse (CV upload → text extraction) |
 | Monitoring | Sentry (tunnel via `/monitoring`) |
-| Testing | Vitest — 290 unit tests |
+| Testing | Vitest — 306 unit tests |
 | Git hooks | Husky (pre-commit checks) |
 | CI/CD | GitHub Actions + Vercel (auto-deploy on merge to `main`) |
 
@@ -82,7 +82,7 @@ lib/
   supabase/       # client server/browser + types
   api/            # rate-limit, brute-force, logger
 store/            # zustand stores
-__tests__/unit/   # 290 Vitest unit tests
+__tests__/unit/   # 306 Vitest unit tests
 ```
 
 ---
@@ -96,24 +96,25 @@ Every API route follows this checklist:
 | Authentication | `supabase.auth.getUser()` → 401 if unauthenticated |
 | Rate limiting | `checkRateLimit('endpoint')` before any AI call |
 | Sanitized errors | `sanitizeError()` — no stack traces sent to client |
-| RLS | All 18 tables with USING + WITH CHECK policies |
+| RLS | All 19 tables with USING + WITH CHECK policies |
 | Uploads | `validateFileBuffer()` — magic bytes + MIME + size |
-| Brute force | 10 attempts / 15 min per IP |
+| Brute force | 10 attempts / 15 min per IP — persisted in Supabase (`brute_force_log` via SECURITY DEFINER RPCs), in-memory fallback |
 | CSRF | Origin validation on all POSTs |
-| Security headers | CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
+| Security headers | CSP (route-scoped via middleware — `unsafe-eval` only on `/live-coding`), HSTS, X-Frame-Options, X-Content-Type-Options |
 
 ---
 
 ## Tests
 
 ```bash
-npm test                # 290 unit tests (Vitest)
+npm test                # 306 unit tests (Vitest)
 npm run test:coverage   # with coverage report
 ```
 
 | Test file | Tests | Coverage |
 |---|---|---|
 | `brute-force.test.ts` | 14 | IP blocking, sliding window, reset |
+| `brute-force-persistent.test.ts` | 8 | Supabase RPC path, fallback, retryAfterSec |
 | `rate-limit.test.ts` | 13 | checkRateLimit per endpoint |
 | `file-validation.test.ts` | 10 | Magic bytes, MIME, size |
 | `spaced-repetition.test.ts` | 25 | Full SM-2: EF, intervals, reset |
@@ -128,6 +129,8 @@ npm run test:coverage   # with coverage report
 | `score-card-prompt.test.ts` | 11 | EN/PT, JSON-only, strengths/gaps |
 | `coding-generate-prompt.test.ts` | 13 | Difficulty, topic, language, fallbacks |
 | `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines, safeParseJSON, theoretical and live coding prompts |
+| `api-evaluate.test.ts` | 4 | 401/429/400 guard layers on `/api/ai/evaluate` |
+| `api-roadmaps.test.ts` | 3 | 401 unauth, 200 success, progress field on `/api/roadmaps` |
 
 **Coverage:** Statements 97% · Branches 90% · Functions 100% · Lines 98%
 
@@ -173,7 +176,7 @@ npm run dev        # development server (localhost:3000)
 npm run build      # production build (must pass cleanly)
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript — zero errors required
-npm test           # 290 unit tests
+npm test           # 306 unit tests
 ```
 
 ---

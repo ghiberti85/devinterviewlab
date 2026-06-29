@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import Link from 'next/link'
 import { Trash2, Edit, Brain } from 'lucide-react'
 import { DifficultyBadge } from '@/components/DifficultyBadge'
@@ -26,7 +27,7 @@ interface Props {
   onToggleSelect?: (id: string) => void
 }
 
-export function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: Props) {
+export const QuestionCard = memo(function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: Props) {
   const del = useDeleteQuestion()
   const { language } = useSettingsStore()
 
@@ -99,25 +100,27 @@ export function QuestionCard({ question, onEdit, isSelected, onToggleSelect }: P
             <Link
               href={`/interview?question=${question.id}`}
               className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-              title={language === 'pt' ? 'Praticar com IA' : 'Practice with AI'}
+              aria-label={language === 'pt' ? 'Praticar com IA' : 'Practice with AI'}
             >
-              <Brain size={15} />
+              <Brain size={15} aria-hidden="true" />
             </Link>
             <button
               onClick={() => onEdit?.(question)}
               className="p-1.5 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              aria-label={language === 'pt' ? 'Editar questão' : 'Edit question'}
             >
-              <Edit size={15} />
+              <Edit size={15} aria-hidden="true" />
             </button>
             <button
               onClick={() => del.mutate(question.id)}
               className="p-1.5 rounded hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+              aria-label={language === 'pt' ? 'Excluir questão' : 'Delete question'}
             >
-              <Trash2 size={15} />
+              <Trash2 size={15} aria-hidden="true" />
             </button>
           </div>
         )}
       </div>
     </div>
   )
-}
+})

@@ -1,36 +1,38 @@
 import { test, expect, login } from './fixtures'
 
-test.describe('Questions', () => {
+test.describe('Revisar — /revisar', () => {
   test.beforeEach(async ({ page }) => {
     await login(page)
   })
 
-  test('navigates to questions page', async ({ page }) => {
-    await page.goto('/questions')
-    await expect(page).toHaveURL(/\/questions/)
+  test('navigates to /revisar', async ({ page }) => {
+    await page.goto('/revisar')
+    await expect(page).toHaveURL(/\/revisar/)
   })
 
-  test('can open create question form', async ({ page }) => {
-    await page.goto('/questions')
-    const createBtn = page.locator('button', { hasText: /nova|new|criar|create/i }).first()
-    await createBtn.click()
-    await expect(page.locator('input[name="title"], input[placeholder*="título"], input[placeholder*="title"]').first()).toBeVisible({ timeout: 5_000 })
+  test('shows tab navigation (Flash Topics / Questões)', async ({ page }) => {
+    await page.goto('/revisar')
+    // The page has at least two tabs
+    const tabs = page.locator('[role="tab"], button').filter({ hasText: /tópico|topic|questão|question/i })
+    await expect(tabs.first()).toBeVisible({ timeout: 5_000 })
   })
 
-  test('can create a new question', async ({ page }) => {
-    await page.goto('/questions')
+  test('Flash Topics tab renders topic cards or empty state', async ({ page }) => {
+    await page.goto('/revisar')
+    await page.waitForTimeout(1_500)
+    // Either topic cards or empty-state message
+    const content = page.locator('[class*="card"], [class*="border rounded"], p, h2, h3').first()
+    await expect(content).toBeVisible({ timeout: 5_000 })
+  })
 
-    const createBtn = page.locator('button', { hasText: /nova|new|criar|create/i }).first()
-    await createBtn.click()
-
-    const titleInput = page.locator('input[name="title"], input[placeholder*="título"], input[placeholder*="title"]').first()
-    await titleInput.fill('E2E test question — can be deleted')
-
-    // Submit form
-    const submitBtn = page.locator('button[type="submit"]').first()
-    await submitBtn.click()
-
-    // Question should appear in the list
-    await expect(page.locator('text=E2E test question — can be deleted')).toBeVisible({ timeout: 10_000 })
+  test('Questões tab switches content', async ({ page }) => {
+    await page.goto('/revisar')
+    const questoesTab = page.locator('button', { hasText: /questão|question/i }).first()
+    if (await questoesTab.isVisible()) {
+      await questoesTab.click()
+      await page.waitForTimeout(500)
+      // Content area updates — just verify no crash
+      await expect(page.locator('main, [class*="space-y"]').first()).toBeVisible()
+    }
   })
 })

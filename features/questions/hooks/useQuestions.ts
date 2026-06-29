@@ -24,6 +24,7 @@ export function useQuestions(filters: QuestionFilters = {}) {
       if (!res.ok) throw new Error('Failed to fetch questions')
       return res.json() as Promise<{ data: Question[]; total: number; page: number }>
     },
+    staleTime: 60 * 1000, // 1 minute
   })
 }
 
@@ -36,6 +37,7 @@ export function useQuestion(id: string) {
       return res.json() as Promise<Question>
     },
     enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
