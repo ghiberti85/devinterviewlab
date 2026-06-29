@@ -42,7 +42,7 @@ NEXT_PUBLIC_SENTRY_DSN=<mesmo dsn>
 
 ## Arquitetura do Banco de Dados (Supabase)
 
-Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **18 tabelas**.
+Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **19 tabelas**.
 
 ### Tabelas
 
@@ -171,8 +171,18 @@ Todas as tabelas têm RLS habilitado. Schema: `public`. Total: **18 tabelas**.
 - Políticas: SELECT/INSERT/DELETE por user_id
 - Migrations: `20260515000006_topics.sql`, `20260515000007_topics_language.sql`, `20260531000000_topics_pros_cons.sql`
 
+**brute_force_log** — persistência de proteção brute-force *(adicionada em 2026-06-28)*
+- ip (TEXT, PK), count (INTEGER, default 0), first_at (TIMESTAMPTZ, default NOW()), blocked_at (TIMESTAMPTZ, nullable)
+- RLS habilitado; `authenticated` e `anon` sem acesso direto à tabela
+- Acesso exclusivo via RPCs SECURITY DEFINER (ver abaixo)
+- Índice: `brute_force_log_first_at_idx` em `first_at`
+- Migration: `supabase/migrations/20260628000000_brute_force_log.sql`
+
 ### Funções PostgreSQL
 - `get_user_daily_usage(user_id, endpoint?)` — retorna contagem de chamadas hoje
+- `bf_check(p_ip TEXT)` — retorna `(allowed BOOLEAN, retry_after_sec INTEGER)` — SECURITY DEFINER, grant para anon + authenticated
+- `bf_record_failure(p_ip TEXT)` — incrementa contagem e define `blocked_at` ao atingir MAX_ATTEMPTS — SECURITY DEFINER
+- `bf_reset(p_ip TEXT)` — apaga a linha do IP (usado após login bem-sucedido) — SECURITY DEFINER
 
 ### Storage
 - Bucket `user-documents` (privado, 10MB, PDF/txt/doc/docx)
@@ -290,6 +300,7 @@ lib/
   api/
     rate-limit.ts
     brute-force.ts
+    brute-force-persistent.ts   # checkBruteForcePersistent / recordFailedAttemptPersistent / resetAttemptsPersistent — usa Supabase RPCs (SECURITY DEFINER), fallback in-memory
     stream.ts                   # ndjsonStream + readNdjsonStream
   services/
     spaced-repetition.service.ts # SM-2 com Easiness Factor (history: number[])
@@ -317,13 +328,15 @@ supabase/
     20260529000000_roadmap_questions.sql
     20260531000000_topics_pros_cons.sql
     20260531000001_roadmap_questions_type.sql
+    20260628000000_brute_force_log.sql  # tabela brute_force_log + RPCs bf_check/bf_record_failure/bf_reset (SECURITY DEFINER)
 
 e2e/                            # Playwright E2E
-  fixtures.ts
-  auth.spec.ts
-  questions.spec.ts
-  interview.spec.ts
-  practice.spec.ts
+  fixtures.ts                   # login helper → redireciona para /plano
+  auth.spec.ts                  # redirect para /login, login com credenciais, persistência, signout
+  demo.spec.ts                  # rota pública /demo — sem autenticação; seguro para CI sem credenciais de teste
+  interview.spec.ts             # /interview — seletor de questão, textarea, botão avaliar, shuffle
+  questions.spec.ts             # /revisar — navegação, abas Flash Topics/Questões
+  practice.spec.ts              # /plano e /stats — roadmap list, page title, stats render
 ```
 
 ---
@@ -509,11 +522,11 @@ e2e/                            # Playwright E2E
 
 | Item | Detalhes |
 |---|---|
-| RLS | Todas as 18 tabelas com USING + WITH CHECK explícito |
+| RLS | Todas as 19 tabelas com USING + WITH CHECK explícito |
 | Constraints DB | Tamanho de texto, domínios de enum, score 0-100 |
-| Security Headers | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, etc. |
+| Security Headers | CSP dinâmico via middleware (route-scoped: `unsafe-eval` só em `/live-coding` para Monaco), HSTS, X-Frame-Options, X-Content-Type-Options |
 | Rate Limiting | 50 evaluate/dia, 20 generate/dia, 30 transcribe/dia, 40 followup/dia, 15 coding/dia, 20 coding-hint/dia, 15 score-card/dia, 5 roadmap/dia, 30 topic/dia, 50 topic-translate/dia, N roadmap-generate-questions/dia |
-| Brute Force | 10 tentativas / 15min por IP, bloqueio de 15min |
+| Brute Force | 10 tentativas / 15min por IP, bloqueio de 15min — **persistido em `brute_force_log` via RPCs SECURITY DEFINER** (`bf_check`, `bf_record_failure`, `bf_reset`); fallback in-memory se Supabase indisponível |
 | Anti-enumeração | Mesma mensagem para email existente/inexistente |
 | Magic bytes | Valida conteúdo real do arquivo, não só MIME type |
 | CSRF | Validação de Origin em todos os POSTs de API |
@@ -581,8 +594,11 @@ e2e/                            # Playwright E2E
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 | `coding-generate-prompt.test.ts` | 13 | getCodingGenerateSystemPrompt (EN, PT, fallback, no-solution, JSON-only), codingGeneratePrompt (difficulty, topic, generic fallback, coding language, system prompt, todos os níveis) |
 | `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines (newlines em strings, escapes existentes, multiline, edge cases), safeParseJSON (markdown fences, fallback, invalid), prompts teórico e live coding (EN/PT, avoidBlock, schema keys) |
+| `brute-force-persistent.test.ts` | 8 | caminho RPC Supabase (allowed, blocked, retryAfterSec), fallback in-memory ao erro, reset, no-throw |
+| `api-evaluate.test.ts` | 4 | camadas de guarda 401/429/400 na rota `/api/ai/evaluate` |
+| `api-roadmaps.test.ts` | 3 | 401 sem auth, 200 lista vazia, campo progress presente em `/api/roadmaps` |
 
-**Total: 290 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 306 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
@@ -600,12 +616,13 @@ Branches remanescentes não cobertas são dead code ou dependem de infra externa
 > Módulos sem cobertura unitária (requerem Supabase/IA mockados): `ai.service.ts`, rotas de API, hooks React Query — cobertos pelo E2E.
 
 ### E2E (Playwright) — `e2e/`
-- `auth.spec.ts` — redirect, login, persistência de sessão
-- `questions.spec.ts` — navegação, criar questão
-- `interview.spec.ts` — fluxo completo avaliar resposta
-- `practice.spec.ts` — modos de prática
+- `demo.spec.ts` — rota pública `/demo` (sem auth) — seguro em CI sem credenciais; verifica heading, abas, link de cadastro
+- `auth.spec.ts` — redirect para `/login`, login com credenciais válidas, persistência de sessão, signout via `/api/auth/signout`
+- `questions.spec.ts` — navegação para `/revisar`, abas Flash Topics / Questões, conteúdo ou empty state
+- `interview.spec.ts` — `/interview`: seletor de questão (select/combobox), textarea, botão avaliar desabilitado sem resposta, shuffle
+- `practice.spec.ts` — `/plano`: título, roadmap list / CTA; `/stats`: navegação e conteúdo
 
-Setup local: `cp .env.test.example .env.test` → preencher credenciais → `npx playwright install` → `npm run test:e2e`
+Setup local: `cp .env.test.example .env.test` → preencher `TEST_EMAIL` e `TEST_PASSWORD` → `npx playwright install` → `npm run test:e2e`
 
 ---
 
