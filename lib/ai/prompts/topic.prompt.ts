@@ -50,7 +50,8 @@ CRITICAL RULES:
 ✅ Answers: 50-120 words each — concise but complete, include the key insight
 ✅ Mix of conceptual (1), practical (2), and trade-off (1) questions
 
-Write EVERYTHING in ${langName}.
+Write EVERYTHING in ${langName} — including the "title" field.
+The topic name given to you by the user may be written in a different language than ${langName} (e.g. it came from content generated earlier in another language). Regardless of the input language, translate/localize the topic name and produce the ENTIRE output — every field, with no exceptions — in ${langName}. Never mix languages in the output.
 Return ONLY valid JSON, no markdown wrapper, no preamble.
 
 Required JSON schema:
@@ -126,10 +127,13 @@ export function topicAnalysisPrompt(opts: TopicPromptOptions): { system: string;
     : ''
   const existingBlock = titlesBlock + snippetsBlock
 
+  const langName = LANGUAGE_NAMES[opts.language ?? 'en'] ?? 'English'
+
   return {
     system: getTopicSystemPrompt(opts.language),
     user: `Generate a Flash Topic for: "${opts.topicName}"
 Difficulty level: ${opts.difficulty ?? 'medium'}
-Make it specific, practical, and interview-focused. Cover depth appropriate for a senior engineer.${existingBlock}`,
+Make it specific, practical, and interview-focused. Cover depth appropriate for a senior engineer.
+Output language: ${langName}. If "${opts.topicName}" is written in a different language, translate it — do not echo it back untranslated, and do not mix languages anywhere in the output.${existingBlock}`,
   }
 }

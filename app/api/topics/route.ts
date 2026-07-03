@@ -4,6 +4,79 @@ import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+type TranslatedTopic = {
+  title: string
+  summary: string
+  when_to_use: string
+  pros: string[]
+  cons: string[]
+  quick_qa: { q: string; a: string }[]
+  tags: string[]
+}
+
+type TopicSource = {
+  id: string
+  title: string
+  summary: string
+  when_to_use: string | null
+  pros: string[]
+  cons: string[]
+  code_snippet: string | null
+  quick_qa: { q: string; a: string }[]
+  tags: string[]
+  difficulty: string
+  category_id: string | null
+}
+
+// Generates the missing-language counterpart for a topic and persists it.
+// Used both right after a fresh generation and to backfill a translation gap
+// found on an already-existing topic — every topic must end up bilingual.
+async function insertTranslatedTopic(
+  supabase: SupabaseServerClient,
+  userId: string,
+  source: TopicSource,
+  rootId: string,
+  targetLanguage: string
+): Promise<TranslatedTopic | null> {
+  try {
+    const translated = await aiService.translateTopic({
+      topic: {
+        title: source.title,
+        summary: source.summary,
+        when_to_use: source.when_to_use ?? '',
+        pros: source.pros ?? [],
+        cons: source.cons ?? [],
+        quick_qa: source.quick_qa,
+        tags: source.tags,
+      },
+      targetLanguage,
+    }) as TranslatedTopic
+
+    await supabase.from('topics').insert({
+      user_id: userId,
+      category_id: source.category_id ?? null,
+      title: translated.title,
+      difficulty: source.difficulty,
+      summary: translated.summary,
+      when_to_use: translated.when_to_use,
+      pros: translated.pros ?? [],
+      cons: translated.cons ?? [],
+      code_snippet: source.code_snippet,
+      quick_qa: translated.quick_qa,
+      tags: translated.tags,
+      language: targetLanguage,
+      translated_from: rootId,
+    })
+
+    return translated
+  } catch (translateErr) {
+    logger.warn('Failed to translate topic', { userId, topicId: source.id, error: String(translateErr) })
+    return null
+  }
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -50,6 +123,21 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (existing) {
+      // Never leave a topic without its counterpart language — backfill if missing.
+      const rootId = existing.translated_from ?? existing.id
+      const { data: counterpart } = await supabase
+        .from('topics')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('language', targetLanguage)
+        .or(`id.eq.${rootId},translated_from.eq.${rootId}`)
+        .limit(1)
+        .maybeSingle()
+
+      if (!counterpart) {
+        await insertTranslatedTopic(supabase, user.id, existing, rootId, targetLanguage)
+      }
+
       return NextResponse.json(existing, { status: 200 })
     }
 
@@ -99,42 +187,8 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error
 
-    // Auto-translate to the other language (background — non-blocking for the response)
-    type TranslatedTopic = { title: string; summary: string; when_to_use: string; pros: string[]; cons: string[]; quick_qa: { q: string; a: string }[]; tags: string[] }
-    let translatedData: TranslatedTopic | null = null
-    try {
-      const raw = await aiService.translateTopic({
-        topic: {
-          title: generated.title,
-          summary: generated.summary,
-          when_to_use: generated.when_to_use ?? '',
-          pros: generated.pros ?? [],
-          cons: generated.cons ?? [],
-          quick_qa: generated.quick_qa,
-          tags: generated.tags,
-        },
-        targetLanguage,
-      })
-      translatedData = raw as TranslatedTopic
-
-      await supabase.from('topics').insert({
-        user_id: user!.id,
-        category_id: categoryId ?? null,
-        title: translatedData.title,
-        difficulty,
-        summary: translatedData.summary,
-        when_to_use: translatedData.when_to_use,
-        pros: translatedData.pros ?? [],
-        cons: translatedData.cons ?? [],
-        code_snippet: generated.code_snippet,
-        quick_qa: translatedData.quick_qa,
-        tags: translatedData.tags,
-        language: targetLanguage,
-        translated_from: data.id,
-      })
-    } catch (translateErr) {
-      logger.warn('Failed to auto-translate topic', { userId: user!.id, topicId: data.id, error: String(translateErr) })
-    }
+    // Translate to the other language synchronously — every topic must be created bilingual.
+    const translatedData = await insertTranslatedTopic(supabase, user.id, data, data.id, targetLanguage)
 
     // Auto-create practice questions for BOTH languages — deduplicate by title
     const { data: existingQs } = await supabase.from('questions').select('title').eq('user_id', user.id)
