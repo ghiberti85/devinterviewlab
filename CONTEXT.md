@@ -553,6 +553,12 @@ e2e/                            # Playwright E2E
 - rep=1→1 dia, rep=2→6 dias, rep≥3→round(prev_interval × EF)
 - Falha (quality < 3): reseta repetições e intervalo, preserva EF
 
+### Flash Topics — garantia de bilinguismo *(atualizado em 2026-07-03)*
+- `POST /api/topics` gera o tópico no `language` recebido e traduz para o outro idioma **sincronamente** (aguardado na mesma requisição) — nunca "fire and forget"
+- **Trava de idioma no prompt**: `topicAnalysisPrompt`/`getTopicSystemPrompt` instruem explicitamente a traduzir o `topicName` de entrada (que pode vir em outro idioma — ex.: `topic_name` de uma `roadmap_question` gerado quando o roadmap foi criado em PT) para o idioma alvo, incluindo o campo `title`; nunca ecoar o nome de entrada sem tradução
+- **Backfill de lacuna**: se já existir um tópico com o mesmo título no idioma pedido, a rota verifica se o par (`translated_from`) no outro idioma existe; se não existir, traduz e insere antes de retornar — nenhum tópico deve ficar permanentemente sem o par bilíngue
+- Helper `insertTranslatedTopic()` em `app/api/topics/route.ts` é reutilizado tanto na geração nova quanto no backfill
+
 ### Streaming
 - `ndjsonStream()` em `lib/api/stream.ts` — ReadableStream com eventos `thinking|complete|error`
 - Edge Runtime nas rotas de avaliação e followup (30s timeout)
@@ -589,7 +595,7 @@ e2e/                            # Playwright E2E
 | `interview-payload.test.ts` | 5 | serialização do body com transcript |
 | `score-card-utils.test.ts` | 6 | aggregateRadar(), averageScore() |
 | `roadmap-prompt.test.ts` | 6 | idioma, truncagem CV/JD, schema JSON |
-| `topic-prompt.test.ts` | 23 | getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt |
+| `topic-prompt.test.ts` | 29 | getTopicSystemPrompt, topicAnalysisPrompt, topicTranslatePrompt — incl. regras de trava de idioma de saída |
 | `topic-pairs.test.ts` | 10 | groupIntoPairs — vazio, par único, fallback, original+tradução, dois independentes, ordenação, rootCreatedAt, estabilidade entre idiomas, misto, orfão |
 | `score-card-prompt.test.ts` | 11 | getScoreCardSystemPrompt (EN/PT, JSON-only, 3 forças/gaps), scoreCardPrompt (count, campos, vazio, numeração) |
 | `coding-generate-prompt.test.ts` | 13 | getCodingGenerateSystemPrompt (EN, PT, fallback, no-solution, JSON-only), codingGeneratePrompt (difficulty, topic, generic fallback, coding language, system prompt, todos os níveis) |
@@ -597,8 +603,9 @@ e2e/                            # Playwright E2E
 | `brute-force-persistent.test.ts` | 8 | caminho RPC Supabase (allowed, blocked, retryAfterSec), fallback in-memory ao erro, reset, no-throw |
 | `api-evaluate.test.ts` | 4 | camadas de guarda 401/429/400 na rota `/api/ai/evaluate` |
 | `api-roadmaps.test.ts` | 3 | 401 sem auth, 200 lista vazia, campo progress presente em `/api/roadmaps` |
+| `api-topics.test.ts` | 4 | 401/400 na rota `/api/topics`, backfill de tradução ausente em tópico já existente, não re-traduz se par já existe |
 
-**Total: 306 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 314 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
@@ -678,3 +685,5 @@ Setup local: `cp .env.test.example .env.test` → preencher `TEST_EMAIL` e `TEST
 8. **Monaco Editor SSR** — carregado com `dynamic(() => import('@monaco-editor/react'), { ssr: false })`. Nunca importar diretamente em Server Components.
 
 9. **SM-2 com histórico** — `computeNextReview(confidence, history)` requer busca prévia no banco. A rota `POST /api/practice` faz essa query antes de salvar — não chamar o serviço sem passar o histórico.
+
+10. **`topic_name` de roadmap_questions é monolíngue** — `study_roadmaps.roadmap` (fases/tópicos) é gerado uma única vez, no idioma ativo no momento da criação do roadmap. Ao gerar `roadmap_questions` em ambos os idiomas (`POST /api/roadmaps/[id]/generate-questions`), o campo `topic_name` é o mesmo texto literal para as linhas `en` e `pt` — ou seja, pode estar no idioma "errado" em relação à linha que o acompanha. Isso significa que o `topicName` enviado para `POST /api/topics` (botão "Adicionar conceito") pode estar em um idioma diferente do `language` solicitado. A rota de tópicos compensa isso instruindo a IA a traduzir o `topicName` de entrada para o idioma alvo (ver "Flash Topics — garantia de bilinguismo" acima) — nunca remover essa instrução do prompt.

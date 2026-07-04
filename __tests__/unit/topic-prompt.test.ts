@@ -44,6 +44,16 @@ describe('getTopicSystemPrompt', () => {
   it('enforces summary length guidance (150-250 words)', () => {
     expect(getTopicSystemPrompt()).toContain('150-250')
   })
+
+  it('instructs the model to translate the title, not just the body, into the target language', () => {
+    expect(getTopicSystemPrompt('en')).toContain('including the "title" field')
+  })
+
+  it('warns that the input topic name may be in a different language than the target output', () => {
+    const system = getTopicSystemPrompt('en')
+    expect(system.toLowerCase()).toContain('different language')
+    expect(system.toLowerCase()).toContain('never mix languages')
+  })
 })
 
 describe('topicAnalysisPrompt', () => {
@@ -76,6 +86,17 @@ describe('topicAnalysisPrompt', () => {
   it('uses English system prompt when language is en', () => {
     const { system } = topicAnalysisPrompt({ topicName: 'Event Loop', language: 'en' })
     expect(system).toContain('English')
+  })
+
+  it('tells the model the output language and to translate a mismatched topic name', () => {
+    const { user } = topicAnalysisPrompt({ topicName: 'Fila de Eventos', language: 'en' })
+    expect(user).toContain('Output language: English')
+    expect(user).toContain('do not mix languages')
+  })
+
+  it('states the output language as Portuguese when language is pt', () => {
+    const { user } = topicAnalysisPrompt({ topicName: 'Event Loop', language: 'pt' })
+    expect(user).toContain('Output language: Brazilian Portuguese')
   })
 })
 
