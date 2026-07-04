@@ -31,7 +31,7 @@ DevInterviewLab is a full-stack study platform for technical interviews that use
 | Document parsing | pdf-parse (CV upload → text extraction) |
 | Monitoring | Sentry (tunnel via `/monitoring`) |
 | Testing | Vitest — 314 unit tests |
-| Git hooks | Husky (pre-commit checks) |
+| Git hooks | Husky — `pre-commit` (tsc), `pre-push` (test suite), `commit-msg` (commitlint) |
 | CI/CD | GitHub Actions + Vercel (auto-deploy on merge to `main`) |
 
 ---

@@ -45,6 +45,8 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
     "@playwright/test": "^1.60.0",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
