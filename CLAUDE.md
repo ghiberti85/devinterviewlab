@@ -40,7 +40,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 | Estado cliente | Zustand — `useSessionStore` (timer), `useSettingsStore` (idioma/tema) |
 | UI | Tailwind CSS + Radix UI — componentes em `components/` |
 | Monitoramento | Sentry (tunnel via `/monitoring`) |
-| Testes | Vitest (`__tests__/unit/`) — **290 testes, zero falhas toleradas** |
+| Testes | Vitest (`__tests__/unit/`) — **314 testes, zero falhas toleradas** |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) — bloqueia merge se CI falhar |
 
 ---
@@ -54,7 +54,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 
 ### A cada alteração de código — obrigatório antes do commit
 ```bash
-npm test              # 290 testes devem passar — zero falhas toleradas
+npm test              # 314 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
 npm run lint          # zero warnings
 ```
@@ -64,7 +64,7 @@ npm run lint          # zero warnings
 > Cada nova feature deve ter pelo menos um teste cobrindo o caminho feliz e um caso de borda.
 
 ### Workflow de PR — sempre seguir este fluxo
-1. Desenvolver em branch de feature (`feat/nome`, `fix/nome`, `refactor/nome`)
+1. Desenvolver em branch de feature, com prefixo alinhado ao tipo de commit (ver tabela abaixo)
 2. Rodar `/check` antes de fazer push
 3. Abrir Pull Request para `main`
 4. CI roda automaticamente (TypeScript + Lint + Tests + Build)
@@ -99,6 +99,25 @@ refactor: extrair lógica SM-2 para hook separado
 docs: atualizar CONTEXT.md com tabela roadmap_questions
 ci: adicionar GitHub Actions para TypeScript e testes
 ```
+
+Mensagens de commit são validadas automaticamente pelo hook `commit-msg` (Husky + commitlint, config em `commitlint.config.js`) — commit sem tipo válido ou sem descrição é rejeitado antes de ser criado.
+
+### Nomenclatura de branch
+
+O prefixo da branch segue o mesmo tipo do commit principal que ela introduz:
+
+| Prefixo | Uso |
+|---|---|
+| `feat/nome` | Nova funcionalidade |
+| `fix/nome` | Correção de bug |
+| `refactor/nome` | Refatoração sem mudança de comportamento |
+| `docs/nome` | Documentação apenas |
+| `test/nome` | Testes apenas |
+| `security/nome` | Correção de segurança |
+| `chore/nome` | Manutenção (deps, config, limpeza) |
+| `ci/nome` | Pipeline de CI/CD |
+
+> Branches são apagadas após o merge — nunca deixar branch mergeada acumulando no remoto. Sessões do Claude Code recebem um nome de branch automático (`claude/*`); ao abrir PR a partir delas, preferir renomear para o prefixo correto quando praticável.
 
 ---
 
@@ -218,7 +237,7 @@ describe('nomeDaFuncao', () => {
 4. Edge cases: input vazio, campos opcionais ausentes
 5. Sem vazamento de dados entre chamadas
 
-### Contagem atual: **306 testes** — atualizar este número a cada PR
+### Contagem atual: **314 testes** — atualizar este número a cada PR
 
 ### Prompts de IA — regras de diversidade (não remover)
 - `generate.prompt.ts` e `generate-from-context.prompt.ts`: taxonomia de 5 ângulos obrigatórios por questão; frases banidas: "em 30 dias", "em N semanas", "seu time tem N dias"
