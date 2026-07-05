@@ -41,7 +41,7 @@ function makeRequest(body: object) {
 // (mirrors how the route calls `await supabase.from('topics').insert(...)` with no further chain).
 function makeQueryBuilder(result: { data: unknown; error: unknown }) {
   const builder: Record<string, ReturnType<typeof vi.fn>> = {}
-  const chainMethods = ['select', 'eq', 'ilike', 'or', 'order', 'not', 'limit']
+  const chainMethods = ['select', 'eq', 'ilike', 'or', 'order', 'not', 'limit', 'update']
   for (const m of chainMethods) {
     builder[m] = vi.fn().mockReturnValue(builder)
   }
@@ -61,12 +61,18 @@ function makeListBuilder(result: { data: unknown; error: unknown }) {
   return builder
 }
 
+// Default text matches the fixture's own `language` tag, since the mismatch
+// detector reads actual content — an English placeholder tagged 'pt' would
+// (correctly) trip it and break tests that aren't about mismatch detection.
 function makeTopic(overrides: Partial<Record<string, unknown>>) {
+  const isPt = overrides.language === 'pt'
   return {
     id: 'topic-id',
-    title: 'Title',
-    summary: 'Summary',
-    when_to_use: 'When to use',
+    title: isPt ? 'Título' : 'Title',
+    summary: isPt
+      ? 'Um resumo em português, com bastante contexto para não deixar dúvida sobre o idioma.'
+      : 'Summary',
+    when_to_use: isPt ? 'Quando usar isso no dia a dia' : 'When to use',
     pros: [],
     cons: [],
     code_snippet: null,
@@ -289,5 +295,66 @@ describe('GET /api/topics — self-healing bilingual gaps', () => {
     expect(res.status).toBe(200)
     // Only 3 of the 4 gaps healed — the 4th (newest) is left for the next request.
     expect(mockTranslateTopic).toHaveBeenCalledTimes(3)
+  })
+
+  it('fixes a topic whose content does not match its own language tag', async () => {
+    // Tagged 'en' but the actual text is Portuguese — the exact bug this guards
+    // against: the model ignored the requested output language during generation.
+    const enTaggedButPortuguese = makeTopic({
+      id: 'topic-en-wrong',
+      language: 'en',
+      translated_from: null,
+      title: 'Fila de Eventos',
+      summary: 'O Event Loop é o mecanismo que permite ao Node.js executar operações não bloqueantes.',
+      when_to_use: 'Use quando estiver construindo servidores com alta concorrência.',
+    })
+    const ptCorrect = makeTopic({ id: 'topic-pt-correct', language: 'pt', translated_from: 'topic-en-wrong' })
+
+    const listBuilder = makeListBuilder({ data: [enTaggedButPortuguese, ptCorrect], error: null })
+    const updateBuilder = makeQueryBuilder({
+      data: makeTopic({ id: 'topic-en-wrong', language: 'en', translated_from: null, title: 'Event Queue' }),
+      error: null,
+    })
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn()
+        .mockReturnValueOnce(listBuilder)
+        .mockReturnValueOnce(updateBuilder),
+    } as any)
+
+    mockTranslateTopic.mockResolvedValueOnce({
+      title: 'Event Queue',
+      summary: 'The Event Loop is the mechanism that allows Node.js to perform non-blocking I/O.',
+      when_to_use: 'Use it when building highly concurrent servers.',
+      pros: [], cons: [], quick_qa: [], tags: [],
+    } as any)
+
+    const res = await GET()
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockTranslateTopic).toHaveBeenCalledTimes(1)
+    expect(mockTranslateTopic.mock.calls[0][0].targetLanguage).toBe('en')
+    expect(updateBuilder.update).toHaveBeenCalledTimes(1)
+    expect(updateBuilder.eq).toHaveBeenCalledWith('id', 'topic-en-wrong')
+    const fixedTopic = json.find((t: { id: string }) => t.id === 'topic-en-wrong')
+    expect(fixedTopic.title).toBe('Event Queue')
+  })
+
+  it('does not touch anything when both sides of a pair already read correctly', async () => {
+    const en = makeTopic({ id: 'topic-en', language: 'en', translated_from: null })
+    const pt = makeTopic({ id: 'topic-pt', language: 'pt', translated_from: 'topic-en' })
+    const listBuilder = makeListBuilder({ data: [en, pt], error: null })
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn().mockReturnValueOnce(listBuilder),
+    } as any)
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    expect(mockTranslateTopic).not.toHaveBeenCalled()
   })
 })

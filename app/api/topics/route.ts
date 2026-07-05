@@ -3,13 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
+import { hasLanguageMismatch } from '@/lib/utils/topic-language'
 import type { Topic } from '@/lib/supabase/types'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
-// Caps how many translation gaps GET /api/topics heals per request, so a large
-// backlog can't push the response past the serverless function timeout — any
-// remainder self-heals on the next load (oldest gaps first).
+// Caps how many bilingual issues (missing counterpart OR wrong-language content)
+// GET /api/topics heals per request, so a large backlog can't push the response
+// past the serverless function timeout — any remainder self-heals on the next
+// load (oldest issues first).
 const MAX_GAPS_HEALED_PER_REQUEST = 3
 
 type TranslatedTopic = {
@@ -89,6 +91,55 @@ async function insertTranslatedTopic(
   }
 }
 
+// Overwrites a topic's content in place with a fresh translation from `source`
+// — used when a row's own language tag doesn't match its actual text (the
+// generation ignored the requested language). The row's id/rootId links are
+// preserved; only the language-dependent fields are replaced.
+async function updateTranslatedTopic(
+  supabase: SupabaseServerClient,
+  userId: string,
+  source: TopicSource,
+  targetId: string,
+  targetLanguage: string
+): Promise<Topic | null> {
+  try {
+    const translated = await aiService.translateTopic({
+      topic: {
+        title: source.title,
+        summary: source.summary,
+        when_to_use: source.when_to_use ?? '',
+        pros: source.pros ?? [],
+        cons: source.cons ?? [],
+        quick_qa: source.quick_qa,
+        tags: source.tags,
+      },
+      targetLanguage,
+    }) as TranslatedTopic
+
+    const { data: updated, error } = await supabase
+      .from('topics')
+      .update({
+        title: translated.title,
+        summary: translated.summary,
+        when_to_use: translated.when_to_use,
+        pros: translated.pros ?? [],
+        cons: translated.cons ?? [],
+        quick_qa: translated.quick_qa,
+        tags: translated.tags,
+      })
+      .eq('id', targetId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return updated as Topic
+  } catch (translateErr) {
+    logger.warn('Failed to fix topic language mismatch', { userId, topicId: targetId, error: String(translateErr) })
+    return null
+  }
+}
+
 // Finds topics whose bilingual counterpart is missing, oldest first, so a
 // backlog of pre-existing gaps closes in a stable order across requests.
 function findTranslationGaps(topics: Topic[]): Array<{ rootId: string; source: Topic; targetLanguage: 'en' | 'pt' }> {
@@ -111,6 +162,40 @@ function findTranslationGaps(topics: Topic[]): Array<{ rootId: string; source: T
   return gaps.sort((a, b) => a.source.created_at.localeCompare(b.source.created_at))
 }
 
+// Finds topics whose content doesn't actually match their own language tag —
+// e.g. a row tagged 'en' whose text is really Portuguese, because the model
+// ignored the requested output language during generation. Only handled when
+// the OTHER side of the pair reads correctly, since that's the only case with
+// a trustworthy source to translate from.
+function findLanguageMismatches(topics: Topic[]): Array<{ mismatched: Topic; source: Topic; targetLanguage: 'en' | 'pt' }> {
+  const byRoot = new Map<string, { en?: Topic; pt?: Topic }>()
+
+  for (const topic of topics) {
+    const rootId = topic.translated_from ?? topic.id
+    const entry = byRoot.get(rootId) ?? {}
+    if (topic.language === 'en') entry.en = topic
+    else if (topic.language === 'pt') entry.pt = topic
+    byRoot.set(rootId, entry)
+  }
+
+  const fixes: Array<{ mismatched: Topic; source: Topic; targetLanguage: 'en' | 'pt' }> = []
+  for (const { en, pt } of byRoot.values()) {
+    if (!en || !pt) continue // missing counterpart is handled by findTranslationGaps
+
+    const enMismatched = hasLanguageMismatch(en)
+    const ptMismatched = hasLanguageMismatch(pt)
+
+    if (enMismatched && !ptMismatched) {
+      fixes.push({ mismatched: en, source: pt, targetLanguage: 'en' })
+    } else if (ptMismatched && !enMismatched) {
+      fixes.push({ mismatched: pt, source: en, targetLanguage: 'pt' })
+    }
+    // If both (or neither) look mismatched, skip — no reliable source to fix from.
+  }
+
+  return fixes.sort((a, b) => a.mismatched.created_at.localeCompare(b.mismatched.created_at))
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -127,14 +212,27 @@ export async function GET() {
 
   const topics = (data ?? []) as Topic[]
 
-  // Self-heal: close any bilingual gap found in existing data (from before this
-  // guarantee existed, or from any future edge case), a few at a time so this
-  // request never risks a serverless timeout. The client never has to know —
-  // it just sees a topic list that keeps getting more complete over time.
-  const gaps = findTranslationGaps(topics).slice(0, MAX_GAPS_HEALED_PER_REQUEST)
-  for (const gap of gaps) {
+  // Self-heal: close any bilingual issue found in existing data — either a
+  // missing counterpart, or a row whose content doesn't match its own
+  // language tag — a few at a time so this request never risks a serverless
+  // timeout. The client never has to know — it just sees a topic list that
+  // keeps getting more correct and complete over time.
+  let healBudget = MAX_GAPS_HEALED_PER_REQUEST
+
+  for (const gap of findTranslationGaps(topics)) {
+    if (healBudget <= 0) break
     const healed = await insertTranslatedTopic(supabase, user.id, gap.source, gap.rootId, gap.targetLanguage)
-    if (healed) topics.push(healed)
+    if (healed) { topics.push(healed); healBudget-- }
+  }
+
+  for (const fix of findLanguageMismatches(topics)) {
+    if (healBudget <= 0) break
+    const fixed = await updateTranslatedTopic(supabase, user.id, fix.source, fix.mismatched.id, fix.targetLanguage)
+    if (fixed) {
+      const idx = topics.findIndex(t => t.id === fixed.id)
+      if (idx !== -1) topics[idx] = fixed
+      healBudget--
+    }
   }
 
   return NextResponse.json(topics)
