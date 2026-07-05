@@ -44,12 +44,23 @@ export function useTopics(language: string) {
   return useQuery<TopicPair[]>({
     queryKey: ['topics', language],
     queryFn: async () => {
-      const res = await fetch('/api/topics')
+      const res = await fetch('/api/topics', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to fetch topics')
       const all: Topic[] = await res.json()
       return groupIntoPairs(all, language)
     },
-    staleTime: 60 * 1000, // 1 minute — short enough that GET's bilingual self-heal (see app/api/topics/route.ts) becomes visible without a hard reload
+    // Always hit the network when this tab is opened — GET's bilingual
+    // self-heal (app/api/topics/route.ts) only becomes visible on a real
+    // request. staleTime/refetchOnWindowFocus alone aren't reliable enough
+    // here: a PWA resuming from a suspended state doesn't always fire the
+    // focus/visibility events React Query listens to, so `refetchOnMount`
+    // could go unnoticed for a long time if the component was never
+    // unmounted. `refetchInterval` gives a lifecycle-independent guarantee —
+    // while this tab stays open, it re-checks every 30s until fully healed;
+    // it auto-pauses while the tab/app is actually backgrounded.
+    staleTime: 60 * 1000,
+    refetchOnMount: 'always',
+    refetchInterval: 30 * 1000,
   })
 }
 
