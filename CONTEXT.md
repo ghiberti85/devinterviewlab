@@ -310,6 +310,7 @@ lib/
   utils/
     score-card.utils.ts         # aggregateRadar(), averageScore() — funções puras
     topic-pairs.ts              # groupIntoPairs(topics, language) → TopicPair[] — função pura testável
+    topic-language.ts           # detectContentLanguage, hasLanguageMismatch — heurística EN/PT sem dependência externa
 
 store/
   session.store.ts
@@ -553,18 +554,19 @@ e2e/                            # Playwright E2E
 - rep=1→1 dia, rep=2→6 dias, rep≥3→round(prev_interval × EF)
 - Falha (quality < 3): reseta repetições e intervalo, preserva EF
 
-### Flash Topics — garantia de bilinguismo *(atualizado em 2026-07-04)*
-Duas camadas de defesa — uma na escrita, uma na leitura — garantem que a aba Conceitos nunca exiba texto em um idioma diferente do ativo, mesmo que a geração original tenha falhado por qualquer motivo.
+### Flash Topics — garantia de bilinguismo *(atualizado em 2026-07-05)*
+Camadas de defesa independentes — escrita, leitura e renderização — garantem que a aba Conceitos nunca exiba texto em um idioma diferente do ativo, mesmo que a geração original tenha falhado por qualquer motivo (o modelo ignorou o idioma pedido, uma tradução falhou, um dado antigo ficou inconsistente).
 
 **1. Escrita (`POST /api/topics`)**
 - Gera o tópico no `language` recebido e traduz para o outro idioma **sincronamente** (aguardado na mesma requisição) — nunca "fire and forget"
 - **Trava de idioma no prompt**: `topicAnalysisPrompt`/`getTopicSystemPrompt` instruem explicitamente a traduzir o `topicName` de entrada (que pode vir em outro idioma — ex.: `topic_name` de uma `roadmap_question` gerado quando o roadmap foi criado em PT) para o idioma alvo, incluindo o campo `title`; nunca ecoar o nome de entrada sem tradução
 - **Backfill no request**: se já existir um tópico com o mesmo título no idioma pedido, a rota verifica se o par (`translated_from`) no outro idioma existe; se não existir, traduz e insere antes de retornar
 
-**2. Leitura — auto-cura (`GET /api/topics`)** *(novo em 2026-07-04)*
-- A cada carregamento da aba Conceitos, `findTranslationGaps()` varre os tópicos do usuário e identifica pares com apenas um idioma presente (cobre qualquer lacuna pré-existente, de antes desta garantia existir, ou de qualquer edge case futuro — não depende do usuário reabrir o gerador)
-- Cura até `MAX_GAPS_HEALED_PER_REQUEST = 3` lacunas por requisição (mais antigas primeiro), para nunca arriscar estourar o timeout da serverless function — o restante se resolve sozinho nas próximas cargas da página
-- Os tópicos recém-traduzidos entram na própria resposta do GET, sem round-trip adicional no cliente
+**2. Leitura — auto-cura (`GET /api/topics`)**
+- **Lacuna estrutural** *(2026-07-04)*: a cada carregamento da aba Conceitos, `findTranslationGaps()` varre os tópicos do usuário e identifica pares com apenas um idioma presente (cobre qualquer lacuna pré-existente, de antes desta garantia existir, ou de qualquer edge case futuro — não depende do usuário reabrir o gerador)
+- **Incompatibilidade de conteúdo** *(2026-07-05)*: mesmo quando as duas linhas do par existem, o conteúdo de uma delas pode estar no idioma errado (ex.: linha marcada `en` mas o texto é português, porque o modelo ignorou a instrução na geração original). `findLanguageMismatches()` usa `hasLanguageMismatch()` (`lib/utils/topic-language.ts`) para detectar isso — heurística leve sem dependência externa: caracteres `ã/õ/ç` são decisivos (nunca aparecem em prosa em inglês), com contagem de stopwords PT vs EN como fallback. Só corrige quando o OUTRO lado do par lê corretamente (fonte confiável para traduzir); se ambos os lados parecerem errados, não mexe — para não haver correção "às cegas"
+- Ambas as checagens dividem o mesmo orçamento: `MAX_GAPS_HEALED_PER_REQUEST = 3` correções por requisição (mais antigas primeiro), para nunca arriscar estourar o timeout da serverless function — o restante se resolve sozinho nas próximas cargas da página
+- Lacunas são resolvidas com `insertTranslatedTopic()` (insere a linha faltante); incompatibilidades são resolvidas com `updateTranslatedTopic()` (sobrescreve o conteúdo da linha errada, preservando `id`/`translated_from`) — ambas entram na própria resposta do GET, sem round-trip adicional no cliente
 
 **3. Renderização (`TopicCard.tsx`) — garantia visual**
 - `TopicCard` **nunca** lê campos de texto (`title`, `summary`, `when_to_use`, `pros`, `cons`, `tags`) de `pair.other` — apenas de `pair.current` (a versão no idioma ativo)
@@ -617,9 +619,10 @@ Helper `insertTranslatedTopic()` em `app/api/topics/route.ts` é compartilhado p
 | `brute-force-persistent.test.ts` | 8 | caminho RPC Supabase (allowed, blocked, retryAfterSec), fallback in-memory ao erro, reset, no-throw |
 | `api-evaluate.test.ts` | 4 | camadas de guarda 401/429/400 na rota `/api/ai/evaluate` |
 | `api-roadmaps.test.ts` | 3 | 401 sem auth, 200 lista vazia, campo progress presente em `/api/roadmaps` |
-| `api-topics.test.ts` | 8 | 401/400 no POST, backfill de tradução ausente, não re-traduz se par já existe, auto-cura + limite de 3 lacunas por request no GET |
+| `api-topics.test.ts` | 10 | 401/400 no POST, backfill de tradução ausente, não re-traduz se par já existe, auto-cura + correção de incompatibilidade de idioma + limite de 3 por request no GET |
+| `topic-language.test.ts` | 10 | detectContentLanguage, hasLanguageMismatch — detecção EN/PT, termos técnicos em inglês dentro de texto PT, null-safe |
 
-**Total: 318 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 330 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |
