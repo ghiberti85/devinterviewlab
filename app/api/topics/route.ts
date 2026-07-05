@@ -6,6 +6,11 @@ import { logger } from '@/lib/logger'
 import { hasLanguageMismatch } from '@/lib/utils/topic-language'
 import type { Topic } from '@/lib/supabase/types'
 
+// The bilingual self-heal below only helps if the client actually sees fresh
+// data — never let this route be cached by the browser, a CDN, or a PWA
+// service worker.
+export const dynamic = 'force-dynamic'
+
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
 // Caps how many bilingual issues (missing counterpart OR wrong-language content)
@@ -250,7 +255,9 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json(topics)
+  return NextResponse.json(topics, {
+    headers: { 'Cache-Control': 'no-store, must-revalidate' },
+  })
 }
 
 export async function POST(req: NextRequest) {
