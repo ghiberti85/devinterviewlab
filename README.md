@@ -3,7 +3,7 @@
 > Personal AI-powered technical interview practice platform — question generation, interview simulation, live coding, flashcards, and personalized study roadmaps.
 
 **Live:** [devinterviewlab.vercel.app](https://devinterviewlab.vercel.app)  
-**CI:** ![Tests](https://img.shields.io/badge/tests-330%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
+**CI:** ![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-zero%20errors-blue) ![Deploy](https://img.shields.io/badge/deploy-Vercel-black)
 
 ---
 
@@ -30,7 +30,7 @@ DevInterviewLab is a full-stack study platform for technical interviews that use
 | PDF | html2canvas + jsPDF (score-card export) |
 | Document parsing | pdf-parse (CV upload → text extraction) |
 | Monitoring | Sentry (tunnel via `/monitoring`) |
-| Testing | Vitest — 330 unit tests |
+| Testing | Vitest — 331 unit tests |
 | Git hooks | Husky — `pre-commit` (tsc), `pre-push` (test suite), `commit-msg` (commitlint) |
 | CI/CD | GitHub Actions + Vercel (auto-deploy on merge to `main`) |
 
@@ -82,7 +82,7 @@ lib/
   supabase/       # client server/browser + types
   api/            # rate-limit, brute-force, logger
 store/            # zustand stores
-__tests__/unit/   # 330 Vitest unit tests
+__tests__/unit/   # 331 Vitest unit tests
 ```
 
 ---
@@ -107,7 +107,7 @@ Every API route follows this checklist:
 ## Tests
 
 ```bash
-npm test                # 330 unit tests (Vitest)
+npm test                # 331 unit tests (Vitest)
 npm run test:coverage   # with coverage report
 ```
 
@@ -131,7 +131,7 @@ npm run test:coverage   # with coverage report
 | `roadmap-questions-prompt.test.ts` | 28 | fixJsonNewlines, safeParseJSON, theoretical and live coding prompts |
 | `api-evaluate.test.ts` | 4 | 401/429/400 guard layers on `/api/ai/evaluate` |
 | `api-roadmaps.test.ts` | 3 | 401 unauth, 200 success, progress field on `/api/roadmaps` |
-| `api-topics.test.ts` | 10 | 401/400 guards, translation-gap backfill on POST, self-healing + language-mismatch repair + cap on GET `/api/topics` |
+| `api-topics.test.ts` | 11 | 401/400 guards, translation-gap backfill on POST, self-healing + language-mismatch repair + fair cap on GET `/api/topics` |
 | `topic-language.test.ts` | 10 | detectContentLanguage, hasLanguageMismatch — EN/PT detection, loanwords, null-safe |
 
 **Coverage:** Statements 97% · Branches 90% · Functions 100% · Lines 98%
@@ -178,7 +178,7 @@ npm run dev        # development server (localhost:3000)
 npm run build      # production build (must pass cleanly)
 npm run lint       # ESLint
 npx tsc --noEmit   # TypeScript — zero errors required
-npm test           # 330 unit tests
+npm test           # 331 unit tests
 ```
 
 ---

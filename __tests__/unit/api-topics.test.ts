@@ -357,4 +357,61 @@ describe('GET /api/topics — self-healing bilingual gaps', () => {
     expect(res.status).toBe(200)
     expect(mockTranslateTopic).not.toHaveBeenCalled()
   })
+
+  it('does not let a backlog of gaps starve an older mismatch fix', async () => {
+    // The mismatch is the OLDEST issue overall — it must be healed even though
+    // there are more gaps than fit in the per-request budget. Before this fix,
+    // findTranslationGaps ran to completion before findLanguageMismatches ever
+    // got a turn, so a large gap backlog would starve mismatches indefinitely.
+    const mismatchEn = makeTopic({
+      id: 'topic-mismatch-en',
+      language: 'en',
+      translated_from: null,
+      title: 'Fila de Eventos',
+      summary: 'O Event Loop é o mecanismo que permite ao Node.js executar operações não bloqueantes.',
+      when_to_use: 'Use quando estiver construindo servidores com alta concorrência.',
+      created_at: '2024-01-01T00:00:00.000Z',
+    })
+    const mismatchPt = makeTopic({
+      id: 'topic-mismatch-pt',
+      language: 'pt',
+      translated_from: 'topic-mismatch-en',
+      created_at: '2024-01-01T00:00:00.000Z',
+    })
+    const gapOrphans = ['a', 'b', 'c', 'd', 'e'].map((label, i) =>
+      makeTopic({
+        id: `topic-gap-${label}`,
+        language: 'en',
+        translated_from: null,
+        created_at: `2024-01-0${i + 2}T00:00:00.000Z`, // all newer than the mismatch
+      })
+    )
+
+    const listBuilder = makeListBuilder({ data: [mismatchEn, mismatchPt, ...gapOrphans], error: null })
+    const updateBuilder = makeQueryBuilder({ data: makeTopic({ id: 'topic-mismatch-en', language: 'en' }), error: null })
+    const insertBuilders = [1, 2].map(() =>
+      makeQueryBuilder({ data: makeTopic({ id: 'healed', language: 'pt' }), error: null })
+    )
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn()
+        .mockReturnValueOnce(listBuilder)
+        .mockReturnValueOnce(updateBuilder)   // the mismatch — oldest, processed first
+        .mockReturnValueOnce(insertBuilders[0]) // then the 2 oldest gaps
+        .mockReturnValueOnce(insertBuilders[1]),
+    } as any)
+
+    mockTranslateTopic.mockResolvedValue({
+      title: 't', summary: 's', when_to_use: 'w', pros: [], cons: [], quick_qa: [], tags: [],
+    } as any)
+
+    const res = await GET()
+
+    expect(res.status).toBe(200)
+    expect(mockTranslateTopic).toHaveBeenCalledTimes(3) // budget of 3, shared fairly
+    expect(updateBuilder.update).toHaveBeenCalledTimes(1) // the mismatch got its turn
+    expect(insertBuilders[0].insert).toHaveBeenCalledTimes(1)
+    expect(insertBuilders[1].insert).toHaveBeenCalledTimes(1)
+  })
 })

@@ -49,7 +49,7 @@ export function useTopics(language: string) {
       const all: Topic[] = await res.json()
       return groupIntoPairs(all, language)
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes — topics rarely change mid-session
+    staleTime: 60 * 1000, // 1 minute — short enough that GET's bilingual self-heal (see app/api/topics/route.ts) becomes visible without a hard reload
   })
 }
 
