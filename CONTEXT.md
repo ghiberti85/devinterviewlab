@@ -565,8 +565,9 @@ Camadas de defesa independentes — escrita, leitura e renderização — garant
 **2. Leitura — auto-cura (`GET /api/topics`)**
 - **Lacuna estrutural** *(2026-07-04)*: a cada carregamento da aba Conceitos, `findTranslationGaps()` varre os tópicos do usuário e identifica pares com apenas um idioma presente (cobre qualquer lacuna pré-existente, de antes desta garantia existir, ou de qualquer edge case futuro — não depende do usuário reabrir o gerador)
 - **Incompatibilidade de conteúdo** *(2026-07-05)*: mesmo quando as duas linhas do par existem, o conteúdo de uma delas pode estar no idioma errado (ex.: linha marcada `en` mas o texto é português, porque o modelo ignorou a instrução na geração original). `findLanguageMismatches()` usa `hasLanguageMismatch()` (`lib/utils/topic-language.ts`) para detectar isso — heurística leve sem dependência externa: caracteres `ã/õ/ç` são decisivos (nunca aparecem em prosa em inglês), com contagem de stopwords PT vs EN como fallback. Só corrige quando o OUTRO lado do par lê corretamente (fonte confiável para traduzir); se ambos os lados parecerem errados, não mexe — para não haver correção "às cegas"
-- Ambas as checagens dividem o mesmo orçamento: `MAX_GAPS_HEALED_PER_REQUEST = 3` correções por requisição (mais antigas primeiro), para nunca arriscar estourar o timeout da serverless function — o restante se resolve sozinho nas próximas cargas da página
+- **Fila unificada e justa** *(2026-07-05)*: `findBilingualIssues()` mescla lacunas e incompatibilidades em uma única fila ordenada por `created_at` (mais antigo primeiro, **independente do tipo**) antes de aplicar o orçamento `MAX_GAPS_HEALED_PER_REQUEST = 3` por requisição. Antes disso, todas as lacunas eram resolvidas primeiro — um backlog grande de lacunas estruturais podia consumir o orçamento inteiro e nunca deixar uma incompatibilidade de conteúdo ser corrigida, mesmo que ela fosse mais antiga. O restante da fila (do tipo que for) se resolve sozinho nas próximas cargas da página
 - Lacunas são resolvidas com `insertTranslatedTopic()` (insere a linha faltante); incompatibilidades são resolvidas com `updateTranslatedTopic()` (sobrescreve o conteúdo da linha errada, preservando `id`/`translated_from`) — ambas entram na própria resposta do GET, sem round-trip adicional no cliente
+- `useTopics()` usa `staleTime: 60s` (era 10min) — para que a auto-cura do servidor fique visível ao usuário sem exigir um hard reload
 
 **3. Renderização (`TopicCard.tsx`) — garantia visual**
 - `TopicCard` **nunca** lê campos de texto (`title`, `summary`, `when_to_use`, `pros`, `cons`, `tags`) de `pair.other` — apenas de `pair.current` (a versão no idioma ativo)
@@ -619,10 +620,10 @@ Helper `insertTranslatedTopic()` em `app/api/topics/route.ts` é compartilhado p
 | `brute-force-persistent.test.ts` | 8 | caminho RPC Supabase (allowed, blocked, retryAfterSec), fallback in-memory ao erro, reset, no-throw |
 | `api-evaluate.test.ts` | 4 | camadas de guarda 401/429/400 na rota `/api/ai/evaluate` |
 | `api-roadmaps.test.ts` | 3 | 401 sem auth, 200 lista vazia, campo progress presente em `/api/roadmaps` |
-| `api-topics.test.ts` | 10 | 401/400 no POST, backfill de tradução ausente, não re-traduz se par já existe, auto-cura + correção de incompatibilidade de idioma + limite de 3 por request no GET |
+| `api-topics.test.ts` | 11 | 401/400 no POST, backfill de tradução ausente, não re-traduz se par já existe, auto-cura + correção de incompatibilidade + fila unificada justa por data no GET |
 | `topic-language.test.ts` | 10 | detectContentLanguage, hasLanguageMismatch — detecção EN/PT, termos técnicos em inglês dentro de texto PT, null-safe |
 
-**Total: 330 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 331 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |

@@ -196,6 +196,23 @@ function findLanguageMismatches(topics: Topic[]): Array<{ mismatched: Topic; sou
   return fixes.sort((a, b) => a.mismatched.created_at.localeCompare(b.mismatched.created_at))
 }
 
+type BilingualIssue =
+  | { kind: 'gap'; rootId: string; source: Topic; targetLanguage: 'en' | 'pt' }
+  | { kind: 'mismatch'; mismatched: Topic; source: Topic; targetLanguage: 'en' | 'pt' }
+
+// Merges gaps and content mismatches into a single oldest-first queue. Without
+// this, a backlog of gaps would always be processed before any mismatch ever
+// gets a turn (gaps are checked first), starving mismatch fixes indefinitely
+// whenever gaps outnumber the per-request healing budget.
+function findBilingualIssues(topics: Topic[]): BilingualIssue[] {
+  const issues: BilingualIssue[] = [
+    ...findTranslationGaps(topics).map(gap => ({ kind: 'gap' as const, ...gap })),
+    ...findLanguageMismatches(topics).map(fix => ({ kind: 'mismatch' as const, ...fix })),
+  ]
+  const createdAt = (issue: BilingualIssue) => issue.kind === 'gap' ? issue.source.created_at : issue.mismatched.created_at
+  return issues.sort((a, b) => createdAt(a).localeCompare(createdAt(b)))
+}
+
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -215,23 +232,21 @@ export async function GET() {
   // Self-heal: close any bilingual issue found in existing data — either a
   // missing counterpart, or a row whose content doesn't match its own
   // language tag — a few at a time so this request never risks a serverless
-  // timeout. The client never has to know — it just sees a topic list that
-  // keeps getting more correct and complete over time.
-  let healBudget = MAX_GAPS_HEALED_PER_REQUEST
+  // timeout. Oldest issue first, regardless of type, so a large backlog of
+  // one kind can't starve the other. The client never has to know — it just
+  // sees a topic list that keeps getting more correct and complete over time.
+  const issues = findBilingualIssues(topics).slice(0, MAX_GAPS_HEALED_PER_REQUEST)
 
-  for (const gap of findTranslationGaps(topics)) {
-    if (healBudget <= 0) break
-    const healed = await insertTranslatedTopic(supabase, user.id, gap.source, gap.rootId, gap.targetLanguage)
-    if (healed) { topics.push(healed); healBudget-- }
-  }
-
-  for (const fix of findLanguageMismatches(topics)) {
-    if (healBudget <= 0) break
-    const fixed = await updateTranslatedTopic(supabase, user.id, fix.source, fix.mismatched.id, fix.targetLanguage)
-    if (fixed) {
-      const idx = topics.findIndex(t => t.id === fixed.id)
-      if (idx !== -1) topics[idx] = fixed
-      healBudget--
+  for (const issue of issues) {
+    if (issue.kind === 'gap') {
+      const healed = await insertTranslatedTopic(supabase, user.id, issue.source, issue.rootId, issue.targetLanguage)
+      if (healed) topics.push(healed)
+    } else {
+      const fixed = await updateTranslatedTopic(supabase, user.id, issue.source, issue.mismatched.id, issue.targetLanguage)
+      if (fixed) {
+        const idx = topics.findIndex(t => t.id === fixed.id)
+        if (idx !== -1) topics[idx] = fixed
+      }
     }
   }
 
