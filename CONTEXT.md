@@ -481,7 +481,7 @@ e2e/                            # Playwright E2E
 - **Modelo de pares**: API retorna todos os tópicos (ambos idiomas); `groupIntoPairs()` agrupa por `rootId = translated_from ?? id`
   — garante mesma quantidade e ordem de tópicos em PT e EN, mesmo que criados em momentos diferentes
   — `TopicPair { rootId, rootCreatedAt, current: Topic|null, other: Topic|null }` — `current` é o idioma ativo, `other` é o outro
-  — se `current` for null (sem tradução), o card exibe `other` como fallback com badge amarelo + botão de tradução
+  — se `current` for null (sem tradução), o card **nunca** exibe o texto de `other` — mostra um placeholder neutro + botão de tradução (ver "Flash Topics — garantia de bilinguismo")
   — `rootCreatedAt` = menor `created_at` do par → ordenação estável independente do idioma
 - `translated_from` (uuid, self-ref FK) liga a tradução ao original; idempotente (409 se tradução já existe)
 - Translate route usa Node Runtime (não Edge) — singleton OpenAI incompatível com isolates do Edge Runtime
@@ -553,11 +553,25 @@ e2e/                            # Playwright E2E
 - rep=1→1 dia, rep=2→6 dias, rep≥3→round(prev_interval × EF)
 - Falha (quality < 3): reseta repetições e intervalo, preserva EF
 
-### Flash Topics — garantia de bilinguismo *(atualizado em 2026-07-03)*
-- `POST /api/topics` gera o tópico no `language` recebido e traduz para o outro idioma **sincronamente** (aguardado na mesma requisição) — nunca "fire and forget"
+### Flash Topics — garantia de bilinguismo *(atualizado em 2026-07-04)*
+Duas camadas de defesa — uma na escrita, uma na leitura — garantem que a aba Conceitos nunca exiba texto em um idioma diferente do ativo, mesmo que a geração original tenha falhado por qualquer motivo.
+
+**1. Escrita (`POST /api/topics`)**
+- Gera o tópico no `language` recebido e traduz para o outro idioma **sincronamente** (aguardado na mesma requisição) — nunca "fire and forget"
 - **Trava de idioma no prompt**: `topicAnalysisPrompt`/`getTopicSystemPrompt` instruem explicitamente a traduzir o `topicName` de entrada (que pode vir em outro idioma — ex.: `topic_name` de uma `roadmap_question` gerado quando o roadmap foi criado em PT) para o idioma alvo, incluindo o campo `title`; nunca ecoar o nome de entrada sem tradução
-- **Backfill de lacuna**: se já existir um tópico com o mesmo título no idioma pedido, a rota verifica se o par (`translated_from`) no outro idioma existe; se não existir, traduz e insere antes de retornar — nenhum tópico deve ficar permanentemente sem o par bilíngue
-- Helper `insertTranslatedTopic()` em `app/api/topics/route.ts` é reutilizado tanto na geração nova quanto no backfill
+- **Backfill no request**: se já existir um tópico com o mesmo título no idioma pedido, a rota verifica se o par (`translated_from`) no outro idioma existe; se não existir, traduz e insere antes de retornar
+
+**2. Leitura — auto-cura (`GET /api/topics`)** *(novo em 2026-07-04)*
+- A cada carregamento da aba Conceitos, `findTranslationGaps()` varre os tópicos do usuário e identifica pares com apenas um idioma presente (cobre qualquer lacuna pré-existente, de antes desta garantia existir, ou de qualquer edge case futuro — não depende do usuário reabrir o gerador)
+- Cura até `MAX_GAPS_HEALED_PER_REQUEST = 3` lacunas por requisição (mais antigas primeiro), para nunca arriscar estourar o timeout da serverless function — o restante se resolve sozinho nas próximas cargas da página
+- Os tópicos recém-traduzidos entram na própria resposta do GET, sem round-trip adicional no cliente
+
+**3. Renderização (`TopicCard.tsx`) — garantia visual**
+- `TopicCard` **nunca** lê campos de texto (`title`, `summary`, `when_to_use`, `pros`, `cons`, `tags`) de `pair.other` — apenas de `pair.current` (a versão no idioma ativo)
+- Se `pair.current` for `null`, renderiza um placeholder neutro (mensagem traduzida via `t.topics.notTranslatedYet` + botão manual de tradução) em vez do conteúdo estrangeiro — o antigo comportamento de "fallback com badge amarelo mostrando o texto no outro idioma" foi removido
+- Esse estado é esperado ser transitório: a auto-cura do GET fecha a lacuna sozinha; o botão manual permite forçar a tradução imediatamente
+
+Helper `insertTranslatedTopic()` em `app/api/topics/route.ts` é compartilhado pelas 3 chamadas (geração nova, backfill no POST, auto-cura no GET).
 
 ### Streaming
 - `ndjsonStream()` em `lib/api/stream.ts` — ReadableStream com eventos `thinking|complete|error`
@@ -603,9 +617,9 @@ e2e/                            # Playwright E2E
 | `brute-force-persistent.test.ts` | 8 | caminho RPC Supabase (allowed, blocked, retryAfterSec), fallback in-memory ao erro, reset, no-throw |
 | `api-evaluate.test.ts` | 4 | camadas de guarda 401/429/400 na rota `/api/ai/evaluate` |
 | `api-roadmaps.test.ts` | 3 | 401 sem auth, 200 lista vazia, campo progress presente em `/api/roadmaps` |
-| `api-topics.test.ts` | 4 | 401/400 na rota `/api/topics`, backfill de tradução ausente em tópico já existente, não re-traduz se par já existe |
+| `api-topics.test.ts` | 8 | 401/400 no POST, backfill de tradução ausente, não re-traduz se par já existe, auto-cura + limite de 3 lacunas por request no GET |
 
-**Total: 314 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
+**Total: 318 testes** — todos passando, zero falhas toleradas. Rodar: `npm test` · com coverage: `npm run test:coverage`
 
 ### Cobertura global (v8)
 | Métrica | % | Threshold |

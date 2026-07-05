@@ -3,8 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { aiService } from '@/lib/ai/ai.service'
 import { checkRateLimit, logUsage, sanitizeError } from '@/lib/api/rate-limit'
 import { logger } from '@/lib/logger'
+import type { Topic } from '@/lib/supabase/types'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+
+// Caps how many translation gaps GET /api/topics heals per request, so a large
+// backlog can't push the response past the serverless function timeout — any
+// remainder self-heals on the next load (oldest gaps first).
+const MAX_GAPS_HEALED_PER_REQUEST = 3
 
 type TranslatedTopic = {
   title: string
@@ -31,15 +37,16 @@ type TopicSource = {
 }
 
 // Generates the missing-language counterpart for a topic and persists it.
-// Used both right after a fresh generation and to backfill a translation gap
-// found on an already-existing topic — every topic must end up bilingual.
+// Used to backfill a translation gap right after a fresh generation, when an
+// existing topic is re-requested, and to self-heal any gap found on read —
+// every topic must end up bilingual, regardless of how the gap appeared.
 async function insertTranslatedTopic(
   supabase: SupabaseServerClient,
   userId: string,
   source: TopicSource,
   rootId: string,
   targetLanguage: string
-): Promise<TranslatedTopic | null> {
+): Promise<Topic | null> {
   try {
     const translated = await aiService.translateTopic({
       topic: {
@@ -54,27 +61,54 @@ async function insertTranslatedTopic(
       targetLanguage,
     }) as TranslatedTopic
 
-    await supabase.from('topics').insert({
-      user_id: userId,
-      category_id: source.category_id ?? null,
-      title: translated.title,
-      difficulty: source.difficulty,
-      summary: translated.summary,
-      when_to_use: translated.when_to_use,
-      pros: translated.pros ?? [],
-      cons: translated.cons ?? [],
-      code_snippet: source.code_snippet,
-      quick_qa: translated.quick_qa,
-      tags: translated.tags,
-      language: targetLanguage,
-      translated_from: rootId,
-    })
+    const { data: inserted, error } = await supabase
+      .from('topics')
+      .insert({
+        user_id: userId,
+        category_id: source.category_id ?? null,
+        title: translated.title,
+        difficulty: source.difficulty,
+        summary: translated.summary,
+        when_to_use: translated.when_to_use,
+        pros: translated.pros ?? [],
+        cons: translated.cons ?? [],
+        code_snippet: source.code_snippet,
+        quick_qa: translated.quick_qa,
+        tags: translated.tags,
+        language: targetLanguage,
+        translated_from: rootId,
+      })
+      .select()
+      .single()
 
-    return translated
+    if (error) throw error
+    return inserted as Topic
   } catch (translateErr) {
     logger.warn('Failed to translate topic', { userId, topicId: source.id, error: String(translateErr) })
     return null
   }
+}
+
+// Finds topics whose bilingual counterpart is missing, oldest first, so a
+// backlog of pre-existing gaps closes in a stable order across requests.
+function findTranslationGaps(topics: Topic[]): Array<{ rootId: string; source: Topic; targetLanguage: 'en' | 'pt' }> {
+  const byRoot = new Map<string, { en?: Topic; pt?: Topic }>()
+
+  for (const topic of topics) {
+    const rootId = topic.translated_from ?? topic.id
+    const entry = byRoot.get(rootId) ?? {}
+    if (topic.language === 'en') entry.en = topic
+    else if (topic.language === 'pt') entry.pt = topic
+    byRoot.set(rootId, entry)
+  }
+
+  const gaps: Array<{ rootId: string; source: Topic; targetLanguage: 'en' | 'pt' }> = []
+  for (const [rootId, { en, pt }] of byRoot) {
+    if (en && !pt) gaps.push({ rootId, source: en, targetLanguage: 'pt' })
+    else if (pt && !en) gaps.push({ rootId, source: pt, targetLanguage: 'en' })
+  }
+
+  return gaps.sort((a, b) => a.source.created_at.localeCompare(b.source.created_at))
 }
 
 export async function GET() {
@@ -90,7 +124,20 @@ export async function GET() {
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: sanitizeError(error) }, { status: 500 })
-  return NextResponse.json(data ?? [])
+
+  const topics = (data ?? []) as Topic[]
+
+  // Self-heal: close any bilingual gap found in existing data (from before this
+  // guarantee existed, or from any future edge case), a few at a time so this
+  // request never risks a serverless timeout. The client never has to know —
+  // it just sees a topic list that keeps getting more complete over time.
+  const gaps = findTranslationGaps(topics).slice(0, MAX_GAPS_HEALED_PER_REQUEST)
+  for (const gap of gaps) {
+    const healed = await insertTranslatedTopic(supabase, user.id, gap.source, gap.rootId, gap.targetLanguage)
+    if (healed) topics.push(healed)
+  }
+
+  return NextResponse.json(topics)
 }
 
 export async function POST(req: NextRequest) {

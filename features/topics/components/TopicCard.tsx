@@ -80,12 +80,35 @@ export const TopicCard = memo(function TopicCard({ pair }: { pair: TopicPair }) 
   const [showCode, setShowCode] = useState(false)
   const translateTopic = useTranslateTopic()
 
-  const topic = pair.current ?? pair.other
-  if (!topic) return null
+  if (!pair.current && !pair.other) return null
 
-  const isFallback = !pair.current && !!pair.other
+  // Guarantee: never render topic content in a language other than the active
+  // UI language, not even briefly. If the version in `language` doesn't exist
+  // yet, show a neutral placeholder (no foreign text) with a manual translate
+  // action — the server also self-heals this gap in the background (see
+  // GET /api/topics), so this state is expected to be transient.
+  if (!pair.current) {
+    const source = pair.other!
+    return (
+      <div className="border border-dashed rounded-lg p-4 space-y-2 bg-card min-w-0 w-full">
+        <p className="text-sm text-muted-foreground italic">{t.topics.notTranslatedYet}</p>
+        <button
+          onClick={() => translateTopic.mutate({ id: source.id, currentLanguage: language as string })}
+          disabled={translateTopic.isPending}
+          className="flex items-center gap-1.5 text-xs text-primary hover:underline disabled:opacity-50"
+        >
+          {translateTopic.isPending
+            ? <Loader2 size={13} className="animate-spin" />
+            : <Languages size={13} />
+          }
+          {t.topics.translateTo(language === 'en' ? 'EN' : 'PT')}
+        </button>
+      </div>
+    )
+  }
+
+  const topic = pair.current
   const targetLangLabel = language === 'en' ? 'PT' : 'EN'
-  const sourceToTranslate = isFallback ? pair.other! : pair.current!
 
   const difficultyColor = {
     easy: 'text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400',
@@ -94,11 +117,11 @@ export const TopicCard = memo(function TopicCard({ pair }: { pair: TopicPair }) 
   }[topic.difficulty] ?? 'text-muted-foreground bg-muted'
 
   function handleTranslate() {
-    translateTopic.mutate({ id: sourceToTranslate.id, currentLanguage: language as string })
+    translateTopic.mutate({ id: topic.id, currentLanguage: language as string })
   }
 
   return (
-    <div className={cn('border rounded-lg p-4 space-y-3 bg-card min-w-0 w-full', isFallback && 'opacity-70')}>
+    <div className="border rounded-lg p-4 space-y-3 bg-card min-w-0 w-full">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -107,35 +130,24 @@ export const TopicCard = memo(function TopicCard({ pair }: { pair: TopicPair }) 
               {topic.difficulty}
             </span>
             <TagsRow tags={topic.tags} />
-            {isFallback && (
-              <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full shrink-0">
-                {topic.language.toUpperCase()}
-              </span>
-            )}
           </div>
           <h3 className="font-semibold mt-1.5 text-sm">{topic.title}</h3>
         </div>
-        {(!pair.current || !pair.other) && (
+        {!pair.other && (
           <button
             onClick={handleTranslate}
             disabled={translateTopic.isPending}
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-1 rounded hover:bg-muted disabled:opacity-50 shrink-0"
-            title={t.topics.translateTo(isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel)}
+            title={t.topics.translateTo(targetLangLabel)}
           >
             {translateTopic.isPending
               ? <Loader2 size={13} className="animate-spin" />
               : <Languages size={13} />
             }
-            <span>{isFallback ? (language === 'en' ? 'EN' : 'PT') : targetLangLabel}</span>
+            <span>{targetLangLabel}</span>
           </button>
         )}
       </div>
-
-      {isFallback && (
-        <p className="text-xs text-yellow-700 dark:text-yellow-400 italic">
-          {t.topics.notTranslatedYet}
-        </p>
-      )}
 
       {/* Teoria — open by default */}
       <AccordionSection title={t.topics.theory ?? 'Theory'} defaultOpen>
