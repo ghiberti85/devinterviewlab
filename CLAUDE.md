@@ -40,7 +40,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 | Estado cliente | Zustand — `useSessionStore` (timer), `useSettingsStore` (idioma/tema) |
 | UI | Tailwind CSS + Radix UI — componentes em `components/` |
 | Monitoramento | Sentry (tunnel via `/monitoring`) |
-| Testes | Vitest (`__tests__/unit/`) — **314 testes, zero falhas toleradas** |
+| Testes | Vitest (`__tests__/unit/`) — **318 testes, zero falhas toleradas** |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) — bloqueia merge se CI falhar |
 
 ---
@@ -54,7 +54,7 @@ npx tsc --noEmit      # verificação TypeScript — zero erros obrigatório
 
 ### A cada alteração de código — obrigatório antes do commit
 ```bash
-npm test              # 314 testes devem passar — zero falhas toleradas
+npm test              # 318 testes devem passar — zero falhas toleradas
 npx tsc --noEmit      # zero erros de tipo
 npm run lint          # zero warnings
 ```
@@ -237,7 +237,7 @@ describe('nomeDaFuncao', () => {
 4. Edge cases: input vazio, campos opcionais ausentes
 5. Sem vazamento de dados entre chamadas
 
-### Contagem atual: **314 testes** — atualizar este número a cada PR
+### Contagem atual: **318 testes** — atualizar este número a cada PR
 
 ### Prompts de IA — regras de diversidade (não remover)
 - `generate.prompt.ts` e `generate-from-context.prompt.ts`: taxonomia de 5 ângulos obrigatórios por questão; frases banidas: "em 30 dias", "em N semanas", "seu time tem N dias"

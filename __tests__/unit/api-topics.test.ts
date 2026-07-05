@@ -19,7 +19,7 @@ vi.mock('@/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { POST } from '@/app/api/topics/route'
+import { GET, POST } from '@/app/api/topics/route'
 import { createClient } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/api/rate-limit'
 import { aiService } from '@/lib/ai/ai.service'
@@ -49,6 +49,36 @@ function makeQueryBuilder(result: { data: unknown; error: unknown }) {
   builder.maybeSingle = vi.fn().mockResolvedValue(result)
   builder.insert = vi.fn().mockImplementation(() => Object.assign(Promise.resolve(result), builder))
   return builder
+}
+
+// GET's topic list query has no `.single()`/`.maybeSingle()` terminal — it resolves
+// directly off `.order(...)`, mirroring the real supabase-js thenable builder.
+function makeListBuilder(result: { data: unknown; error: unknown }) {
+  const builder: Record<string, ReturnType<typeof vi.fn>> = {}
+  builder.select = vi.fn().mockReturnValue(builder)
+  builder.eq = vi.fn().mockReturnValue(builder)
+  builder.order = vi.fn().mockImplementation(() => Promise.resolve(result))
+  return builder
+}
+
+function makeTopic(overrides: Partial<Record<string, unknown>>) {
+  return {
+    id: 'topic-id',
+    title: 'Title',
+    summary: 'Summary',
+    when_to_use: 'When to use',
+    pros: [],
+    cons: [],
+    code_snippet: null,
+    quick_qa: [],
+    tags: [],
+    difficulty: 'medium',
+    category_id: null,
+    language: 'en',
+    translated_from: null,
+    created_at: '2024-01-01T00:00:00.000Z',
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
@@ -162,5 +192,102 @@ describe('POST /api/topics — translation gap backfill', () => {
 
     expect(res.status).toBe(200)
     expect(mockTranslateTopic).not.toHaveBeenCalled()
+  })
+})
+
+describe('GET /api/topics — self-healing bilingual gaps', () => {
+  it('returns 401 when there is no authenticated user', async () => {
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: null } }) },
+    } as any)
+
+    const res = await GET()
+    expect(res.status).toBe(401)
+  })
+
+  it('does not call translateTopic when every topic already has its counterpart', async () => {
+    const en = makeTopic({ id: 'topic-en', language: 'en', translated_from: null })
+    const pt = makeTopic({ id: 'topic-pt', language: 'pt', translated_from: 'topic-en' })
+    const listBuilder = makeListBuilder({ data: [en, pt], error: null })
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn().mockReturnValueOnce(listBuilder),
+    } as any)
+
+    const res = await GET()
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(json).toHaveLength(2)
+    expect(mockTranslateTopic).not.toHaveBeenCalled()
+  })
+
+  it('heals a gap found in already-persisted data and includes the healed row in the response', async () => {
+    // Only the 'en' side exists — e.g. a gap that predates the backfill guarantee.
+    const orphan = makeTopic({ id: 'topic-en', language: 'en', translated_from: null })
+    const listBuilder = makeListBuilder({ data: [orphan], error: null })
+    const insertBuilder = makeQueryBuilder({
+      data: makeTopic({ id: 'topic-pt-new', language: 'pt', translated_from: 'topic-en' }),
+      error: null,
+    })
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn()
+        .mockReturnValueOnce(listBuilder)
+        .mockReturnValueOnce(insertBuilder),
+    } as any)
+
+    mockTranslateTopic.mockResolvedValueOnce({
+      title: 'Título traduzido',
+      summary: 'Resumo',
+      when_to_use: 'Quando usar',
+      pros: [],
+      cons: [],
+      quick_qa: [],
+      tags: [],
+    } as any)
+
+    const res = await GET()
+    const json = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(mockTranslateTopic).toHaveBeenCalledTimes(1)
+    expect(json).toHaveLength(2)
+    expect(json.some((t: { id: string }) => t.id === 'topic-pt-new')).toBe(true)
+  })
+
+  it('caps healing at 3 gaps per request, oldest first, leaving the rest for the next load', async () => {
+    const orphans = ['a', 'b', 'c', 'd'].map((label, i) =>
+      makeTopic({
+        id: `topic-${label}`,
+        language: 'en',
+        translated_from: null,
+        created_at: `2024-01-0${i + 1}T00:00:00.000Z`,
+      })
+    )
+    const listBuilder = makeListBuilder({ data: orphans, error: null })
+    const insertBuilders = [1, 2, 3].map(() =>
+      makeQueryBuilder({ data: makeTopic({ id: 'healed', language: 'pt' }), error: null })
+    )
+
+    mockCreateClient.mockResolvedValueOnce({
+      auth: { getUser: vi.fn().mockResolvedValueOnce({ data: { user: { id: 'user-1' } } }) },
+      from: vi.fn()
+        .mockReturnValueOnce(listBuilder)
+        .mockReturnValueOnce(insertBuilders[0])
+        .mockReturnValueOnce(insertBuilders[1])
+        .mockReturnValueOnce(insertBuilders[2]),
+    } as any)
+
+    mockTranslateTopic.mockResolvedValue({
+      title: 't', summary: 's', when_to_use: 'w', pros: [], cons: [], quick_qa: [], tags: [],
+    } as any)
+
+    const res = await GET()
+    expect(res.status).toBe(200)
+    // Only 3 of the 4 gaps healed — the 4th (newest) is left for the next request.
+    expect(mockTranslateTopic).toHaveBeenCalledTimes(3)
   })
 })
